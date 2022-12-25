@@ -1,4 +1,4 @@
-pub struct Glyph {
+pub struct GlyphMetrics {
     pub width: u32,
     pub height: u32,
     pub h_advance: u32,
@@ -23,11 +23,11 @@ pub trait GlyphExtractor {
 
     fn set_font_size(&mut self, font_size: f32);
 
-    fn get_glyph(&self, ch: char) -> Glyph;
+    fn get_glyph(&self, ch: char) -> GlyphMetrics;
 
-    fn transform_to_glyph(&self, ch: char) -> Glyph;
+    fn transform_to_glyph(&self, ch: char) -> GlyphMetrics;
 
     fn font_metrics(&self) -> FontHMetrics;
 
-    fn get_bitmap_and_metrics(&self, ch: char) -> (Vec<u8>, Glyph);
+    fn get_bitmap_and_metrics(&self, ch: char) -> (Vec<u8>, GlyphMetrics);
 }

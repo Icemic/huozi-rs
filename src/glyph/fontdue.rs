@@ -2,7 +2,7 @@ use fontdue::{Font, Metrics};
 use image::{DynamicImage, Rgba};
 use log::debug;
 
-use crate::glyph::common::Glyph;
+use crate::glyph::common::GlyphMetrics;
 
 use super::common::{FontHMetrics, GlyphExtractor};
 
@@ -11,9 +11,9 @@ pub struct FontdueExtractor {
     font_size: f32,
 }
 
-impl Into<Glyph> for Metrics {
-    fn into(self) -> Glyph {
-        Glyph {
+impl Into<GlyphMetrics> for Metrics {
+    fn into(self) -> GlyphMetrics {
+        GlyphMetrics {
             width: self.width as u32,
             height: self.height as u32,
             h_advance: self.advance_width.ceil() as u32,
@@ -35,14 +35,14 @@ impl GlyphExtractor for FontdueExtractor {
     fn set_font_size(&mut self, font_size: f32) {
         self.font_size = font_size;
     }
-    fn get_glyph(&self, ch: char) -> Glyph {
+    fn get_glyph(&self, ch: char) -> GlyphMetrics {
         let metrics = self.font.metrics(ch, self.font_size);
         metrics.into()
     }
-    fn transform_to_glyph(&self, ch: char) -> Glyph {
+    fn transform_to_glyph(&self, ch: char) -> GlyphMetrics {
         let metrics = self.font.metrics(ch, self.font_size);
 
-        Glyph {
+        GlyphMetrics {
             width: metrics.width as u32,
             height: metrics.height as u32,
             h_advance: metrics.advance_width.ceil() as u32,
@@ -67,7 +67,7 @@ impl GlyphExtractor for FontdueExtractor {
             content_height: (h_metrics.ascent - h_metrics.descent).ceil() as i32,
         }
     }
-    fn get_bitmap_and_metrics(&self, ch: char) -> (Vec<u8>, Glyph) {
+    fn get_bitmap_and_metrics(&self, ch: char) -> (Vec<u8>, GlyphMetrics) {
         let (metrics, bitmap) = self.font.rasterize(ch, self.font_size);
         (bitmap, metrics.into())
     }

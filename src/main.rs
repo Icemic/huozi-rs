@@ -9,6 +9,15 @@ use crate::glyph::GlyphExtractor;
 use crate::sdf::TinySDF;
 
 fn main() {
+    let font_data = std::fs::read("assets/SourceHanSansCN-Normal.otf").unwrap();
+    let mut huozi = huozi::Huozi::new(font_data);
+    huozi.preload(ASCII);
+    huozi.preload(CJK_SYMBOL);
+    huozi.preload(CHS);
+    huozi.dump_texture_to("aaa.png").unwrap();
+}
+
+fn main11() {
     let env = env_logger::Env::default().default_filter_or("huozi=debug");
     env_logger::init_from_env(env);
 
