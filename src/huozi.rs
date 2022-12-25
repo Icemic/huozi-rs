@@ -1,10 +1,9 @@
-use std::num::NonZeroUsize;
-use std::path::Path;
-
 use anyhow::Result;
-use image::{DynamicImage, Rgba, RgbaImage};
+use image::{DynamicImage, RgbaImage};
 use log::warn;
 use lru::LruCache;
+use std::num::NonZeroUsize;
+use std::path::Path;
 
 use crate::{FontdueExtractor, GlyphExtractor, GlyphMetrics, TinySDF};
 

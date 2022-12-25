@@ -1,6 +1,4 @@
 use fontdue::{Font, Metrics};
-use image::{DynamicImage, Rgba};
-use log::debug;
 
 use crate::glyph::common::GlyphMetrics;
 

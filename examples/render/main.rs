@@ -5,7 +5,7 @@ use std::{
 
 use wgpu::{util::DeviceExt, BlendState};
 use winit::{
-    dpi::{LogicalSize, PhysicalSize},
+    dpi::PhysicalSize,
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
