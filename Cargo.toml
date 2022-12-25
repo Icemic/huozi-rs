@@ -5,9 +5,30 @@ version = "0.1.0"
 
 [dependencies]
 ab_glyph = "0.2"
+anyhow = "1"
+csscolorparser = "0.6"
 env_logger = "0.10"
 fontdue = "0.7.2"
 image = {version = "0.23", default-features = false, features = ["png"]}
 log = "0.4"
 lru = "0.8"
 rusttype = "0.9"
+
+[dev-dependencies]
+bytemuck = {version = "1.4", features = ["derive"]}
+cfg-if = "1"
+pollster = "0.2"
+wgpu = "0.14"
+winit = "0.27"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+console_error_panic_hook = "0.1"
+console_log = "0.2"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = {version = "0.3", features = [
+  "Document",
+  "Window",
+  "Element",
+]}
+wgpu = {version = "0.14", features = ["webgl"]}
