@@ -1,6 +1,43 @@
 use image::{DynamicImage, Rgba};
 use rusttype::{point, Font, Scale};
 
+pub struct GlyphExtractor {
+    font: Font<'static>,
+    font_size: f32,
+}
+
+impl GlyphExtractor {
+    pub fn new(font_data: Vec<u8>, font_size: f32) -> Self {
+        let font = Font::try_from_vec(font_data).unwrap();
+
+        Self { font, font_size }
+    }
+    pub fn set_font_size(&mut self, font_size: f32) {
+        self.font_size = font_size;
+    }
+    pub fn get_glyph(&self, ch: char) {
+        let scale = Scale::uniform(self.font_size);
+        let glyphs: Vec<_> = self
+            .font
+            .layout(ch.to_string().as_str(), scale, point(0., 0.))
+            .collect();
+
+        let r = glyphs
+            .first()
+            .map(|g| g.pixel_bounding_box().unwrap())
+            .unwrap();
+
+        println!(
+            "h_advance: {}, h_bearing: {}, width: {}\nx min: {}, x max: {}",
+            0,
+            0,
+            r.width(),
+            r.min.x,
+            r.max.x
+        )
+    }
+}
+
 fn main() {
     // Load the font
     let font_data = std::fs::read("assets/WenQuanYiMicroHei.ttf").unwrap();

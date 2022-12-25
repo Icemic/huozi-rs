@@ -1,155 +1,126 @@
-use ab_glyph::{point, Font, FontRef, Glyph, PxScale, ScaleFont};
-use piet::{
-    kurbo::{Line, Point, Rect},
-    Color, RenderContext,
-};
-use piet_common::{CoreGraphicsContext, Device};
+mod charsets;
+mod glyph;
+mod sdf;
+
 use image::{DynamicImage, Rgba};
 
+use crate::charsets::{ASCII, CHS, CJK_SYMBOL};
+use crate::glyph::GlyphExtractor;
+use crate::sdf::TinySDF;
 
-const WIDTH: usize = 800;
-const HEIGHT: usize = 128;
-
-/// Feature "png" needed for save_to_file() and it's disabled by default for optional dependencies
-/// cargo run --example mondrian --features png
 fn main() {
-    let mut device = Device::new().unwrap();
-    let mut bitmap = device.bitmap_target(WIDTH, HEIGHT, 1.0).unwrap();
-    let mut ctx = bitmap.render_context();
+    let env = env_logger::Env::default().default_filter_or("huozi=debug");
+    env_logger::init_from_env(env);
 
-    let font_size = 64.;
+    let buffer = 8;
+    let radius = 17.;
+    let cutoff = 0.25;
 
-    let font_data = std::fs::read("assets/WenQuanYiMicroHei.ttf").unwrap();
-    let font = FontRef::try_from_slice(&font_data).unwrap();
+    let grid_size = 64;
+    let font_size = grid_size - buffer * 2;
 
-    println!("units per em: {}", font.units_per_em().unwrap());
+    // let cutoff = 0.25;
+    // let grid_size = 64;
+    // let font_size = (grid_size as f64 * 4. / 5.).ceil() as u32;
+    // let buffer = (grid_size as f64 / 10.).ceil() as u32;
+    // let radius = (grid_size as f64 * 4. / 15.).ceil();
 
-    let scale = PxScale::from(font_size * font.height_unscaled() / font.units_per_em().unwrap());
-    // let scale = font.pt_to_px_scale(48.).unwrap();
-    let font = font.as_scaled(scale);
+    // glyph::ab_glyph::main();
+    // let font_data = std::fs::read("assets/PingFang.ttc").unwrap();
+    // let font_data = std::fs::read("assets/consolas.ttf").unwrap();
+    // let font_data = std::fs::read("assets/WenQuanYiMicroHei.ttf").unwrap();
+    let font_data = std::fs::read("assets/SourceHanSansCN-Normal.otf").unwrap();
 
-    println!(
-        "ascent: {}\ndescent: {}\nheight: {}\nlineGap: {}",
-        font.ascent(),
-        font.descent(),
-        font.height(),
-        font.line_gap()
+    // let extractor = glyph::ab_glyph::GlyphExtractor::new(font_data.clone(), 100.);
+    let extractor2 = glyph::FontdueExtractor::new(font_data.clone(), font_size as f32);
+    // let extractor3 = glyph::rusttype::GlyphExtractor::new(font_data.clone(), 100.);
+    // extractor.get_glyph('i');
+    // extractor2.get_glyph('i');
+    // let x = extractor2.font_metrics();
+
+    let mut image = DynamicImage::new_rgba8(2048, 2048).to_rgba8();
+    assert_eq!(
+        image.width() % grid_size as u32,
+        0,
+        "width must be divided by font size."
     );
+    assert_eq!(
+        image.height() % grid_size as u32,
+        0,
+        "height must be divided by font size."
+    );
+    image.fill(0);
+    image
+        .chunks_mut(4)
+        .for_each(|chunk| *chunk.last_mut().unwrap() = 255);
 
-    let q_line = Rect {
-        x0: 0. - 1.,
-        y0: font.ascent() as f64 - 1.,
-        x1: WIDTH as f64,
-        y1: font.ascent() as f64,
-    };
+    // let s = "泽材灭逐莫笔亡鲜词";
+    // let s = "泽材灭逐亡 fox agM啊。;；“”\"\"";
+    // let s = "gM字;";
 
-    let bound_color = Color::from_hex_str("#fff").unwrap();
-    ctx.fill(&q_line, &bound_color);
-    
+    let line_count = image.width() / grid_size as u32;
 
-    let s = "这M是testfga一段文字。";
-    let mut i = 0;
+    let mut tiny_sdf = TinySDF::new(grid_size, buffer, radius, cutoff);
 
-    let mut before = None;
-    let mut pos_x = 0.;
-    for c in s.chars() {
-        draw_char(
-            font.font,
-            c,
-            before,
-            &mut ctx,
-            font.scale().x,
-            &mut pos_x,
-            0.,
-        );
-        before = Some(c);
-        i += 1;
-    }
-
-    ctx.finish().unwrap();
-    std::mem::drop(ctx);
-
-    bitmap
-        .save_to_file("temp-image.png")
-        .expect("file save error");
-}
-
-fn draw_char(
-    font: &FontRef,
-    char: char,
-    before_char: Option<char>,
-    ctx: &mut CoreGraphicsContext,
-    font_size: f32,
-    pos_x: &mut f32,
-    pos_y: f32,
-) {
-    let font = font.as_scaled(font_size);
-    // Get a glyph for 'q' with a scale & position.
-    let q_glyph = font
-        .glyph_id(char)
-        .with_scale_and_position(font_size, point(*pos_x, pos_y));
-
-    let bound_color = Color::from_hex_str("#fff").unwrap();
-    let q_rect = {
-        let r = font.glyph_bounds(&q_glyph);
-        // println!(
-        //     "glyph width: {} height: {}",
-        //     r.max.x - r.min.x,
-        //     r.max.y - r.min.y
-        // );
-        println!(
-            "h_advance {:?}, v_advance {:?}, h_bearing: {}, char: {}, height: {}",
-            font.h_advance(q_glyph.id),
-            font.v_advance(q_glyph.id),
-            font.h_side_bearing(q_glyph.id),
-            char,
-            r.max.y - r.min.y
-        );
-        Rect {
-            x0: r.min.x as f64,
-            y0: r.min.y as f64 + pos_y as f64,
-            x1: r.max.x as f64,
-            y1: r.max.y as f64 + pos_y as f64,
+    for (i, ch) in (ASCII.to_string() + &CJK_SYMBOL.to_string() + &CHS.to_string())
+        .as_str()
+        .chars()
+        .enumerate()
+    {
+        if i >= 1024 {
+            break;
         }
-    };
-    // ctx.stroke(&q_rect, &bound_color, 1.0);
+        let (bitmap, metrics) = extractor2.get_bitmap_and_metrics(ch);
 
-    let kern = if let Some(before_char) = before_char {
-        let q_glyph_before = font
-            .glyph_id(before_char)
-            .with_scale_and_position(font_size, point(*pos_x, pos_y));
+        let block_x = grid_size as i32 * (i as i32 % line_count as i32);
+        let block_y = grid_size as i32 * (i as i32 / line_count as i32);
 
-        let p = font.kern(q_glyph_before.id, q_glyph.id);
+        // let offset_x = block_x
+        //     + (grid_size as f64 / 2. - metrics.h_advance as f64 / 2. + metrics.x_min as f64).ceil()
+        //         as i32;
+        // let offset_y = block_y
+        //     + (grid_size as f64 / 2. - font_size as f64 / 2. + ascent as f64
+        //         - metrics.y_max as f64)
+        //         .ceil() as i32;
 
-        println!("kern: {}", p);
+        let (bitmap, width, height) = tiny_sdf.calculate(&bitmap, metrics.width, metrics.height);
 
-        p
-    } else {
-        0.
-    };
+        let offset_x = block_x + (grid_size as f64 / 2. - width as f64 / 2.).ceil() as i32;
+        let offset_y = block_y + (grid_size as f64 / 2. - height as f64 / 2.).ceil() as i32;
 
-    let h_advance = font.h_advance(q_glyph.id);
+        // println!(
+        //     "{} {} {} {} {}",
+        //     metrics.y_max,
+        //     metrics.y_min,
+        //     metrics.height,
+        //     ascent - metrics.y_max,
+        //     offset_y
+        // );
 
-    if let Some(q) = font.outline_glyph(q_glyph) {
-        // println!("{:?}", q.px_bounds());
-        q.draw(|x, y, c| {
-            let rect = Rect {
-                x0: (x as f64 - 1. + *pos_x as f64).ceil(),
-                y0: (y as f64 - 1. + pos_y as f64).ceil(),
-                x1: (x as f64 + *pos_x as f64).ceil(),
-                y1: (y as f64 + pos_y as f64).ceil(),
-            };
-            let c = if c.abs() < f32::EPSILON {
-                0.
-            } else if 1. - c.abs() < f32::EPSILON {
-                1.
-            } else {
-                c as f64
-            };
-            let color = Color::rgba8(255, 255, 127, (c * 255.0) as u8);
-            ctx.fill(&rect, &color);
-        });
+        let len = bitmap.len() as i32;
+
+        // println!("{} {} {}", metrics.y_max, metrics.y_min, metrics.height);
+
+        for i in 0..len {
+            let x = i % (width as i32) + offset_x;
+            let y = i / (width as i32) + offset_y;
+
+            // if x <= 0 || x >= image.width() as i32 || y <= 0 || y >= image.height() as i32 {
+            //     continue;
+            // }
+            if x < block_x
+                || x >= block_x + grid_size as i32
+                || y <= block_y
+                || y >= block_y + grid_size as i32
+            {
+                continue;
+            }
+
+            let v = bitmap[i as usize];
+
+            image.put_pixel(x as u32, y as u32, Rgba([v, v, v, 255]));
+        }
     }
 
-    *pos_x += h_advance;
+    image.save("output.png").unwrap();
 }
