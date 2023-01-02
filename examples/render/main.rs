@@ -153,8 +153,14 @@ impl State {
         surface.configure(&device, &config);
 
         let diffuse_bytes = include_bytes!("output.png");
-        let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "sdf texture").unwrap();
+        let diffuse_texture = texture::Texture::from_bytes(
+            &device,
+            &queue,
+            diffuse_bytes,
+            "sdf texture",
+            Some(wgpu::TextureFormat::Rgba8Unorm),
+        )
+        .unwrap();
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
