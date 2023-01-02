@@ -1,12 +1,7 @@
 pub mod charsets;
-mod color;
-mod glyph;
+pub mod glyph;
 mod huozi;
-mod sdf;
-mod textstyle;
+pub mod layout;
+pub mod sdf;
 
-pub use color::*;
-pub use glyph::*;
-pub use huozi::*;
-pub use sdf::*;
-pub use textstyle::*;
+pub use crate::huozi::*;

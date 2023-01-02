@@ -5,8 +5,10 @@ use lru::LruCache;
 use std::num::NonZeroUsize;
 use std::path::Path;
 
-use crate::{FontdueExtractor, GlyphExtractor, GlyphMetrics, TinySDF};
+use crate::glyph::{FontdueExtractor, GlyphExtractor, GlyphMetrics};
+use crate::sdf::TinySDF;
 
+#[derive(Debug, Clone, Default)]
 pub struct Glyph {
     pub metrics: GlyphMetrics,
     pub page: i32,

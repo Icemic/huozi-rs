@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, Default)]
 pub struct GlyphMetrics {
     pub width: u32,
     pub height: u32,
