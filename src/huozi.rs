@@ -1,11 +1,14 @@
 use anyhow::Result;
 use image::{DynamicImage, RgbaImage};
-use log::warn;
+use log::{debug, warn, info};
 use lru::LruCache;
 use std::num::NonZeroUsize;
 use std::path::Path;
 
 use crate::glyph::{FontdueExtractor, GlyphExtractor, GlyphMetrics};
+use crate::layout::{
+    calculate_layout, Color, LayoutDirection, LayoutStyle, TextSection, TextStyle, Vertex,
+};
 use crate::sdf::TinySDF;
 
 #[derive(Debug, Clone, Default)]
@@ -40,6 +43,8 @@ impl Huozi {
         let texture_size = 2048;
 
         let extractor = FontdueExtractor::new(font_data, font_size as f32);
+
+        info!("font metrics: {:?}", extractor.font_metrics());
 
         let mut image = DynamicImage::new_rgba8(texture_size, texture_size).to_rgba8();
 
@@ -153,6 +158,10 @@ impl Huozi {
         }
     }
 
+    pub fn texture_image(&self) -> &RgbaImage {
+        &self.image
+    }
+
     pub fn dump_texture_to<Q>(&self, path: Q) -> Result<()>
     where
         Q: AsRef<Path>,
@@ -160,5 +169,32 @@ impl Huozi {
         self.image.save(path)?;
 
         Ok(())
+    }
+
+    pub fn layout<'a>(&mut self, text: &'a str) -> (Vec<Vertex>, Vec<u16>) {
+        let mut section = vec![];
+
+        for ch in text.chars() {
+            let glyph = self.get_glyph(ch).clone();
+            section.push(glyph);
+        }
+
+        calculate_layout(
+            &LayoutStyle {
+                direction: LayoutDirection::Horizontal,
+                box_width: 800,
+                box_height: 200,
+                glyph_grid_size: 48,
+            },
+            &[TextSection {
+                text: section,
+                style: TextStyle {
+                    font_size: 48,
+                    fill_color: Color::from_html("#fff").unwrap(),
+                    stroke: None,
+                    shadow: None,
+                },
+            }],
+        )
     }
 }

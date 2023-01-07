@@ -36,7 +36,7 @@ use super::TextStyle;
 /// ```
 ///
 #[derive(Debug, Clone, Default)]
-pub struct TextSection<'a> {
-    pub text: Vec<&'a Glyph>,
+pub struct TextSection {
+    pub text: Vec<Glyph>,
     pub style: TextStyle,
 }

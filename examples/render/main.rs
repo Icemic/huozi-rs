@@ -1,8 +1,13 @@
+use huozi::{
+    charsets::{ASCII, CHS, CJK_SYMBOL},
+    layout::Vertex,
+    Huozi,
+};
 use std::{
     iter,
+    num::NonZeroU32,
     time::{SystemTime, UNIX_EPOCH},
 };
-
 use wgpu::{util::DeviceExt, BlendState};
 use winit::{
     dpi::PhysicalSize,
@@ -15,56 +20,6 @@ use winit::{
 use wasm_bindgen::prelude::*;
 
 mod texture;
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
-    position: [f32; 3],
-    tex_coords: [f32; 2],
-}
-
-impl Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
-        use std::mem;
-        wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-            ],
-        }
-    }
-}
-
-const VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [-1.0, 1.0, 0.0],
-        tex_coords: [0.0, 0.0],
-    }, // A
-    Vertex {
-        position: [-1.0, -1.0, 0.0],
-        tex_coords: [0.0, 0.5],
-    }, // B
-    Vertex {
-        position: [1.0, -1.0, 0.0],
-        tex_coords: [0.5, 0.5],
-    }, // D
-    Vertex {
-        position: [1.0, 1.0, 0.0],
-        tex_coords: [0.5, 0.0],
-    }, // C
-];
-
-const INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 
 #[repr(C, align(16))]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -96,16 +51,19 @@ struct State {
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
+    vertex_buffer: Option<wgpu::Buffer>,
     uniform_buffer: wgpu::Buffer,
     uniforms: SDFUniforms,
-    index_buffer: wgpu::Buffer,
-    num_indices: u32,
+    index_buffer: Option<wgpu::Buffer>,
+    num_indices: Option<u32>,
     // NEW!
     #[allow(dead_code)]
-    diffuse_texture: texture::Texture,
-    diffuse_bind_group: wgpu::BindGroup,
+    texture: texture::Texture,
+    texture_bind_group: wgpu::BindGroup,
     uniform_bind_group: wgpu::BindGroup,
+
+    huozi: Huozi,
+    text_rendered: bool,
 }
 
 impl State {
@@ -152,15 +110,13 @@ impl State {
         };
         surface.configure(&device, &config);
 
-        let diffuse_bytes = include_bytes!("output.png");
-        let diffuse_texture = texture::Texture::from_bytes(
+        let texture = texture::Texture::empty(
             &device,
-            &queue,
-            diffuse_bytes,
-            "sdf texture",
+            2048,
+            2048,
+            Some("sdf texture"),
             Some(wgpu::TextureFormat::Rgba8Unorm),
-        )
-        .unwrap();
+        );
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -200,26 +156,26 @@ impl State {
                 label: Some("uniform_bind_group_layout"),
             });
 
-        let uniforms = SDFUniforms::new([1.0, 0., 0., 1.0], 0, 0.74, 0.);
+        let uniforms = SDFUniforms::new([1.0, 0., 0., 1.0], 0, 0.74, 0.02);
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: bytemuck::cast_slice(&[uniforms]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &texture_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                    resource: wgpu::BindingResource::TextureView(&texture.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
                 },
             ],
-            label: Some("diffuse_bind_group"),
+            label: Some("texture_bind_group"),
         });
 
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -228,7 +184,7 @@ impl State {
                 binding: 0,
                 resource: uniform_buffer.as_entire_binding(),
             }],
-            label: Some("diffuse_bind_group"),
+            label: Some("texture_bind_group"),
         });
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -284,17 +240,12 @@ impl State {
             multiview: None,
         });
 
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(INDICES),
-            usage: wgpu::BufferUsages::INDEX,
-        });
-        let num_indices = INDICES.len() as u32;
+        // initialize huozi instance
+        let font_data = std::fs::read("assets/SourceHanSansCN-Normal.otf").unwrap();
+        let mut huozi = huozi::Huozi::new(font_data);
+        // huozi.preload(ASCII);
+        // huozi.preload(CJK_SYMBOL);
+        // huozi.preload(CHS);
 
         Self {
             surface,
@@ -303,14 +254,16 @@ impl State {
             config,
             size,
             render_pipeline,
-            vertex_buffer,
+            vertex_buffer: None,
             uniform_buffer,
             uniforms,
-            index_buffer,
-            num_indices,
-            diffuse_texture,
-            diffuse_bind_group,
+            index_buffer: None,
+            num_indices: None,
+            texture,
+            texture_bind_group,
             uniform_bind_group,
+            huozi,
+            text_rendered: false,
         }
     }
 
@@ -335,9 +288,43 @@ impl State {
             0,
             bytemuck::cast_slice(&[self.uniforms]),
         );
+
+        if !self.text_rendered {
+            self.text_rendered = true;
+
+            // render text
+            let (vertexes, indices) = self.huozi.layout("这是测试gMfiabc内容。123!"); //测试gM内容123。
+
+            let vertex_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Vertex Buffer"),
+                    contents: bytemuck::cast_slice(&vertexes),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+            let index_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Index Buffer"),
+                    contents: bytemuck::cast_slice(&indices),
+                    usage: wgpu::BufferUsages::INDEX,
+                });
+            let num_indices = indices.len() as u32;
+
+            self.vertex_buffer = Some(vertex_buffer);
+            self.index_buffer = Some(index_buffer);
+            self.num_indices = Some(num_indices);
+
+            self.texture
+                .write_bitmap(&self.queue, self.huozi.texture_image());
+        }
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        if self.vertex_buffer.is_none() {
+            return Ok(());
+        }
+
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
@@ -368,12 +355,16 @@ impl State {
                 depth_stencil_attachment: None,
             });
 
+            let vertex_buffer = self.vertex_buffer.as_ref().unwrap();
+            let index_buffer = self.index_buffer.as_ref().unwrap();
+            let num_indices = self.num_indices.unwrap();
+
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
             render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.draw_indexed(0..num_indices, 0, 0..1);
         }
 
         self.queue.submit(iter::once(encoder.finish()));
@@ -390,13 +381,14 @@ pub async fn run() {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
             console_log::init_with_level(log::Level::Warn).expect("Could't initialize logger");
         } else {
-            env_logger::init();
+            let env = env_logger::Env::default().default_filter_or("huozi=debug,render=debug");
+            env_logger::init_from_env(env);
         }
     }
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
-    window.set_inner_size(PhysicalSize::new(1024, 1024));
+    window.set_inner_size(PhysicalSize::new(2048, 2048));
 
     #[cfg(target_arch = "wasm32")]
     {

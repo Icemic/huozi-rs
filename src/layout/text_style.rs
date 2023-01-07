@@ -2,7 +2,7 @@ use super::Color;
 
 #[derive(Debug, Clone, Default)]
 pub struct TextStyle {
-    // pub font_face
+    // pub font_face: Font
     pub font_size: u32,
     pub fill_color: Color,
     pub stroke: Option<StrokeStyle>,
