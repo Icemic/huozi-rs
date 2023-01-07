@@ -3,6 +3,7 @@ use huozi::{
     layout::Vertex,
     Huozi,
 };
+use log::info;
 use std::{
     iter,
     time::{SystemTime, UNIX_EPOCH},
@@ -238,11 +239,27 @@ impl State {
         });
 
         // initialize huozi instance
-        let font_data = std::fs::read("assets/SourceHanSansCN-Normal.otf").unwrap();
+        let t = SystemTime::now();
+        // let font_data = std::fs::read("assets/SourceHanSansCN-Normal.otf").unwrap();
+        let font_data = std::fs::read("assets/WenQuanYiMicroHei.ttf").unwrap();
+
+        info!(
+            "font file loaded, {}ms",
+            SystemTime::now().duration_since(t).unwrap().as_millis()
+        );
+
         let mut huozi = huozi::Huozi::new(font_data);
+
+        let t = SystemTime::now();
+
         huozi.preload(ASCII);
         huozi.preload(CJK_SYMBOL);
         huozi.preload(CHS);
+
+        info!(
+            "SDF texture preloaded, {}ms",
+            SystemTime::now().duration_since(t).unwrap().as_millis()
+        );
 
         Self {
             surface,
@@ -290,7 +307,7 @@ impl State {
             self.text_rendered = true;
 
             // render text
-            let (vertexes, indices) = self.huozi.layout("这是测试gMfiabc内容。123!"); //测试gM内容123。
+            let (vertexes, indices) = self.huozi.layout("这是😄测试gMfiabc内容。123!"); //测试gM内容123。
 
             let vertex_buffer = self
                 .device
