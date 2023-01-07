@@ -3,8 +3,9 @@ use super::Color;
 #[derive(Debug, Clone, Default)]
 pub struct TextStyle {
     // pub font_face: Font
-    pub font_size: u32,
+    pub font_size: f64,
     pub fill_color: Color,
+    pub line_height: f64,
     pub stroke: Option<StrokeStyle>,
     pub shadow: Option<ShadowStyle>,
 }

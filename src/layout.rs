@@ -6,10 +6,11 @@ mod vertex;
 
 pub use color::*;
 pub use layout_style::*;
-use log::debug;
 pub use text_section::*;
 pub use text_style::*;
 pub use vertex::*;
+
+use crate::constant::{ASCENT, FONT_SIZE, GRID_SIZE};
 
 pub fn calculate_layout(
     layout_style: &LayoutStyle,
@@ -19,15 +20,13 @@ pub fn calculate_layout(
     let mut current_y = 0.;
 
     // assume a standard size of screen
-    let viewport_width = 2048.;
-    let viewport_height = 2048.;
+    let viewport_width = layout_style.viewport_width;
+    let viewport_height = layout_style.viewport_height;
 
-    let ascent = 56;
-
-    let grid_size = layout_style.glyph_grid_size as f64;
-    let max_width = layout_style.box_width as i32;
-    let max_height = layout_style.box_height as i32;
-    let grid_ratio = grid_size / 64.;
+    let grid_size = layout_style.glyph_grid_size;
+    let max_width = layout_style.box_width;
+    let max_height = layout_style.box_height;
+    let grid_ratio = grid_size / GRID_SIZE;
 
     let mut vertexes = vec![];
     let mut indices = vec![];
@@ -39,13 +38,31 @@ pub fn calculate_layout(
         for ch in text {
             let metrics = &ch.metrics;
 
+            let h_advance = metrics.h_advance as f64;
+
+            // check text overflow
+            if (current_x + h_advance) / FONT_SIZE * style.font_size >= max_width {
+                current_x = 0.;
+                // use original font size (when grid size is 64), it will be scaled in offset_y later.
+                current_y += FONT_SIZE * style.line_height;
+
+                // if text overflows the box, ignore the rest characters
+                if current_y / FONT_SIZE * style.font_size >= max_height {
+                    break 'out;
+                }
+            }
+
+            // scale by font size, 48 is the texture font size when the grid size is 64.
             let offset_x =
-                current_x - grid_size / 2. + metrics.width as f64 / 2. + metrics.x_min as f64;
-            let offset_y = current_y - grid_size / 2. + metrics.height as f64 / 2. + ascent as f64
-                - metrics.y_max as f64;
-            let width = grid_size / grid_ratio;
-            // line-height: 1
-            let height = grid_size / grid_ratio;
+                (current_x - grid_size / 2. + metrics.width as f64 / 2. + metrics.x_min as f64)
+                    / FONT_SIZE
+                    * style.font_size;
+            let offset_y = (current_y - grid_size / 2. + metrics.height as f64 / 2. + ASCENT
+                - metrics.y_max as f64)
+                / FONT_SIZE
+                * style.font_size;
+            let width = (grid_size / grid_ratio) / FONT_SIZE * style.font_size;
+            let height = (grid_size / grid_ratio) / FONT_SIZE * style.font_size;
 
             // calculate four vertexes without multiplying with transform matrix
 
@@ -105,17 +122,7 @@ pub fn calculate_layout(
                 vertex_index_offset + 3,
             ]);
 
-            current_x += metrics.h_advance as f64;
-
-            if current_x >= max_width as f64 {
-                current_x = 0.;
-                current_y += grid_size;
-
-                // if text overflows the box, ignore the rest characters
-                if current_y >= max_height as f64 {
-                    break 'out;
-                }
-            }
+            current_x += h_advance;
         }
     }
 

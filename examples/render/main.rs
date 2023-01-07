@@ -10,7 +10,7 @@ use std::{
 };
 use wgpu::{util::DeviceExt, BlendState};
 use winit::{
-    dpi::PhysicalSize,
+    dpi::LogicalSize,
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
@@ -154,7 +154,7 @@ impl State {
                 label: Some("uniform_bind_group_layout"),
             });
 
-        let uniforms = SDFUniforms::new([1.0, 0., 0., 1.0], 0.74, 0.02);
+        let uniforms = SDFUniforms::new([1.0, 1.0, 1.0, 1.0], 0.74, 0.02);
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: bytemuck::cast_slice(&[uniforms]),
@@ -240,8 +240,8 @@ impl State {
 
         // initialize huozi instance
         let t = SystemTime::now();
-        // let font_data = std::fs::read("assets/SourceHanSansCN-Normal.otf").unwrap();
-        let font_data = std::fs::read("assets/WenQuanYiMicroHei.ttf").unwrap();
+        let font_data = std::fs::read("assets/SourceHanSansCN-Normal.otf").unwrap();
+        // let font_data = std::fs::read("assets/WenQuanYiMicroHei.ttf").unwrap();
 
         info!(
             "font file loaded, {}ms",
@@ -296,18 +296,22 @@ impl State {
     }
 
     fn update(&mut self, time: u128) {
-        self.uniforms.color[0] = (time % 2000) as f32 / 2000. * 1.0;
-        self.queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::cast_slice(&[self.uniforms]),
-        );
+        // self.uniforms.color[0] = (time % 2000) as f32 / 2000. * 1.0;
+        // self.queue.write_buffer(
+        //     &self.uniform_buffer,
+        //     0,
+        //     bytemuck::cast_slice(&[self.uniforms]),
+        // );
 
         if !self.text_rendered {
             self.text_rendered = true;
 
             // render text
-            let (vertexes, indices) = self.huozi.layout("这是😄测试gMfiabc内容。123!"); //测试gM内容123。
+            let sample_text = "This is a sample text. gM 123.!\"\"?;:<>
+                人人生而自由，在尊严和权利上一律平等。他们赋有理性和良心，并应以兄弟关系的精神相对待。
+                人人有资格享有本宣言所载的一切权利和自由，不分种族、肤色、性别、语言、宗教、政治或其他见解、国籍或社会出身、财产、出生或其他身分等任何区别。 并且不得因一人所属的国家或领土的政治的、行政的或者国际的地位之不同而有所区别，无论该领土是独立领土、托管领土、非自治领土或者处于其他任何主权受限制的情况之下。
+            ";
+            let (vertexes, indices) = self.huozi.layout(sample_text);
 
             let vertex_buffer = self
                 .device
@@ -402,7 +406,7 @@ pub async fn run() {
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
-    window.set_inner_size(PhysicalSize::new(2048, 2048));
+    window.set_inner_size(LogicalSize::new(1280, 720));
 
     #[cfg(target_arch = "wasm32")]
     {

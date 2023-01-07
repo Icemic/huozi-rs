@@ -1,10 +1,11 @@
 use anyhow::Result;
 use image::{DynamicImage, RgbaImage};
-use log::{debug, warn, info};
+use log::{info, warn};
 use lru::LruCache;
 use std::num::NonZeroUsize;
 use std::path::Path;
 
+use crate::constant::{BUFFER, CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS, TEXTURE_SIZE};
 use crate::glyph::{FontdueExtractor, GlyphExtractor, GlyphMetrics};
 use crate::layout::{
     calculate_layout, Color, LayoutDirection, LayoutStyle, TextSection, TextStyle, Vertex,
@@ -27,33 +28,23 @@ pub struct Huozi {
     tiny_sdf: TinySDF,
     image: RgbaImage,
     cache: lru::LruCache<char, Glyph>,
-    grid_size: u32,
     next_grid_index: u32,
 }
 
 impl Huozi {
     pub fn new(font_data: Vec<u8>) -> Self {
-        let buffer = 8;
-        let radius = 22.;
-        let cutoff = 0.25;
-
-        let grid_size = 64;
-        let font_size = grid_size - buffer * 2;
-
-        let texture_size = 2048;
-
-        let extractor = FontdueExtractor::new(font_data, font_size as f32);
+        let extractor = FontdueExtractor::new(font_data, FONT_SIZE as f32);
 
         info!("font metrics: {:?}", extractor.font_metrics());
 
-        let mut image = DynamicImage::new_rgba8(texture_size, texture_size).to_rgba8();
+        let mut image = DynamicImage::new_rgba8(TEXTURE_SIZE, TEXTURE_SIZE).to_rgba8();
 
         image.fill(0);
 
-        let tiny_sdf = TinySDF::new(grid_size, buffer, radius, cutoff);
+        let tiny_sdf = TinySDF::new(GRID_SIZE as u32, BUFFER as u32, RADIUS, CUTOFF);
 
         let cache = LruCache::new(
-            NonZeroUsize::new((texture_size / grid_size).pow(2) as usize * 4).unwrap(),
+            NonZeroUsize::new((TEXTURE_SIZE / GRID_SIZE as u32).pow(2) as usize * 4).unwrap(),
         );
 
         Self {
@@ -61,7 +52,6 @@ impl Huozi {
             tiny_sdf,
             image,
             cache,
-            grid_size,
             next_grid_index: 0,
         }
     }
@@ -87,26 +77,28 @@ impl Huozi {
                 v_max: 0.,
             };
 
-            let line_count = self.image.width() / self.grid_size;
+            let grid_size = GRID_SIZE as i32;
+
+            let line_count = self.image.width() as i32 / grid_size;
 
             let (page, index_in_page) = if let Some((_, expired_glyph)) = self.cache.push(ch, glyph)
             {
                 (expired_glyph.page, expired_glyph.index)
             } else {
-                let page = self.next_grid_index / (line_count * line_count);
-                let index_in_page = self.next_grid_index % (line_count * line_count);
+                let page = self.next_grid_index as i32 / (line_count * line_count);
+                let index_in_page = self.next_grid_index as i32 % (line_count * line_count);
 
                 self.next_grid_index += 1;
 
-                (page as i32, index_in_page)
+                (page, index_in_page as u32)
             };
 
             // the next empty texture block, aligned by grid size
-            let grid_x = self.grid_size as i32 * (index_in_page as i32 % line_count as i32);
-            let grid_y = self.grid_size as i32 * (index_in_page as i32 / line_count as i32);
+            let grid_x = grid_size * (index_in_page as i32 % line_count as i32);
+            let grid_y = grid_size * (index_in_page as i32 / line_count as i32);
 
-            let offset_x = grid_x + (self.grid_size as f64 / 2. - width as f64 / 2.).ceil() as i32;
-            let offset_y = grid_y + (self.grid_size as f64 / 2. - height as f64 / 2.).ceil() as i32;
+            let offset_x = grid_x + (GRID_SIZE / 2. - width as f64 / 2.).ceil() as i32;
+            let offset_y = grid_y + (GRID_SIZE / 2. - height as f64 / 2.).ceil() as i32;
 
             let len = bitmap.len() as i32;
 
@@ -114,11 +106,7 @@ impl Huozi {
                 let x = i % (width as i32) + offset_x;
                 let y = i / (width as i32) + offset_y;
 
-                if x < grid_x
-                    || x >= grid_x + self.grid_size as i32
-                    || y <= grid_y
-                    || y >= grid_y + self.grid_size as i32
-                {
+                if x < grid_x || x >= grid_x + grid_size || y <= grid_y || y >= grid_y + grid_size {
                     continue;
                 }
 
@@ -134,8 +122,8 @@ impl Huozi {
             glyph.index = index_in_page;
             glyph.u_min = grid_x as f32 / texture_width;
             glyph.v_min = grid_y as f32 / texture_width;
-            glyph.u_max = (grid_x + self.grid_size as i32) as f32 / texture_width;
-            glyph.v_max = (grid_y + self.grid_size as i32) as f32 / texture_width;
+            glyph.u_max = (grid_x + grid_size) as f32 / texture_width;
+            glyph.v_max = (grid_y + grid_size) as f32 / texture_width;
 
             glyph
         }
@@ -179,14 +167,17 @@ impl Huozi {
         calculate_layout(
             &LayoutStyle {
                 direction: LayoutDirection::Horizontal,
-                box_width: 800,
-                box_height: 200,
-                glyph_grid_size: 48,
+                box_width: 589.5,
+                box_height: 200.,
+                glyph_grid_size: 15.6,
+                viewport_width: 1280.,
+                viewport_height: 720.,
             },
             &[TextSection {
                 text: section,
                 style: TextStyle {
-                    font_size: 48,
+                    font_size: 15.6,
+                    line_height: 1.58,
                     fill_color: Color::from_html("#fff").unwrap(),
                     stroke: None,
                     shadow: None,
