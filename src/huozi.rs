@@ -34,7 +34,7 @@ pub struct Huozi {
 impl Huozi {
     pub fn new(font_data: Vec<u8>) -> Self {
         let buffer = 8;
-        let radius = 17.;
+        let radius = 22.;
         let cutoff = 0.25;
 
         let grid_size = 64;
