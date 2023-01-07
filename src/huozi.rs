@@ -14,6 +14,7 @@ use crate::sdf::TinySDF;
 
 #[derive(Debug, Clone, Default)]
 pub struct Glyph {
+    pub ch: char,
     pub metrics: GlyphMetrics,
     pub page: i32,
     pub index: u32,
@@ -68,6 +69,7 @@ impl Huozi {
 
             // get a zero-valued Glyph and push to cache, which may expire a exising glyph
             let glyph = Glyph {
+                ch,
                 metrics,
                 page: 0,
                 index: 0,
@@ -167,7 +169,7 @@ impl Huozi {
         calculate_layout(
             &LayoutStyle {
                 direction: LayoutDirection::Horizontal,
-                box_width: 589.5,
+                box_width: 600.,
                 box_height: 200.,
                 glyph_grid_size: 15.6,
                 viewport_width: 1280.,
@@ -178,6 +180,7 @@ impl Huozi {
                 style: TextStyle {
                     font_size: 15.6,
                     line_height: 1.58,
+                    indent: 2.,
                     fill_color: Color::from_html("#fff").unwrap(),
                     stroke: None,
                     shadow: None,

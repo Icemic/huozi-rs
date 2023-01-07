@@ -16,7 +16,10 @@ pub fn calculate_layout(
     layout_style: &LayoutStyle,
     text_sections: &[TextSection],
 ) -> (Vec<Vertex>, Vec<u16>) {
-    let mut current_x = 0.;
+    let mut current_x = text_sections
+        .first()
+        .and_then(|f| Some(f.style.indent * FONT_SIZE))
+        .unwrap_or(0.);
     let mut current_y = 0.;
 
     // assume a standard size of screen
@@ -37,6 +40,19 @@ pub fn calculate_layout(
 
         for ch in text {
             let metrics = &ch.metrics;
+
+            if ch.ch == '\n' || ch.ch == '\r' {
+                current_x = style.indent * FONT_SIZE;
+                // use original font size (when grid size is 64), it will be scaled in offset_y later.
+                current_y += FONT_SIZE * style.line_height;
+
+                // if text overflows the box, ignore the rest characters
+                if current_y / FONT_SIZE * style.font_size >= max_height {
+                    break 'out;
+                }
+
+                continue;
+            }
 
             let h_advance = metrics.h_advance as f64;
 

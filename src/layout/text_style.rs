@@ -6,6 +6,7 @@ pub struct TextStyle {
     pub font_size: f64,
     pub fill_color: Color,
     pub line_height: f64,
+    pub indent: f64,
     pub stroke: Option<StrokeStyle>,
     pub shadow: Option<ShadowStyle>,
 }
