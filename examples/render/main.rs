@@ -5,7 +5,6 @@ use huozi::{
 };
 use std::{
     iter,
-    num::NonZeroU32,
     time::{SystemTime, UNIX_EPOCH},
 };
 use wgpu::{util::DeviceExt, BlendState};
@@ -25,21 +24,19 @@ mod texture;
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct SDFUniforms {
     color: [f32; 4],
-    page: i32,
     buffer: f32,
     gamma: f32,
     // use i32, u32, f32 or anything else 32bit ones
-    _align: i32,
+    _align: [i32; 2],
 }
 
 impl SDFUniforms {
-    fn new(color: [f32; 4], page: i32, buffer: f32, gamma: f32) -> Self {
+    fn new(color: [f32; 4], buffer: f32, gamma: f32) -> Self {
         Self {
             color,
-            page,
             buffer,
             gamma,
-            _align: 0,
+            _align: Default::default(),
         }
     }
 }
@@ -156,7 +153,7 @@ impl State {
                 label: Some("uniform_bind_group_layout"),
             });
 
-        let uniforms = SDFUniforms::new([1.0, 0., 0., 1.0], 0, 0.74, 0.02);
+        let uniforms = SDFUniforms::new([1.0, 0., 0., 1.0], 0.74, 0.02);
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: bytemuck::cast_slice(&[uniforms]),
@@ -243,9 +240,9 @@ impl State {
         // initialize huozi instance
         let font_data = std::fs::read("assets/SourceHanSansCN-Normal.otf").unwrap();
         let mut huozi = huozi::Huozi::new(font_data);
-        // huozi.preload(ASCII);
-        // huozi.preload(CJK_SYMBOL);
-        // huozi.preload(CHS);
+        huozi.preload(ASCII);
+        huozi.preload(CJK_SYMBOL);
+        huozi.preload(CHS);
 
         Self {
             surface,
