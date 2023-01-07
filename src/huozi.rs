@@ -158,7 +158,7 @@ impl Huozi {
         Ok(())
     }
 
-    pub fn layout<'a>(&mut self, text: &'a str) -> (Vec<Vertex>, Vec<u16>) {
+    pub fn layout_parse<'a>(&mut self, text: &'a str) -> (Vec<Vertex>, Vec<u16>) {
         let mut section = vec![];
 
         for ch in text.chars() {
@@ -166,26 +166,36 @@ impl Huozi {
             section.push(glyph);
         }
 
-        calculate_layout(
+        let text_sections = vec![TextSection {
+            text: section,
+            style: TextStyle {
+                font_size: 24.,
+                line_height: 1.58,
+                indent: 2.,
+                fill_color: Color::from_html("#fff").unwrap(),
+                stroke: None,
+                shadow: None,
+            },
+        }];
+
+        self.layout(
             &LayoutStyle {
                 direction: LayoutDirection::Horizontal,
                 box_width: 600.,
                 box_height: 200.,
-                glyph_grid_size: 15.6,
+                glyph_grid_size: 24.,
                 viewport_width: 1280.,
                 viewport_height: 720.,
             },
-            &[TextSection {
-                text: section,
-                style: TextStyle {
-                    font_size: 15.6,
-                    line_height: 1.58,
-                    indent: 2.,
-                    fill_color: Color::from_html("#fff").unwrap(),
-                    stroke: None,
-                    shadow: None,
-                },
-            }],
+            &text_sections,
         )
+    }
+
+    pub fn layout<'a, T: AsRef<Vec<TextSection>>>(
+        &mut self,
+        layout_style: &LayoutStyle,
+        text_sections: T,
+    ) -> (Vec<Vertex>, Vec<u16>) {
+        calculate_layout(layout_style, text_sections.as_ref())
     }
 }

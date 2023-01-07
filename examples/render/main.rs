@@ -154,7 +154,7 @@ impl State {
                 label: Some("uniform_bind_group_layout"),
             });
 
-        let uniforms = SDFUniforms::new([1.0, 1.0, 1.0, 1.0], 0.74, 0.02);
+        let uniforms = SDFUniforms::new([0.0, 0.0, 0.0, 1.0], 0.73, 0.058); // 0.058925
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: bytemuck::cast_slice(&[uniforms]),
@@ -310,7 +310,7 @@ impl State {
             let sample_text = "This is a sample text. gM 123.!\"\"?;:<>
 人人生而自由，在尊严和权利上一律平等。他们赋有理性和良心，并应以兄弟关系的精神相对待。
 人人有资格享有本宣言所载的一切权利和自由，不分种族、肤色、性别、语言、宗教、政治或其他见解、国籍或社会出身、财产、出生或其他身分等任何区别。并且不得因一人所属的国家或领土的政治的、行政的或者国际的地位之不同而有所区别，无论该领土是独立领土、托管领土、非自治领土或者处于其他任何主权受限制的情况之下。";
-            let (vertexes, indices) = self.huozi.layout(sample_text);
+            let (vertexes, indices) = self.huozi.layout_parse(sample_text);
 
             let vertex_buffer = self
                 .device
@@ -361,9 +361,9 @@ impl State {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
+                            r: 1.0,
+                            g: 1.0,
+                            b: 1.0,
                             a: 1.0,
                         }),
                         store: true,

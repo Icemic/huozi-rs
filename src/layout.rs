@@ -29,7 +29,6 @@ pub fn calculate_layout(
     let grid_size = layout_style.glyph_grid_size;
     let max_width = layout_style.box_width;
     let max_height = layout_style.box_height;
-    let grid_ratio = grid_size / GRID_SIZE;
 
     let mut vertexes = vec![];
     let mut indices = vec![];
@@ -70,15 +69,15 @@ pub fn calculate_layout(
 
             // scale by font size, 48 is the texture font size when the grid size is 64.
             let offset_x =
-                (current_x - grid_size / 2. + metrics.width as f64 / 2. + metrics.x_min as f64)
+                (current_x - GRID_SIZE / 2. + metrics.width as f64 / 2. + metrics.x_min as f64)
                     / FONT_SIZE
                     * style.font_size;
-            let offset_y = (current_y - grid_size / 2. + metrics.height as f64 / 2. + ASCENT
+            let offset_y = (current_y - GRID_SIZE / 2. + metrics.height as f64 / 2. + ASCENT
                 - metrics.y_max as f64)
                 / FONT_SIZE
                 * style.font_size;
-            let width = (grid_size / grid_ratio) / FONT_SIZE * style.font_size;
-            let height = (grid_size / grid_ratio) / FONT_SIZE * style.font_size;
+
+            let actual_grid_size = GRID_SIZE / FONT_SIZE * style.font_size;
 
             // calculate four vertexes without multiplying with transform matrix
 
@@ -86,8 +85,8 @@ pub fn calculate_layout(
             let ty = 1. - offset_y / viewport_height * 2.;
 
             let w1 = 0.;
-            let w0 = width / viewport_width * 2.;
-            let h1 = -1. * height / viewport_height * 2.;
+            let w0 = actual_grid_size / viewport_width * 2.;
+            let h1 = -1. * actual_grid_size / viewport_height * 2.;
             let h0 = 0.;
 
             // left top
