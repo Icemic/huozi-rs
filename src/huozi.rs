@@ -49,9 +49,6 @@ impl Huozi {
         let mut image = DynamicImage::new_rgba8(texture_size, texture_size).to_rgba8();
 
         image.fill(0);
-        image
-            .chunks_mut(4)
-            .for_each(|chunk| *chunk.last_mut().unwrap() = 255);
 
         let tiny_sdf = TinySDF::new(grid_size, buffer, radius, cutoff);
 
