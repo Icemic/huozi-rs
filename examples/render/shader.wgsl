@@ -41,6 +41,14 @@ var<uniform> params: Uniforms;
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let dist = textureSample(texture, samp, in.tex_coords)[in.page];
-    let alpha = smoothstep(params.buffer - params.gamma, params.buffer + params.gamma, dist);
-    return vec4(params.color.rgb, alpha) * params.color.a;
+
+    var gamma: f32;
+    if (params.gamma == 0.) {
+        gamma = length(vec2<f32>(dpdx(dist), dpdy(dist))) * 0.707107;
+    } else {
+        gamma = params.gamma;
+    }
+
+    let alpha = smoothstep(params.buffer - gamma, params.buffer + gamma, dist);
+    return vec4(params.color.rgb, alpha * params.color.a);
 }
