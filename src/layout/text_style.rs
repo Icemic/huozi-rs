@@ -11,10 +11,19 @@ pub struct TextStyle {
     pub shadow: Option<ShadowStyle>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct StrokeStyle {
     pub stroke_color: Color,
     pub stroke_width: f32,
+}
+
+impl Default for StrokeStyle {
+    fn default() -> Self {
+        Self {
+            stroke_color: Color::new(0., 0., 0., 0.),
+            stroke_width: 0.,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]

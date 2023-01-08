@@ -4,6 +4,9 @@ pub struct Vertex {
     pub position: [f32; 3],
     pub tex_coords: [f32; 2],
     pub page: i32,
+    pub buffer: f32,
+    pub gamma: f32,
+    pub fill_color: [f32; 4],
 }
 
 impl Vertex {
@@ -19,14 +22,29 @@ impl Vertex {
                     format: wgpu::VertexFormat::Float32x3,
                 },
                 wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    offset: 4 * 3,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x2,
                 },
                 wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
+                    offset: 4 * 5,
                     shader_location: 2,
                     format: wgpu::VertexFormat::Sint32,
+                },
+                wgpu::VertexAttribute {
+                    offset: 4 * 6,
+                    shader_location: 3,
+                    format: wgpu::VertexFormat::Float32,
+                },
+                wgpu::VertexAttribute {
+                    offset: 4 * 7,
+                    shader_location: 4,
+                    format: wgpu::VertexFormat::Float32,
+                },
+                wgpu::VertexAttribute {
+                    offset: 4 * 8,
+                    shader_location: 5,
+                    format: wgpu::VertexFormat::Float32x4,
                 },
             ],
         }

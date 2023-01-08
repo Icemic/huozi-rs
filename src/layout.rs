@@ -36,6 +36,26 @@ pub fn calculate_layout(
         let style = &section.style;
         let text = &section.text;
 
+        let buffer = 0.74;
+        let gamma = 0.;
+        let fill_color = &style.fill_color;
+        let fill_color = [
+            fill_color.r as f32,
+            fill_color.g as f32,
+            fill_color.b as f32,
+            fill_color.a as f32,
+        ];
+        let StrokeStyle {
+            stroke_color,
+            stroke_width,
+        } = style.stroke.clone().unwrap_or_default();
+        let stroke_color = [
+            stroke_color.r as f32,
+            stroke_color.g as f32,
+            stroke_color.b as f32,
+            stroke_color.a as f32,
+        ];
+
         for ch in text {
             let metrics = &ch.metrics;
 
@@ -110,21 +130,33 @@ pub fn calculate_layout(
                 position: [p0x as f32, p0y as f32, 0.0],
                 tex_coords: [ch.u_min, ch.v_max],
                 page: ch.page,
+                buffer,
+                gamma,
+                fill_color,
             });
             vertexes.push(Vertex {
                 position: [p1x as f32, p1y as f32, 0.0],
                 tex_coords: [ch.u_max, ch.v_max],
                 page: ch.page,
+                buffer,
+                gamma,
+                fill_color,
             });
             vertexes.push(Vertex {
                 position: [p2x as f32, p2y as f32, 0.0],
                 tex_coords: [ch.u_max, ch.v_min],
                 page: ch.page,
+                buffer,
+                gamma,
+                fill_color,
             });
             vertexes.push(Vertex {
                 position: [p3x as f32, p3y as f32, 0.0],
                 tex_coords: [ch.u_min, ch.v_min],
                 page: ch.page,
+                buffer,
+                gamma,
+                fill_color,
             });
 
             indices.extend([

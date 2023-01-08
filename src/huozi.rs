@@ -184,7 +184,7 @@ impl Huozi {
                 font_size: 24.,
                 line_height: 1.58,
                 indent: 2.,
-                fill_color: Color::from_html("#fff").unwrap(),
+                fill_color: Color::from_html("#000").unwrap(),
                 stroke: None,
                 shadow: None,
             },

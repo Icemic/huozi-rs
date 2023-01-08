@@ -21,27 +21,6 @@ use wasm_bindgen::prelude::*;
 
 mod texture;
 
-#[repr(C, align(16))]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct SDFUniforms {
-    color: [f32; 4],
-    buffer: f32,
-    gamma: f32,
-    // use i32, u32, f32 or anything else 32bit ones
-    _align: [i32; 2],
-}
-
-impl SDFUniforms {
-    fn new(color: [f32; 4], buffer: f32, gamma: f32) -> Self {
-        Self {
-            color,
-            buffer,
-            gamma,
-            _align: Default::default(),
-        }
-    }
-}
-
 struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -50,15 +29,12 @@ struct State {
     size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: Option<wgpu::Buffer>,
-    uniform_buffer: wgpu::Buffer,
-    uniforms: SDFUniforms,
     index_buffer: Option<wgpu::Buffer>,
     num_indices: Option<u32>,
     // NEW!
     #[allow(dead_code)]
     texture: texture::Texture,
     texture_bind_group: wgpu::BindGroup,
-    uniform_bind_group: wgpu::BindGroup,
 
     huozi: Huozi,
     text_rendered: bool,
@@ -139,28 +115,6 @@ impl State {
                 label: Some("texture_bind_group_layout"),
             });
 
-        let uniform_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("uniform_bind_group_layout"),
-            });
-
-        let uniforms = SDFUniforms::new([0.0, 0.0, 0.0, 1.0], 0.74, 0.0); // 0.058925
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Uniform Buffer"),
-            contents: bytemuck::cast_slice(&[uniforms]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
         let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &texture_bind_group_layout,
             entries: &[
@@ -176,15 +130,6 @@ impl State {
             label: Some("texture_bind_group"),
         });
 
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &uniform_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform_buffer.as_entire_binding(),
-            }],
-            label: Some("texture_bind_group"),
-        });
-
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
@@ -193,7 +138,7 @@ impl State {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &uniform_bind_group_layout],
+                bind_group_layouts: &[&texture_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
@@ -269,13 +214,10 @@ impl State {
             size,
             render_pipeline,
             vertex_buffer: None,
-            uniform_buffer,
-            uniforms,
             index_buffer: None,
             num_indices: None,
             texture,
             texture_bind_group,
-            uniform_bind_group,
             huozi,
             text_rendered: false,
         }
@@ -379,7 +321,6 @@ This is a sample text. gM 123.!\"\"?;:<>
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
             render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..num_indices, 0, 0..1);
