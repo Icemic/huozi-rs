@@ -43,8 +43,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let dist = textureSample(texture, samp, in.tex_coords)[in.page];
 
     var gamma: f32;
-    if (params.gamma == 0.) {
-        gamma = length(vec2<f32>(dpdx(dist), dpdy(dist))) * 0.707107;
+    if params.gamma == 0. {
+        // from https://github.com/jinleili/sdf-text-view/blob/86ae02c83fd66b69be3c74493a93b73bf258c9ca/shader-wgsl/text.wgsl#L38
+        gamma = length(vec2<f32>(dpdx(1. - dist), dpdy(1. - dist))) * 0.707107;
     } else {
         gamma = params.gamma;
     }
