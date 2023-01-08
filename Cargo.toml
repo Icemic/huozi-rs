@@ -5,8 +5,9 @@ version = "0.1.0"
 
 [features]
 ab_glyph = ["dep:ab_glyph"]
+bbcode = []
 charsets = []
-default = ["fontdue", "charsets", "sdf", "layout"]
+default = ["fontdue", "charsets", "sdf", "layout", "bbcode"]
 fontdue = ["dep:fontdue"]
 layout = []
 sdf = []

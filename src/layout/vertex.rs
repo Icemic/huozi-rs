@@ -6,7 +6,7 @@ pub struct Vertex {
     pub page: i32,
     pub buffer: f32,
     pub gamma: f32,
-    pub fill_color: [f32; 4],
+    pub color: [f32; 4],
 }
 
 impl Vertex {

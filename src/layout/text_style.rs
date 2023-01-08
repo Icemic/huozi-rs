@@ -26,11 +26,23 @@ impl Default for StrokeStyle {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ShadowStyle {
-    pub shadow_width: f32,
-    pub shadow_blur: f32,
+    pub shadow_color: Color,
     pub shadow_offset_x: f32,
     pub shadow_offset_y: f32,
-    pub shadow_color: f32,
+    pub shadow_blur: f32,
+    pub shadow_width: f32,
+}
+
+impl Default for ShadowStyle {
+    fn default() -> Self {
+        Self {
+            shadow_color: Color::new(0., 0., 0., 0.),
+            shadow_offset_x: 0.,
+            shadow_offset_y: 0.,
+            shadow_blur: 0.,
+            shadow_width: 0.,
+        }
+    }
 }

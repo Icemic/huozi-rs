@@ -43,15 +43,10 @@ var samp: sampler;
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let dist = textureSample(texture, samp, in.tex_coords)[in.page];
 
+    // from https://github.com/jinleili/sdf-text-view/blob/86ae02c83fd66b69be3c74493a93b73bf258c9ca/shader-wgsl/text.wgsl#L38
     let fill_gamma = length(vec2<f32>(dpdx(1. - dist), dpdy(1. - dist))) * 0.707107;
 
-    var gamma: f32;
-    if in.gamma == 0. {
-        // from https://github.com/jinleili/sdf-text-view/blob/86ae02c83fd66b69be3c74493a93b73bf258c9ca/shader-wgsl/text.wgsl#L38
-        gamma = fill_gamma;
-    } else {
-        gamma = in.gamma;
-    }
+    let gamma = fill_gamma + in.gamma;
 
     let alpha = smoothstep(in.buffer - gamma, in.buffer + gamma, dist);
     return vec4(in.color.rgb, alpha * in.color.a);

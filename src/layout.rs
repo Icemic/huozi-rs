@@ -29,8 +29,14 @@ pub fn calculate_layout(
     let max_width = layout_style.box_width;
     let max_height = layout_style.box_height;
 
-    let mut vertexes = vec![];
-    let mut indices = vec![];
+    let mut vertices_fill = vec![];
+    let mut indices_fill = vec![];
+
+    let mut vertices_stroke = vec![];
+    let mut indices_stroke = vec![];
+
+    let mut vertices_shadow = vec![];
+    let mut indices_shadow = vec![];
 
     'out: for section in text_sections {
         let style = &section.style;
@@ -38,22 +44,37 @@ pub fn calculate_layout(
 
         let buffer = 0.74;
         let gamma = 0.;
-        let fill_color = &style.fill_color;
+        let fill_color = &style.fill_color.to_linear_rgba();
         let fill_color = [
-            fill_color.r as f32,
-            fill_color.g as f32,
-            fill_color.b as f32,
-            fill_color.a as f32,
+            fill_color.0 as f32,
+            fill_color.1 as f32,
+            fill_color.2 as f32,
+            fill_color.3 as f32,
         ];
         let StrokeStyle {
             stroke_color,
             stroke_width,
         } = style.stroke.clone().unwrap_or_default();
+        let stroke_color = stroke_color.to_linear_rgba();
         let stroke_color = [
-            stroke_color.r as f32,
-            stroke_color.g as f32,
-            stroke_color.b as f32,
-            stroke_color.a as f32,
+            stroke_color.0 as f32,
+            stroke_color.1 as f32,
+            stroke_color.2 as f32,
+            stroke_color.3 as f32,
+        ];
+        let ShadowStyle {
+            shadow_color,
+            shadow_offset_x,
+            shadow_offset_y,
+            shadow_blur,
+            shadow_width,
+        } = style.shadow.clone().unwrap_or_default();
+        let shadow_color = shadow_color.to_linear_rgba();
+        let shadow_color = [
+            shadow_color.0 as f32,
+            shadow_color.1 as f32,
+            shadow_color.2 as f32,
+            shadow_color.3 as f32,
         ];
 
         for ch in text {
@@ -98,7 +119,7 @@ pub fn calculate_layout(
 
             let actual_grid_size = GRID_SIZE / FONT_SIZE * style.font_size;
 
-            // calculate four vertexes without multiplying with transform matrix
+            // calculate four vertices without multiplying with transform matrix
 
             let tx = offset_x / viewport_width * 2.;
             let ty = 1. - offset_y / viewport_height * 2.;
@@ -124,42 +145,43 @@ pub fn calculate_layout(
             let p3x = w1 + tx - 1.;
             let p3y = h0 + ty;
 
-            let vertex_index_offset = vertexes.len() as u16;
+            // insert vertices for fill
+            let vertex_index_offset = vertices_fill.len() as u16;
 
-            vertexes.push(Vertex {
+            vertices_fill.push(Vertex {
                 position: [p0x as f32, p0y as f32, 0.0],
                 tex_coords: [ch.u_min, ch.v_max],
                 page: ch.page,
                 buffer,
                 gamma,
-                fill_color,
+                color: fill_color,
             });
-            vertexes.push(Vertex {
+            vertices_fill.push(Vertex {
                 position: [p1x as f32, p1y as f32, 0.0],
                 tex_coords: [ch.u_max, ch.v_max],
                 page: ch.page,
                 buffer,
                 gamma,
-                fill_color,
+                color: fill_color,
             });
-            vertexes.push(Vertex {
+            vertices_fill.push(Vertex {
                 position: [p2x as f32, p2y as f32, 0.0],
                 tex_coords: [ch.u_max, ch.v_min],
                 page: ch.page,
                 buffer,
                 gamma,
-                fill_color,
+                color: fill_color,
             });
-            vertexes.push(Vertex {
+            vertices_fill.push(Vertex {
                 position: [p3x as f32, p3y as f32, 0.0],
                 tex_coords: [ch.u_min, ch.v_min],
                 page: ch.page,
                 buffer,
                 gamma,
-                fill_color,
+                color: fill_color,
             });
 
-            indices.extend([
+            indices_fill.extend([
                 vertex_index_offset + 0,
                 vertex_index_offset + 1,
                 vertex_index_offset + 2,
@@ -168,9 +190,125 @@ pub fn calculate_layout(
                 vertex_index_offset + 3,
             ]);
 
+            // insert vertices for stroke
+
+            if style.stroke.is_some() {
+                let vertex_index_offset = vertices_stroke.len() as u16;
+                // awesome magic number and algorithm, not sure why...
+                let buffer = 0.73 - 0.06 * stroke_width / 2. / (style.font_size / FONT_SIZE) as f32;
+                vertices_stroke.push(Vertex {
+                    position: [p0x as f32, p0y as f32, 0.0],
+                    tex_coords: [ch.u_min, ch.v_max],
+                    page: ch.page,
+                    buffer,
+                    gamma,
+                    color: stroke_color,
+                });
+                vertices_stroke.push(Vertex {
+                    position: [p1x as f32, p1y as f32, 0.0],
+                    tex_coords: [ch.u_max, ch.v_max],
+                    page: ch.page,
+                    buffer,
+                    gamma,
+                    color: stroke_color,
+                });
+                vertices_stroke.push(Vertex {
+                    position: [p2x as f32, p2y as f32, 0.0],
+                    tex_coords: [ch.u_max, ch.v_min],
+                    page: ch.page,
+                    buffer,
+                    gamma,
+                    color: stroke_color,
+                });
+                vertices_stroke.push(Vertex {
+                    position: [p3x as f32, p3y as f32, 0.0],
+                    tex_coords: [ch.u_min, ch.v_min],
+                    page: ch.page,
+                    buffer,
+                    gamma,
+                    color: stroke_color,
+                });
+
+                indices_stroke.extend([
+                    vertex_index_offset + 0,
+                    vertex_index_offset + 1,
+                    vertex_index_offset + 2,
+                    vertex_index_offset + 0,
+                    vertex_index_offset + 2,
+                    vertex_index_offset + 3,
+                ]);
+            }
+
+            // insert vertices for shadow
+
+            if style.shadow.is_some() {
+                let vertex_index_offset = vertices_shadow.len() as u16;
+                // awesome magic number and algorithm, not sure why...
+                let buffer = 0.73 - 0.06 * shadow_width / 2. / (style.font_size / FONT_SIZE) as f32;
+                let gamma = 0.06 * shadow_blur / 2. / (style.font_size / FONT_SIZE) as f32;
+                let offset_x = shadow_offset_x / viewport_width as f32 * 2.;
+                let offset_y = -shadow_offset_y / viewport_height as f32 * 2.;
+                vertices_shadow.push(Vertex {
+                    position: [p0x as f32 + offset_x, p0y as f32 + offset_y, 0.0],
+                    tex_coords: [ch.u_min, ch.v_max],
+                    page: ch.page,
+                    buffer,
+                    gamma,
+                    color: shadow_color,
+                });
+                vertices_shadow.push(Vertex {
+                    position: [p1x as f32 + offset_x, p1y as f32 + offset_y, 0.0],
+                    tex_coords: [ch.u_max, ch.v_max],
+                    page: ch.page,
+                    buffer,
+                    gamma,
+                    color: shadow_color,
+                });
+                vertices_shadow.push(Vertex {
+                    position: [p2x as f32 + offset_x, p2y as f32 + offset_y, 0.0],
+                    tex_coords: [ch.u_max, ch.v_min],
+                    page: ch.page,
+                    buffer,
+                    gamma,
+                    color: shadow_color,
+                });
+                vertices_shadow.push(Vertex {
+                    position: [p3x as f32 + offset_x, p3y as f32 + offset_y, 0.0],
+                    tex_coords: [ch.u_min, ch.v_min],
+                    page: ch.page,
+                    buffer,
+                    gamma,
+                    color: shadow_color,
+                });
+
+                indices_shadow.extend([
+                    vertex_index_offset + 0,
+                    vertex_index_offset + 1,
+                    vertex_index_offset + 2,
+                    vertex_index_offset + 0,
+                    vertex_index_offset + 2,
+                    vertex_index_offset + 3,
+                ]);
+            }
+
             current_x += h_advance;
         }
     }
 
-    (vertexes, indices)
+    let indices_offset_fill = (vertices_shadow.len() + vertices_stroke.len()) as u16;
+    let indices_offset_stroke = vertices_shadow.len() as u16;
+
+    indices_fill
+        .iter_mut()
+        .for_each(|v| *v += indices_offset_fill);
+    indices_stroke
+        .iter_mut()
+        .for_each(|v| *v += indices_offset_stroke);
+
+    vertices_shadow.append(&mut vertices_stroke);
+    vertices_shadow.append(&mut vertices_fill);
+    indices_shadow.append(&mut indices_stroke);
+    indices_shadow.append(&mut indices_fill);
+
+    (vertices_shadow, indices_shadow)
 }

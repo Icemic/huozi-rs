@@ -169,8 +169,10 @@ impl Huozi {
         Ok(())
     }
 
-    #[cfg(feature = "layout")]
+    #[cfg(all(feature = "layout", feature = "bbcode"))]
     pub fn layout_parse<'a>(&mut self, text: &'a str) -> (Vec<Vertex>, Vec<u16>) {
+        use crate::layout::{ShadowStyle, StrokeStyle};
+
         let mut section = vec![];
 
         for ch in text.chars() {
@@ -184,9 +186,18 @@ impl Huozi {
                 font_size: 24.,
                 line_height: 1.58,
                 indent: 2.,
-                fill_color: Color::from_html("#000").unwrap(),
-                stroke: None,
-                shadow: None,
+                fill_color: Color::from_html("#fff").unwrap(),
+                stroke: Some(StrokeStyle {
+                    stroke_color: Color::from_html("#0069c2").unwrap(),
+                    stroke_width: 2.,
+                }),
+                shadow: Some(ShadowStyle {
+                    shadow_color: Color::from_html("#999").unwrap(),
+                    shadow_offset_x: 8.,
+                    shadow_offset_y: 8.,
+                    shadow_blur: 4.,
+                    shadow_width: 1.,
+                }),
             },
         }];
 
