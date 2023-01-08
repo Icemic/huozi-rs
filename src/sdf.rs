@@ -158,7 +158,7 @@ pub fn edt1d(
     z: &mut Vec<f64>,
 ) {
     v[0] = 0;
-    z[0] = f64::NEG_INFINITY;
+    z[0] = -INF;
     z[1] = INF;
     f[0] = grid[offset];
 
