@@ -26,7 +26,6 @@ pub fn calculate_layout(
     let viewport_width = layout_style.viewport_width;
     let viewport_height = layout_style.viewport_height;
 
-    let grid_size = layout_style.glyph_grid_size;
     let max_width = layout_style.box_width;
     let max_height = layout_style.box_height;
 

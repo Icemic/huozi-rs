@@ -5,8 +5,11 @@ version = "0.1.0"
 
 [features]
 ab_glyph = ["dep:ab_glyph"]
-default = ["fontdue"]
+charsets = []
+default = ["fontdue", "charsets", "sdf", "layout"]
 fontdue = ["dep:fontdue"]
+layout = []
+sdf = []
 
 [dependencies]
 ab_glyph = {version = "0.2", optional = true}

@@ -7,9 +7,11 @@ use std::path::Path;
 
 use crate::constant::{BUFFER, CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS, TEXTURE_SIZE};
 use crate::font_extractor::{GlyphExtractor, GlyphExtractorTrait, GlyphMetrics};
+#[cfg(feature = "layout")]
 use crate::layout::{
     calculate_layout, Color, LayoutDirection, LayoutStyle, TextSection, TextStyle, Vertex,
 };
+#[cfg(feature = "sdf")]
 use crate::sdf::TinySDF;
 
 #[derive(Debug, Clone, Default)]
@@ -25,7 +27,9 @@ pub struct Glyph {
 }
 
 pub struct Huozi {
+    #[cfg(feature = "sdf")]
     extractor: GlyphExtractor,
+    #[cfg(feature = "sdf")]
     tiny_sdf: TinySDF,
     image: RgbaImage,
     cache: lru::LruCache<char, Glyph>,
@@ -42,6 +46,7 @@ impl Huozi {
 
         image.fill(0);
 
+        #[cfg(feature = "sdf")]
         let tiny_sdf = TinySDF::new(GRID_SIZE as u32, BUFFER as u32, RADIUS, CUTOFF);
 
         let cache = LruCache::new(
@@ -49,7 +54,9 @@ impl Huozi {
         );
 
         Self {
+            #[cfg(feature = "sdf")]
             extractor,
+            #[cfg(feature = "sdf")]
             tiny_sdf,
             image,
             cache,
@@ -57,6 +64,7 @@ impl Huozi {
         }
     }
 
+    #[cfg(feature = "sdf")]
     pub fn get_glyph(&mut self, ch: char) -> &Glyph {
         if self.cache.contains(&ch) {
             self.cache.get(&ch).unwrap()
@@ -131,6 +139,7 @@ impl Huozi {
         }
     }
 
+    #[cfg(feature = "sdf")]
     pub fn preload(&mut self, charset: &str) {
         for (i, ch) in charset.chars().enumerate() {
             if i >= 4096 {
@@ -145,10 +154,12 @@ impl Huozi {
         }
     }
 
+    #[cfg(feature = "sdf")]
     pub fn texture_image(&self) -> &RgbaImage {
         &self.image
     }
 
+    #[cfg(feature = "sdf")]
     pub fn dump_texture_to<Q>(&self, path: Q) -> Result<()>
     where
         Q: AsRef<Path>,
@@ -158,6 +169,7 @@ impl Huozi {
         Ok(())
     }
 
+    #[cfg(feature = "layout")]
     pub fn layout_parse<'a>(&mut self, text: &'a str) -> (Vec<Vertex>, Vec<u16>) {
         let mut section = vec![];
 
@@ -191,6 +203,7 @@ impl Huozi {
         )
     }
 
+    #[cfg(feature = "layout")]
     pub fn layout<'a, T: AsRef<Vec<TextSection>>>(
         &mut self,
         layout_style: &LayoutStyle,
