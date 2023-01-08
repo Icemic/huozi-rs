@@ -1,6 +1,6 @@
 pub mod charsets;
 mod constant;
-pub mod glyph;
+pub mod font_extractor;
 mod huozi;
 pub mod layout;
 pub mod sdf;

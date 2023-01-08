@@ -2,12 +2,12 @@
 pub struct GlyphMetrics {
     pub width: u32,
     pub height: u32,
-    pub h_advance: u32,
-    pub v_advance: u32,
-    pub x_min: i32,
-    pub y_min: i32,
-    pub x_max: i32,
-    pub y_max: i32,
+    pub h_advance: f32,
+    pub v_advance: f32,
+    pub x_min: f32,
+    pub y_min: f32,
+    pub x_max: f32,
+    pub y_max: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -24,9 +24,7 @@ pub trait GlyphExtractor {
 
     fn set_font_size(&mut self, font_size: f32);
 
-    fn get_glyph(&self, ch: char) -> GlyphMetrics;
-
-    fn transform_to_glyph(&self, ch: char) -> GlyphMetrics;
+    fn get_glyph_metrics(&self, ch: char) -> GlyphMetrics;
 
     fn font_metrics(&self) -> FontHMetrics;
 

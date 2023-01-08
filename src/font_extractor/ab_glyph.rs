@@ -1,50 +1,97 @@
 use ab_glyph::{point, Font, FontRef, FontVec, PxScale, ScaleFont};
 use image::{DynamicImage, Rgba, RgbaImage};
 
-use super::common::Glyph;
+use super::common::{FontHMetrics, GlyphExtractor, GlyphMetrics};
 
-const WIDTH: usize = 800;
-const HEIGHT: usize = 128;
-
-pub struct GlyphExtractor {
+pub struct AbGlyphExtractor {
     font: FontVec,
-    font_size: f32,
     scale: PxScale,
 }
 
-impl GlyphExtractor {
-    pub fn new(font_data: Vec<u8>, font_size: f32) -> Self {
+impl GlyphExtractor for AbGlyphExtractor {
+    fn new(font_data: Vec<u8>, font_size: f32) -> Self {
         let font = FontVec::try_from_vec(font_data).unwrap();
         let scale =
             PxScale::from(font_size * font.height_unscaled() / font.units_per_em().unwrap());
-        Self {
-            font,
-            font_size,
-            scale,
-        }
+        Self { font, scale }
     }
-    pub fn set_font_size(&mut self, font_size: f32) {
+    fn set_font_size(&mut self, font_size: f32) {
         let scale = PxScale::from(
             font_size * self.font.height_unscaled() / self.font.units_per_em().unwrap(),
         );
-        self.font_size = font_size;
         self.scale = scale;
     }
-    pub fn get_glyph(&self, ch: char) {
+    fn get_glyph_metrics(&self, ch: char) -> GlyphMetrics {
         let font = self.font.as_scaled(self.scale);
         let glyph = font.glyph_id(ch).with_scale(self.scale);
         let r = font.glyph_bounds(&glyph);
         let h_advance = font.h_advance(glyph.id);
-        let h_bearing = font.h_side_bearing(glyph.id);
+        let v_advance = font.v_advance(glyph.id);
 
-        println!(
-            "h_advance: {}, h_bearing: {}, width: {}\nx min: {}, x max: {}",
+        let (width, height, x_min, y_min, x_max, y_max) = match font.outline_glyph(glyph) {
+            Some(q) => {
+                let r = q.px_bounds();
+
+                (
+                    r.width() as u32,
+                    r.height() as u32,
+                    r.min.x,
+                    // y coordiante is reverted, i don't know why...
+                    -r.max.y,
+                    r.max.x,
+                    -r.min.y,
+                )
+            }
+            None => (0, 0, 0., 0., 0., 0.),
+        };
+
+        GlyphMetrics {
+            width,
+            height,
             h_advance,
-            h_bearing,
-            r.width(),
-            r.min.x,
-            r.max.x
-        )
+            v_advance,
+            x_min,
+            y_min,
+            x_max,
+            y_max,
+        }
+    }
+
+    fn font_metrics(&self) -> FontHMetrics {
+        let font = self.font.as_scaled(self.scale);
+        FontHMetrics {
+            ascent: font.ascent().ceil() as i32,
+            descent: font.descent().ceil() as i32,
+            line_gap: font.line_gap().ceil() as i32,
+            line_height: (font.ascent() - font.descent() + font.line_gap()).ceil() as i32,
+            content_height: (font.ascent() - font.descent()).ceil() as i32,
+        }
+    }
+
+    fn get_bitmap_and_metrics(&self, ch: char) -> (Vec<u8>, GlyphMetrics) {
+        let metrics = self.get_glyph_metrics(ch);
+
+        let font = self.font.as_scaled(self.scale);
+
+        let glyph = font.glyph_id(ch).with_scale(self.scale);
+
+        let capacity = (metrics.width * metrics.height) as usize;
+
+        let bitmap = match font.outline_glyph(glyph) {
+            Some(q) => {
+                let mut bitmap = vec![0u8; capacity];
+                q.draw(|x, y, c| {
+                    bitmap[(y * metrics.width + x) as usize] = (c * 255.).round() as u8
+                });
+                bitmap
+            }
+            None => {
+                let bitmap = vec![0u8; capacity];
+                bitmap
+            }
+        };
+
+        (bitmap, metrics)
     }
 }
 

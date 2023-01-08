@@ -1,8 +1,6 @@
 use fontdue::{Font, Metrics};
 
-use crate::glyph::common::GlyphMetrics;
-
-use super::common::{FontHMetrics, GlyphExtractor};
+use super::common::{FontHMetrics, GlyphExtractor, GlyphMetrics};
 
 pub struct FontdueExtractor {
     font: Font,
@@ -14,12 +12,12 @@ impl Into<GlyphMetrics> for Metrics {
         GlyphMetrics {
             width: self.width as u32,
             height: self.height as u32,
-            h_advance: self.advance_width.ceil() as u32,
-            v_advance: self.advance_height.ceil() as u32,
-            x_min: self.xmin,
-            y_min: self.ymin,
-            x_max: self.xmin + self.width as i32,
-            y_max: self.ymin + self.height as i32,
+            h_advance: self.advance_width,
+            v_advance: self.advance_height,
+            x_min: self.xmin as f32,
+            y_min: self.ymin as f32,
+            x_max: self.xmin as f32 + self.width as f32,
+            y_max: self.ymin as f32 + self.height as f32,
         }
     }
 }
@@ -33,23 +31,9 @@ impl GlyphExtractor for FontdueExtractor {
     fn set_font_size(&mut self, font_size: f32) {
         self.font_size = font_size;
     }
-    fn get_glyph(&self, ch: char) -> GlyphMetrics {
+    fn get_glyph_metrics(&self, ch: char) -> GlyphMetrics {
         let metrics = self.font.metrics(ch, self.font_size);
         metrics.into()
-    }
-    fn transform_to_glyph(&self, ch: char) -> GlyphMetrics {
-        let metrics = self.font.metrics(ch, self.font_size);
-
-        GlyphMetrics {
-            width: metrics.width as u32,
-            height: metrics.height as u32,
-            h_advance: metrics.advance_width.ceil() as u32,
-            v_advance: metrics.advance_height.ceil() as u32,
-            x_min: metrics.xmin,
-            y_min: metrics.ymin,
-            x_max: metrics.xmin + metrics.width as i32,
-            y_max: metrics.ymin + metrics.height as i32,
-        }
     }
     fn font_metrics(&self) -> FontHMetrics {
         let h_metrics = self

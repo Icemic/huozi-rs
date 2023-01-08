@@ -6,7 +6,7 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 
 use crate::constant::{BUFFER, CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS, TEXTURE_SIZE};
-use crate::glyph::{FontdueExtractor, GlyphExtractor, GlyphMetrics};
+use crate::font_extractor::{FontdueExtractor, GlyphExtractor, GlyphMetrics, AbGlyphExtractor};
 use crate::layout::{
     calculate_layout, Color, LayoutDirection, LayoutStyle, TextSection, TextStyle, Vertex,
 };
@@ -25,7 +25,7 @@ pub struct Glyph {
 }
 
 pub struct Huozi {
-    extractor: FontdueExtractor,
+    extractor: AbGlyphExtractor,
     tiny_sdf: TinySDF,
     image: RgbaImage,
     cache: lru::LruCache<char, Glyph>,
@@ -34,7 +34,7 @@ pub struct Huozi {
 
 impl Huozi {
     pub fn new(font_data: Vec<u8>) -> Self {
-        let extractor = FontdueExtractor::new(font_data, FONT_SIZE as f32);
+        let extractor = AbGlyphExtractor::new(font_data, FONT_SIZE as f32);
 
         info!("font metrics: {:?}", extractor.font_metrics());
 
