@@ -19,7 +19,7 @@ pub struct FontHMetrics {
     pub content_height: i32,
 }
 
-pub trait GlyphExtractor {
+pub trait GlyphExtractorTrait {
     fn new(font_data: Vec<u8>, font_size: f32) -> Self;
 
     fn set_font_size(&mut self, font_size: f32);

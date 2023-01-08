@@ -3,17 +3,21 @@ edition = "2021"
 name = "huozi"
 version = "0.1.0"
 
+[features]
+ab_glyph = ["dep:ab_glyph"]
+default = ["fontdue"]
+fontdue = ["dep:fontdue"]
+
 [dependencies]
-ab_glyph = "0.2"
+ab_glyph = {version = "0.2", optional = true}
 anyhow = "1"
 bytemuck = {version = "1.4", features = ["derive"]}
 csscolorparser = "0.6"
 env_logger = "0.10"
-fontdue = "0.7.2"
+fontdue = {version = "0.7.2", optional = true}
 image = {version = "0.23", default-features = false, features = ["png"]}
 log = "0.4"
 lru = "0.8"
-rusttype = "0.9"
 wgpu = "0.14"
 
 [dev-dependencies]

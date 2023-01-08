@@ -154,7 +154,7 @@ impl State {
                 label: Some("uniform_bind_group_layout"),
             });
 
-        let uniforms = SDFUniforms::new([0.0, 0.0, 0.0, 1.0], 0.74, 0.); // 0.058925
+        let uniforms = SDFUniforms::new([0.0, 0.0, 0.0, 1.0], 0.74, 0.0); // 0.058925
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
             contents: bytemuck::cast_slice(&[uniforms]),

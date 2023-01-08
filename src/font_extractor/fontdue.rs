@@ -1,8 +1,8 @@
 use fontdue::{Font, Metrics};
 
-use super::common::{FontHMetrics, GlyphExtractor, GlyphMetrics};
+use super::common::{FontHMetrics, GlyphExtractorTrait, GlyphMetrics};
 
-pub struct FontdueExtractor {
+pub struct GlyphExtractor {
     font: Font,
     font_size: f32,
 }
@@ -22,7 +22,7 @@ impl Into<GlyphMetrics> for Metrics {
     }
 }
 
-impl GlyphExtractor for FontdueExtractor {
+impl GlyphExtractorTrait for GlyphExtractor {
     fn new(font_data: Vec<u8>, font_size: f32) -> Self {
         let font = fontdue::Font::from_bytes(font_data, fontdue::FontSettings::default()).unwrap();
 

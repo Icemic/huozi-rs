@@ -1,14 +1,14 @@
 use ab_glyph::{point, Font, FontRef, FontVec, PxScale, ScaleFont};
 use image::{DynamicImage, Rgba, RgbaImage};
 
-use super::common::{FontHMetrics, GlyphExtractor, GlyphMetrics};
+use super::common::{FontHMetrics, GlyphExtractorTrait, GlyphMetrics};
 
-pub struct AbGlyphExtractor {
+pub struct GlyphExtractor {
     font: FontVec,
     scale: PxScale,
 }
 
-impl GlyphExtractor for AbGlyphExtractor {
+impl GlyphExtractorTrait for GlyphExtractor {
     fn new(font_data: Vec<u8>, font_size: f32) -> Self {
         let font = FontVec::try_from_vec(font_data).unwrap();
         let scale =
