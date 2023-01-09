@@ -9,6 +9,7 @@ pub struct Vertex {
     pub color: [f32; 4],
 }
 
+#[cfg(feature = "wgpu")]
 impl Vertex {
     pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         use std::mem;

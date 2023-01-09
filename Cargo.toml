@@ -7,10 +7,11 @@ version = "0.1.0"
 ab_glyph = ["dep:ab_glyph"]
 bbcode = []
 charsets = []
-default = ["fontdue", "charsets", "sdf", "layout", "bbcode"]
+default = ["fontdue", "wgpu", "charsets", "sdf", "layout", "bbcode"]
 fontdue = ["dep:fontdue"]
 layout = []
 sdf = []
+wgpu = ["dep:wgpu"]
 
 [dependencies]
 ab_glyph = {version = "0.2", optional = true}
@@ -22,11 +23,12 @@ fontdue = {version = "0.7.2", optional = true}
 image = {version = "0.23", default-features = false, features = ["png"]}
 log = "0.4"
 lru = "0.8"
-wgpu = "0.14"
+wgpu = {version = "0.14", optional = true}
 
 [dev-dependencies]
 cfg-if = "1"
 pollster = "0.2"
+wgpu = "0.14"
 winit = "0.27"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
