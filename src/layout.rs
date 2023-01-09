@@ -44,24 +44,14 @@ pub fn calculate_layout(
 
         let buffer = 0.74;
         let gamma = 0.;
-        let fill_color = &style.fill_color.to_linear_rgba();
-        let fill_color = [
-            fill_color.0 as f32,
-            fill_color.1 as f32,
-            fill_color.2 as f32,
-            fill_color.3 as f32,
-        ];
+        let fill_color = style.fill_color.to_linear_rgba_f32();
+
         let StrokeStyle {
             stroke_color,
             stroke_width,
         } = style.stroke.clone().unwrap_or_default();
-        let stroke_color = stroke_color.to_linear_rgba();
-        let stroke_color = [
-            stroke_color.0 as f32,
-            stroke_color.1 as f32,
-            stroke_color.2 as f32,
-            stroke_color.3 as f32,
-        ];
+        let stroke_color = stroke_color.to_linear_rgba_f32();
+
         let ShadowStyle {
             shadow_color,
             shadow_offset_x,
@@ -69,13 +59,7 @@ pub fn calculate_layout(
             shadow_blur,
             shadow_width,
         } = style.shadow.clone().unwrap_or_default();
-        let shadow_color = shadow_color.to_linear_rgba();
-        let shadow_color = [
-            shadow_color.0 as f32,
-            shadow_color.1 as f32,
-            shadow_color.2 as f32,
-            shadow_color.3 as f32,
-        ];
+        let shadow_color = shadow_color.to_linear_rgba_f32();
 
         for ch in text {
             let metrics = &ch.metrics;
