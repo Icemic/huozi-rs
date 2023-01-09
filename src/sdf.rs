@@ -60,7 +60,7 @@ impl TinySDF {
 
                 let j = ((y + self.buffer) * width + x + self.buffer) as usize;
 
-                if a == 1 {
+                if a == 255 {
                     // fully drawn pixels
                     self.grid_outer[j] = 0.;
                     self.grid_inner[j] = INF;
