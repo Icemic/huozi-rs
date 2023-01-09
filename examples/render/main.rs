@@ -1,7 +1,7 @@
 use huozi::{
     charsets::{ASCII, CHS, CJK_SYMBOL},
     layout::Vertex,
-    Huozi,
+    Huozi, constant::TEXTURE_SIZE,
 };
 use log::info;
 use std::{
@@ -86,8 +86,8 @@ impl State {
 
         let texture = texture::Texture::empty(
             &device,
-            2048,
-            2048,
+            TEXTURE_SIZE,
+            TEXTURE_SIZE,
             Some("sdf texture"),
             Some(wgpu::TextureFormat::Rgba8Unorm),
         );

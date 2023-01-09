@@ -1,6 +1,6 @@
 #[cfg(feature = "charsets")]
 pub mod charsets;
-mod constant;
+pub mod constant;
 pub mod font_extractor;
 mod huozi;
 #[cfg(feature = "layout")]
