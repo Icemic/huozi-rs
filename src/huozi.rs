@@ -183,20 +183,20 @@ impl Huozi {
         let text_sections = vec![TextSection {
             text: section,
             style: TextStyle {
-                font_size: 24.,
+                font_size: 48.,
                 line_height: 1.58,
                 indent: 2.,
                 fill_color: Color::from_html("#fff").unwrap(),
                 stroke: Some(StrokeStyle {
                     stroke_color: Color::from_html("#0069c2").unwrap(),
-                    stroke_width: 2.,
+                    stroke_width: 4.,
                 }),
                 shadow: Some(ShadowStyle {
                     shadow_color: Color::from_html("#999").unwrap(),
-                    shadow_offset_x: 8.,
-                    shadow_offset_y: 8.,
-                    shadow_blur: 4.,
-                    shadow_width: 1.,
+                    shadow_offset_x: 16.,
+                    shadow_offset_y: 16.,
+                    shadow_blur: 8.,
+                    shadow_width: 2.,
                 }),
             },
         }];
@@ -204,9 +204,9 @@ impl Huozi {
         self.layout(
             &LayoutStyle {
                 direction: LayoutDirection::Horizontal,
-                box_width: 600.,
-                box_height: 200.,
-                glyph_grid_size: 24.,
+                box_width: 1200.,
+                box_height: 600.,
+                glyph_grid_size: 48.,
                 viewport_width: 1280.,
                 viewport_height: 720.,
             },

@@ -10,7 +10,7 @@ pub use text_section::*;
 pub use text_style::*;
 pub use vertex::*;
 
-use crate::constant::{ASCENT, FONT_SIZE, GRID_SIZE};
+use crate::constant::{ASCENT, FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE};
 
 pub fn calculate_layout(
     layout_style: &LayoutStyle,
@@ -42,7 +42,7 @@ pub fn calculate_layout(
         let style = &section.style;
         let text = &section.text;
 
-        let buffer = 0.74;
+        let buffer = 0.71;
         let gamma = 0.;
         let fill_color = style.fill_color.to_linear_rgba_f32();
 
@@ -179,7 +179,8 @@ pub fn calculate_layout(
             if style.stroke.is_some() {
                 let vertex_index_offset = vertices_stroke.len() as u16;
                 // awesome magic number and algorithm, not sure why...
-                let buffer = 0.73 - 0.06 * stroke_width / 2. / (style.font_size / FONT_SIZE) as f32;
+                let buffer = 0.7
+                    - GAMMA_COEFFICIENT * stroke_width / 2. / (style.font_size / FONT_SIZE) as f32;
                 vertices_stroke.push(Vertex {
                     position: [p0x as f32, p0y as f32, 0.0],
                     tex_coords: [ch.u_min, ch.v_max],
@@ -228,8 +229,10 @@ pub fn calculate_layout(
             if style.shadow.is_some() {
                 let vertex_index_offset = vertices_shadow.len() as u16;
                 // awesome magic number and algorithm, not sure why...
-                let buffer = 0.73 - 0.06 * shadow_width / 2. / (style.font_size / FONT_SIZE) as f32;
-                let gamma = 0.06 * shadow_blur / 2. / (style.font_size / FONT_SIZE) as f32;
+                let buffer = 0.7
+                    - GAMMA_COEFFICIENT * shadow_width / 2. / (style.font_size / FONT_SIZE) as f32;
+                let gamma =
+                    GAMMA_COEFFICIENT * shadow_blur / 2. / (style.font_size / FONT_SIZE) as f32;
                 let offset_x = shadow_offset_x / viewport_width as f32 * 2.;
                 let offset_y = -shadow_offset_y / viewport_height as f32 * 2.;
                 vertices_shadow.push(Vertex {

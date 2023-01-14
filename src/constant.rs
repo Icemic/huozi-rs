@@ -6,3 +6,4 @@ pub const CUTOFF: f64 = 0.25;
 pub const TEXTURE_SIZE: u32 = 2048;
 // 56 is just a magic number, may should be replaced by more reasonable algorithm
 pub const ASCENT: f64 = 56.;
+pub const GAMMA_COEFFICIENT: f32 = 0.06;
