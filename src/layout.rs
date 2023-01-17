@@ -42,7 +42,7 @@ pub fn calculate_layout(
         let style = &section.style;
         let text = &section.text;
 
-        let buffer = 0.71;
+        let buffer = 0.74;
         let gamma = 0.;
         let fill_color = style.fill_color.to_linear_rgba_f32();
 

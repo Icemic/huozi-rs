@@ -183,7 +183,7 @@ impl Huozi {
         let text_sections = vec![TextSection {
             text: section,
             style: TextStyle {
-                font_size: 48.,
+                font_size: 24.,
                 line_height: 1.58,
                 indent: 2.,
                 fill_color: Color::from_html("#fff").unwrap(),
@@ -206,7 +206,7 @@ impl Huozi {
                 direction: LayoutDirection::Horizontal,
                 box_width: 1200.,
                 box_height: 600.,
-                glyph_grid_size: 48.,
+                glyph_grid_size: 24.,
                 viewport_width: 1280.,
                 viewport_height: 720.,
             },
