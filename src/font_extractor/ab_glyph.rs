@@ -6,24 +6,13 @@ use super::common::{FontHMetrics, GlyphExtractorTrait, GlyphMetrics};
 pub struct GlyphExtractor {
     font: FontVec,
     scale: PxScale,
+    font_size: f32,
 }
 
-impl GlyphExtractorTrait for GlyphExtractor {
-    fn new(font_data: Vec<u8>, font_size: f32) -> Self {
-        let font = FontVec::try_from_vec(font_data).unwrap();
-        let scale =
-            PxScale::from(font_size * font.height_unscaled() / font.units_per_em().unwrap());
-        Self { font, scale }
-    }
-    fn set_font_size(&mut self, font_size: f32) {
-        let scale = PxScale::from(
-            font_size * self.font.height_unscaled() / self.font.units_per_em().unwrap(),
-        );
-        self.scale = scale;
-    }
-    fn get_glyph_metrics(&self, ch: char) -> GlyphMetrics {
-        let font = self.font.as_scaled(self.scale);
-        let glyph = font.glyph_id(ch).with_scale(self.scale);
+impl GlyphExtractor {
+    fn get_glyph_metrics_inner(&self, ch: char, scale: Option<PxScale>) -> GlyphMetrics {
+        let font = self.font.as_scaled(scale.unwrap_or(self.scale));
+        let glyph = font.glyph_id(ch).with_scale(scale.unwrap_or(self.scale));
         let r = font.glyph_bounds(&glyph);
         let h_advance = font.h_advance(glyph.id);
         let v_advance = font.v_advance(glyph.id);
@@ -36,7 +25,7 @@ impl GlyphExtractorTrait for GlyphExtractor {
                     r.width() as u32,
                     r.height() as u32,
                     r.min.x,
-                    // y coordiante is reverted, i don't know why...
+                    // y coordiante is reversed, i don't know why...
                     -r.max.y,
                     r.max.x,
                     -r.min.y,
@@ -54,7 +43,32 @@ impl GlyphExtractorTrait for GlyphExtractor {
             y_min,
             x_max,
             y_max,
+            x_scale: None,
+            y_scale: None,
         }
+    }
+}
+
+impl GlyphExtractorTrait for GlyphExtractor {
+    fn new(font_data: Vec<u8>, font_size: f32) -> Self {
+        let font = FontVec::try_from_vec(font_data).unwrap();
+        let scale =
+            PxScale::from(font_size * font.height_unscaled() / font.units_per_em().unwrap());
+        Self {
+            font,
+            scale,
+            font_size,
+        }
+    }
+    fn set_font_size(&mut self, font_size: f32) {
+        let scale = PxScale::from(
+            font_size * self.font.height_unscaled() / self.font.units_per_em().unwrap(),
+        );
+        self.scale = scale;
+        self.font_size = font_size;
+    }
+    fn get_glyph_metrics(&self, ch: char) -> GlyphMetrics {
+        self.get_glyph_metrics_inner(ch, None)
     }
 
     fn font_metrics(&self) -> FontHMetrics {
@@ -69,15 +83,28 @@ impl GlyphExtractorTrait for GlyphExtractor {
     }
 
     fn get_bitmap_and_metrics(&self, ch: char) -> (Vec<u8>, GlyphMetrics) {
-        let metrics = self.get_glyph_metrics(ch);
+        let mut metrics = self.get_glyph_metrics(ch);
 
-        let font = self.font.as_scaled(self.scale);
+        let glyph = {
+            if metrics.width as f32 > self.font_size {
+                let mut scale = self.scale.clone();
 
-        let glyph = font.glyph_id(ch).with_scale(self.scale);
+                // it means bitmap is scaled by `x_scale` to fit max width (=font_size).
+                let x_scale = self.font_size / metrics.width as f32;
+                scale.x = scale.x * x_scale;
+
+                let new_metrics = self.get_glyph_metrics_inner(ch, Some(scale));
+                metrics.width = new_metrics.width;
+                metrics.x_scale = Some(x_scale);
+                self.font.glyph_id(ch).with_scale(scale)
+            } else {
+                self.font.glyph_id(ch).with_scale(self.scale)
+            }
+        };
 
         let capacity = (metrics.width * metrics.height) as usize;
 
-        let bitmap = match font.outline_glyph(glyph) {
+        let bitmap = match self.font.outline_glyph(glyph) {
             Some(q) => {
                 let mut bitmap = vec![0u8; capacity];
                 q.draw(|x, y, c| {

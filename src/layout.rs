@@ -77,7 +77,7 @@ pub fn calculate_layout(
                 continue;
             }
 
-            let h_advance = metrics.h_advance as f64;
+            let mut h_advance = metrics.h_advance as f64;
 
             // check text overflow
             if (current_x + h_advance) / FONT_SIZE * style.font_size >= max_width {
@@ -91,17 +91,46 @@ pub fn calculate_layout(
                 }
             }
 
-            // scale by font size, 48 is the texture font size when the grid size is 64.
-            let offset_x =
-                (current_x - GRID_SIZE / 2. + metrics.width as f64 / 2. + metrics.x_min as f64)
-                    / FONT_SIZE
-                    * style.font_size;
-            let offset_y = (current_y - GRID_SIZE / 2. + metrics.height as f64 / 2. + ASCENT
-                - metrics.y_max as f64)
-                / FONT_SIZE
-                * style.font_size;
+            let x_scale = metrics.x_scale.unwrap_or(1.) as f64;
+            let y_scale = metrics.y_scale.unwrap_or(1.) as f64;
 
-            let actual_grid_size = GRID_SIZE / FONT_SIZE * style.font_size;
+            let actual_width = metrics.width as f64 / x_scale;
+            let actual_height = metrics.height as f64 / y_scale;
+
+            let mut grid_scale_ratio_w = 1.;
+            let mut grid_scale_ratio_h = 1.;
+            let actual_scale_ratio = style.font_size / FONT_SIZE;
+
+            // scale character letting width fulfills font size.
+            // don't know why em/two-em dash have to do so.
+            if ch.ch == '—' || ch.ch == '―' {
+                grid_scale_ratio_w = FONT_SIZE / actual_width as f64;
+                h_advance = FONT_SIZE;
+            } else if ch.ch == '⸺' {
+                grid_scale_ratio_w = FONT_SIZE * 2. / actual_width as f64;
+                h_advance = FONT_SIZE * 2.;
+            } else if ch.ch == '–' {
+                grid_scale_ratio_w = FONT_SIZE / 2. / actual_width as f64;
+                h_advance = FONT_SIZE / 2.;
+            } else if ch.ch == '⸻' {
+                grid_scale_ratio_w = FONT_SIZE * 3. / actual_width as f64;
+                h_advance = FONT_SIZE * 3.;
+            }
+
+            // scale by font size, 48 is the texture font size when the grid size is 64.
+            let offset_x = current_x * actual_scale_ratio
+                - (GRID_SIZE / 2. / x_scale - actual_width / 2. - metrics.x_min as f64)
+                    * actual_scale_ratio
+                    * grid_scale_ratio_w;
+            let offset_y = (current_y) * actual_scale_ratio
+                - (GRID_SIZE / 2. / y_scale - actual_height / 2. - ASCENT + metrics.y_max as f64)
+                    * actual_scale_ratio
+                    * grid_scale_ratio_h;
+
+            let mut actual_grid_size_w =
+                GRID_SIZE * actual_scale_ratio * grid_scale_ratio_w / x_scale;
+            let mut actual_grid_size_h =
+                GRID_SIZE * actual_scale_ratio * grid_scale_ratio_h / y_scale;
 
             // calculate four vertices without multiplying with transform matrix
 
@@ -109,8 +138,8 @@ pub fn calculate_layout(
             let ty = 1. - offset_y / viewport_height * 2.;
 
             let w1 = 0.;
-            let w0 = actual_grid_size / viewport_width * 2.;
-            let h1 = -1. * actual_grid_size / viewport_height * 2.;
+            let w0 = actual_grid_size_w / viewport_width * 2.;
+            let h1 = -1. * actual_grid_size_h / viewport_height * 2.;
             let h0 = 0.;
 
             // left top

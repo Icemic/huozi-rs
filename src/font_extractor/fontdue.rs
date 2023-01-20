@@ -18,6 +18,10 @@ impl Into<GlyphMetrics> for Metrics {
             y_min: self.ymin as f32,
             x_max: self.xmin as f32 + self.width as f32,
             y_max: self.ymin as f32 + self.height as f32,
+            /// scale glyph size once it larger than 1em, it will affect width or height.
+            /// For example, `width / x_scale` should be the actual size if `x_scale` is not None.
+            x_scale: None,
+            y_scale: None,
         }
     }
 }
@@ -51,6 +55,22 @@ impl GlyphExtractorTrait for GlyphExtractor {
     }
     fn get_bitmap_and_metrics(&self, ch: char) -> (Vec<u8>, GlyphMetrics) {
         let (metrics, bitmap) = self.font.rasterize(ch, self.font_size);
+
+        if metrics.width as f32 > self.font_size {
+            let x_scale = self.font_size / metrics.width as f32;
+            let y_scale = x_scale;
+            let (new_metrics, bitmap) = self.font.rasterize(ch, self.font_size * x_scale);
+            let mut new_metrics: GlyphMetrics = new_metrics.into();
+            let mut metrics: GlyphMetrics = metrics.into();
+
+            metrics.width = new_metrics.width;
+            metrics.height = new_metrics.height;
+            metrics.x_scale = Some(x_scale);
+            metrics.y_scale = Some(y_scale);
+
+            return (bitmap, metrics);
+        }
+
         (bitmap, metrics.into())
     }
 }

@@ -1,3 +1,5 @@
+use std::default;
+
 #[derive(Debug, Clone, Default)]
 pub struct GlyphMetrics {
     pub width: u32,
@@ -8,6 +10,8 @@ pub struct GlyphMetrics {
     pub y_min: f32,
     pub x_max: f32,
     pub y_max: f32,
+    pub x_scale: Option<f32>,
+    pub y_scale: Option<f32>,
 }
 
 #[derive(Debug, Clone)]
