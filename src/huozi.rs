@@ -69,6 +69,10 @@ impl Huozi {
         if self.cache.contains(&ch) {
             self.cache.get(&ch).unwrap()
         } else {
+            if !self.extractor.exist(ch) {
+                warn!("glyph for character `{}` ({:#x}) is not found in the current font or font fallbacks, which may lead to unexpected rendering result.", ch, ch as u16);
+            }
+
             let (bitmap, metrics) = self.extractor.get_bitmap_and_metrics(ch);
 
             let (bitmap, width, height) =

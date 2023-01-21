@@ -73,4 +73,8 @@ impl GlyphExtractorTrait for GlyphExtractor {
 
         (bitmap, metrics.into())
     }
+
+    fn exist(& self, ch: char) -> bool {
+        self.font.lookup_glyph_index(ch) != 0
+    }
 }

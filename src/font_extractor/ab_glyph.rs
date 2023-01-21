@@ -120,6 +120,10 @@ impl GlyphExtractorTrait for GlyphExtractor {
 
         (bitmap, metrics)
     }
+
+    fn exist(&self, ch: char) -> bool {
+        self.font.glyph_id(ch).0 != 0
+    }
 }
 
 /// Feature "png" needed for save_to_file() and it's disabled by default for optional dependencies

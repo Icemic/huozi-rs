@@ -28,6 +28,8 @@ pub trait GlyphExtractorTrait {
 
     fn set_font_size(&mut self, font_size: f32);
 
+    fn exist(&self, ch: char) -> bool;
+
     fn get_glyph_metrics(&self, ch: char) -> GlyphMetrics;
 
     fn font_metrics(&self) -> FontHMetrics;
