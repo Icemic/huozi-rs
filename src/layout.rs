@@ -98,7 +98,7 @@ pub fn calculate_layout(
             let actual_height = metrics.height as f64 / y_scale;
 
             let mut grid_scale_ratio_w = 1.;
-            let mut grid_scale_ratio_h = 1.;
+            let grid_scale_ratio_h = 1.;
             let actual_scale_ratio = style.font_size / FONT_SIZE;
 
             // scale character letting width fulfills font size.
@@ -127,10 +127,8 @@ pub fn calculate_layout(
                     * actual_scale_ratio
                     * grid_scale_ratio_h;
 
-            let mut actual_grid_size_w =
-                GRID_SIZE * actual_scale_ratio * grid_scale_ratio_w / x_scale;
-            let mut actual_grid_size_h =
-                GRID_SIZE * actual_scale_ratio * grid_scale_ratio_h / y_scale;
+            let actual_grid_size_w = GRID_SIZE * actual_scale_ratio * grid_scale_ratio_w / x_scale;
+            let actual_grid_size_h = GRID_SIZE * actual_scale_ratio * grid_scale_ratio_h / y_scale;
 
             // calculate four vertices without multiplying with transform matrix
 

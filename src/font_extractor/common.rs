@@ -1,5 +1,3 @@
-use std::default;
-
 #[derive(Debug, Clone, Default)]
 pub struct GlyphMetrics {
     pub width: u32,

@@ -60,7 +60,7 @@ impl GlyphExtractorTrait for GlyphExtractor {
             let x_scale = self.font_size / metrics.width as f32;
             let y_scale = x_scale;
             let (new_metrics, bitmap) = self.font.rasterize(ch, self.font_size * x_scale);
-            let mut new_metrics: GlyphMetrics = new_metrics.into();
+            let new_metrics: GlyphMetrics = new_metrics.into();
             let mut metrics: GlyphMetrics = metrics.into();
 
             metrics.width = new_metrics.width;
@@ -74,7 +74,7 @@ impl GlyphExtractorTrait for GlyphExtractor {
         (bitmap, metrics.into())
     }
 
-    fn exist(& self, ch: char) -> bool {
+    fn exist(&self, ch: char) -> bool {
         self.font.lookup_glyph_index(ch) != 0
     }
 }
