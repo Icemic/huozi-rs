@@ -8,9 +8,7 @@ use std::path::Path;
 use crate::constant::{BUFFER, CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS, TEXTURE_SIZE};
 use crate::font_extractor::{GlyphExtractor, GlyphExtractorTrait, GlyphMetrics};
 #[cfg(feature = "layout")]
-use crate::layout::{
-    calculate_layout, Color, LayoutDirection, LayoutStyle, TextSection, TextStyle, Vertex,
-};
+use crate::layout::{Color, LayoutDirection, LayoutStyle, TextSection, TextStyle, Vertex};
 #[cfg(feature = "sdf")]
 use crate::sdf::TinySDF;
 
@@ -173,19 +171,12 @@ impl Huozi {
         Ok(())
     }
 
-    #[cfg(all(feature = "layout", feature = "bbcode"))]
+    #[cfg(all(feature = "layout", feature = "parser"))]
     pub fn layout_parse<'a>(&mut self, text: &'a str) -> (Vec<Vertex>, Vec<u16>) {
         use crate::layout::{ShadowStyle, StrokeStyle};
 
-        let mut section = vec![];
-
-        for ch in text.chars() {
-            let glyph = self.get_glyph(ch).clone();
-            section.push(glyph);
-        }
-
         let text_sections = vec![TextSection {
-            text: section,
+            text: text.to_string(),
             style: TextStyle {
                 font_size: 24.,
                 line_height: 1.58,
@@ -224,6 +215,6 @@ impl Huozi {
         layout_style: &LayoutStyle,
         text_sections: T,
     ) -> (Vec<Vertex>, Vec<u16>) {
-        calculate_layout(layout_style, text_sections.as_ref())
+        self.calculate_layout(layout_style, text_sections.as_ref())
     }
 }

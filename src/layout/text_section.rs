@@ -37,6 +37,6 @@ use super::TextStyle;
 ///
 #[derive(Debug, Clone, Default)]
 pub struct TextSection {
-    pub text: Vec<Glyph>,
+    pub text: String,
     pub style: TextStyle,
 }
