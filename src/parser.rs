@@ -13,7 +13,6 @@ use nom::{
 pub enum Element<'a> {
     Text(&'a str),
     Block(Block<'a>),
-    EOF,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,10 +121,7 @@ fn block(input: &str) -> ParseResult<Element> {
 }
 
 fn element(input: &str) -> ParseResult<Element> {
-    context(
-        "element",
-        alt((map(eof, |_| Element::EOF), plain_text, block)),
-    )(input)
+    context("element", alt((plain_text, block)))(input)
 }
 
 fn elements(input: &str) -> ParseResult<Vec<Element>> {
@@ -296,5 +292,10 @@ mod tests {
                 value: Some("bar ")
             })]
         );
+    }
+
+    #[test]
+    fn empty() {
+        assert_eq!(parse("").unwrap().1, vec![]);
     }
 }
