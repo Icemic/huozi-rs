@@ -32,23 +32,23 @@ fn escaped_str(input: &str) -> ParseResult<&str> {
 
 fn string_quoted(input: &str) -> ParseResult<&str> {
     context(
-        "string_quoted",
+        "String Quoted",
         preceded(char('\"'), cut(terminated(escaped_str, char('\"')))),
     )(input)
 }
 
 fn string_without_space(input: &str) -> ParseResult<&str> {
     let chars = "\"\\[]/= \t\n\r";
-    context("string_without_space", preceded(multispace0, is_not(chars)))(input)
+    context("String without Space", preceded(multispace0, is_not(chars)))(input)
 }
 
 fn plain_text(input: &str) -> ParseResult<Element> {
-    context("plain_text", map(escaped_str, |s: &str| Element::Text(s)))(input)
+    context("PlainText", map(escaped_str, |s: &str| Element::Text(s)))(input)
 }
 
 fn tag_head_keypair(input: &str) -> ParseResult<(&str, Option<&str>)> {
     context(
-        "tag_head_keypair",
+        "TagHeadKeyPair",
         alt((
             map(
                 separated_pair(
@@ -64,16 +64,16 @@ fn tag_head_keypair(input: &str) -> ParseResult<(&str, Option<&str>)> {
 }
 
 fn tag_key(input: &str) -> ParseResult<&str> {
-    context("tag_key", string_without_space)(input)
+    context("TagKey", string_without_space)(input)
 }
 
 fn tag_value(input: &str) -> ParseResult<&str> {
-    context("tag_value", alt((string_without_space, string_quoted)))(input)
+    context("TagValue", alt((string_without_space, string_quoted)))(input)
 }
 
 fn tag_head(input: &str) -> ParseResult<(&str, Option<&str>)> {
     context(
-        "tag_head",
+        "TagHead",
         preceded(
             tuple((char('['), not(char('/')))),
             cut(terminated(
@@ -86,7 +86,7 @@ fn tag_head(input: &str) -> ParseResult<(&str, Option<&str>)> {
 
 fn tag_end(input: &str) -> ParseResult<&str> {
     context(
-        "tag_end",
+        "TagEnd",
         preceded(
             tag("[/"),
             cut(terminated(tag_value, preceded(multispace0, char(']')))),
@@ -94,42 +94,35 @@ fn tag_end(input: &str) -> ParseResult<&str> {
     )(input)
 }
 
-fn closed_tag(input: &str) -> ParseResult<(&str, Option<&str>, Vec<Element>)> {
+fn closed_tag(input: &str) -> ParseResult<Element> {
     context(
-        "closed_tag",
+        "Tag",
         map(
             verify(
                 tuple((tag_head, elements, tag_end)),
                 |&((head_key, _), _, end_key)| head_key == end_key,
             ),
-            |((key, value), inner, _)| (key, value, inner),
+            |((key, value), inner, _)| {
+                Element::Block(Block {
+                    inner,
+                    tag: key,
+                    value: value.and_then(|s| Some(s)),
+                })
+            },
         ),
     )(input)
 }
 
-fn block(input: &str) -> ParseResult<Element> {
-    context(
-        "block",
-        map(closed_tag, |(key, value, inner)| {
-            Element::Block(Block {
-                inner,
-                tag: key,
-                value: value.and_then(|s| Some(s)),
-            })
-        }),
-    )(input)
-}
-
 fn element(input: &str) -> ParseResult<Element> {
-    context("element", alt((plain_text, block)))(input)
+    context("Element", alt((plain_text, closed_tag)))(input)
 }
 
 fn elements(input: &str) -> ParseResult<Vec<Element>> {
-    context("elements", many0(element))(input)
+    context("Element[]", many0(element))(input)
 }
 
 pub fn parse(input: &str) -> ParseResult<Vec<Element>> {
-    let (input, (r, _)) = context("elements", many_till(element, eof))(input)?;
+    let (input, (r, _)) = context("Root", many_till(element, eof))(input)?;
     Ok((input, r))
 }
 
