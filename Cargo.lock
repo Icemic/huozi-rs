@@ -715,6 +715,7 @@ dependencies = [
  "image",
  "log",
  "lru",
+ "nom",
  "pollster",
  "wasm-bindgen",
  "wasm-bindgen-futures",

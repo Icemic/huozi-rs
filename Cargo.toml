@@ -5,11 +5,11 @@ version = "0.1.0"
 
 [features]
 ab_glyph = ["dep:ab_glyph"]
-bbcode = []
 charsets = []
-default = ["fontdue", "wgpu", "charsets", "sdf", "layout", "bbcode"]
+default = ["fontdue", "wgpu", "charsets", "sdf", "layout", "parser"]
 fontdue = ["dep:fontdue"]
 layout = []
+parser = ["dep:nom"]
 sdf = []
 wgpu = ["dep:wgpu"]
 
@@ -23,6 +23,7 @@ fontdue = {version = "0.7.2", optional = true}
 image = {version = "0.23", default-features = false, features = ["png"]}
 log = "0.4"
 lru = "0.8"
+nom = {version = "7.1", optional = true}
 wgpu = {version = "0.14", optional = true}
 
 [dev-dependencies]
