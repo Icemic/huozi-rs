@@ -3,7 +3,7 @@ use nom::{
     bytes::complete::{escaped, is_not, tag},
     character::complete::{char, multispace0, one_of},
     combinator::{cut, eof, map, not, verify},
-    error::{context, VerboseError},
+    error::{context, convert_error, VerboseError},
     multi::{many0, many_till},
     sequence::{preceded, separated_pair, terminated, tuple},
     IResult,
@@ -22,7 +22,7 @@ pub struct Block<'a> {
     value: Option<&'a str>,
 }
 
-type ParseResult<'a, T, E = VerboseError<&'a str>> = IResult<&'a str, T, E>;
+pub type ParseResult<'a, T, E = VerboseError<&'a str>> = IResult<&'a str, T, E>;
 
 fn escaped_str(input: &str) -> ParseResult<&str> {
     let chars = r#""\[]/="#;
@@ -121,15 +121,19 @@ fn elements(input: &str) -> ParseResult<Vec<Element>> {
     context("Element[]", many0(element))(input)
 }
 
-pub fn parse(input: &str) -> ParseResult<Vec<Element>> {
-    let (input, (r, _)) = context("Root", many_till(element, eof))(input)?;
-    Ok((input, r))
+pub fn parse(input: &str) -> Result<Vec<Element>, String> {
+    match context("Root", many_till(element, eof))(input) {
+        Ok((_, (r, _))) => Ok(r),
+        Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => Err(convert_error(input, e)),
+        Err(nom::Err::Incomplete(_)) => {
+            unreachable!("it should not reach this branch, may be a bug.");
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::parser::*;
-    use nom::error::convert_error;
 
     #[test]
     #[ignore]
@@ -139,13 +143,9 @@ mod tests {
         let input = r#"ssf[xx="123"]aaa[/xx]"#;
 
         match parse(input) {
-            Ok(r) => println!("{:#?}", r.1),
-            Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
-                println!("{}", e);
-                println!("{}", convert_error(input, e));
-            }
-            Err(nom::Err::Incomplete(n)) => {
-                println!("{:?}", n);
+            Ok(r) => println!("{:#?}", r),
+            Err(error) => {
+                println!("{}", error);
             }
         }
     }
@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn plain_text() {
         assert_eq!(
-            parse(" some text ").unwrap().1,
+            parse(" some text ").unwrap(),
             vec![Element::Text(" some text ")]
         );
     }
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn plain_text_escaped() {
         assert_eq!(
-            parse(r" some \n \[text ").unwrap().1,
+            parse(r" some \n \[text ").unwrap(),
             vec![Element::Text(r" some \n \[text ")]
         );
     }
@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn single_block_without_value() {
         assert_eq!(
-            parse(r"[foo]text[/foo]").unwrap().1,
+            parse(r"[foo]text[/foo]").unwrap(),
             vec![Element::Block(Block {
                 inner: vec![Element::Text("text")],
                 tag: "foo",
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn single_block_with_value() {
         assert_eq!(
-            parse(r"[foo=bar]text[/foo]").unwrap().1,
+            parse(r"[foo=bar]text[/foo]").unwrap(),
             vec![Element::Block(Block {
                 inner: vec![Element::Text("text")],
                 tag: "foo",
@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn single_block_with_value_quoted() {
         assert_eq!(
-            parse(r#"[foo="bar "]text[/foo]"#).unwrap().1,
+            parse(r#"[foo="bar "]text[/foo]"#).unwrap(),
             vec![Element::Block(Block {
                 inner: vec![Element::Text("text")],
                 tag: "foo",
@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn single_block_multiline() {
         assert_eq!(
-            parse("[foo=bar]\ntext\n  \n[/foo]").unwrap().1,
+            parse("[foo=bar]\ntext\n  \n[/foo]").unwrap(),
             vec![Element::Block(Block {
                 inner: vec![Element::Text("\ntext\n  \n")],
                 tag: "foo",
@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn mixed_text_and_block() {
         assert_eq!(
-            parse(r" some text [foo=bar]text[/foo]").unwrap().1,
+            parse(r" some text [foo=bar]text[/foo]").unwrap(),
             vec![
                 Element::Text(" some text "),
                 Element::Block(Block {
@@ -232,7 +232,7 @@ mod tests {
     #[test]
     fn nested_blocks() {
         assert_eq!(
-            parse(r"[foo=bar][xx=123][/xx][/foo]").unwrap().1,
+            parse(r"[foo=bar][xx=123][/xx][/foo]").unwrap(),
             vec![Element::Block(Block {
                 inner: vec![Element::Block(Block {
                     inner: vec![],
@@ -248,9 +248,7 @@ mod tests {
     #[test]
     fn complex_elements() {
         assert_eq!(
-            parse(r"a\n[foo=bar]q[xx=123][/xx]x[/foo][yy][/yy]")
-                .unwrap()
-                .1,
+            parse(r"a\n[foo=bar]q[xx=123][/xx]x[/foo][yy][/yy]").unwrap(),
             vec![
                 Element::Text("a\\n"),
                 Element::Block(Block {
@@ -278,7 +276,7 @@ mod tests {
     #[test]
     fn tagpair_with_spaces() {
         assert_eq!(
-            parse(r#"[ foo = "bar " ]text[/ foo  ]"#).unwrap().1,
+            parse(r#"[ foo = "bar " ]text[/ foo  ]"#).unwrap(),
             vec![Element::Block(Block {
                 inner: vec![Element::Text("text")],
                 tag: "foo",
@@ -289,6 +287,6 @@ mod tests {
 
     #[test]
     fn empty() {
-        assert_eq!(parse("").unwrap().1, vec![]);
+        assert_eq!(parse("").unwrap(), vec![]);
     }
 }
