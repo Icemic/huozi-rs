@@ -186,11 +186,11 @@ impl State {
 
         // initialize huozi instance
         let t = SystemTime::now();
-        let font_data = std::fs::read("assets/SourceHanSansSC-Regular.otf").unwrap();
-        // let font_data = std::fs::read("assets/Zhudou Sans Regular.ttf").unwrap();
-        // let font_data = std::fs::read("assets/SourceHanSerifSC-Regular.otf").unwrap();
-        // let font_data = std::fs::read("assets/LXGWWenKaiLite-Regular.ttf").unwrap();
-        // let font_data = std::fs::read("assets/SweiGothicCJKsc-Regular.ttf").unwrap();
+        let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
+        // let font_data = std::fs::read("examples/assets/Zhudou Sans Regular.ttf").unwrap();
+        // let font_data = std::fs::read("examples/assets/SourceHanSerifSC-Regular.otf").unwrap();
+        // let font_data = std::fs::read("examples/assets/LXGWWenKaiLite-Regular.ttf").unwrap();
+        // let font_data = std::fs::read("examples/assets/SweiGothicCJKsc-Regular.ttf").unwrap();
 
         info!(
             "font file loaded, {}ms",
