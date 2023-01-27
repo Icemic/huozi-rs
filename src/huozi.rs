@@ -7,8 +7,6 @@ use std::path::Path;
 
 use crate::constant::{BUFFER, CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS, TEXTURE_SIZE};
 use crate::font_extractor::{GlyphExtractor, GlyphExtractorTrait, GlyphMetrics};
-#[cfg(feature = "layout")]
-use crate::layout::{Color, LayoutDirection, LayoutStyle, TextSection, TextStyle, Vertex};
 #[cfg(feature = "sdf")]
 use crate::sdf::TinySDF;
 
@@ -169,52 +167,5 @@ impl Huozi {
         self.image.save(path)?;
 
         Ok(())
-    }
-
-    #[cfg(all(feature = "layout", feature = "parser"))]
-    pub fn layout_parse<'a>(&mut self, text: &'a str) -> (Vec<Vertex>, Vec<u16>) {
-        use crate::layout::{ShadowStyle, StrokeStyle};
-
-        let text_sections = vec![TextSection {
-            text: text.to_string(),
-            style: TextStyle {
-                font_size: 24.,
-                line_height: 1.58,
-                indent: 2.,
-                fill_color: Color::from_html("#fff").unwrap(),
-                stroke: Some(StrokeStyle {
-                    stroke_color: Color::from_html("#0069c2").unwrap(),
-                    stroke_width: 4.,
-                }),
-                shadow: Some(ShadowStyle {
-                    shadow_color: Color::from_html("#999").unwrap(),
-                    shadow_offset_x: 16.,
-                    shadow_offset_y: 16.,
-                    shadow_blur: 8.,
-                    shadow_width: 2.,
-                }),
-            },
-        }];
-
-        self.layout(
-            &LayoutStyle {
-                direction: LayoutDirection::Horizontal,
-                box_width: 1200.,
-                box_height: 600.,
-                glyph_grid_size: 24.,
-                viewport_width: 1280.,
-                viewport_height: 720.,
-            },
-            &text_sections,
-        )
-    }
-
-    #[cfg(feature = "layout")]
-    pub fn layout<'a, T: AsRef<Vec<TextSection>>>(
-        &mut self,
-        layout_style: &LayoutStyle,
-        text_sections: T,
-    ) -> (Vec<Vertex>, Vec<u16>) {
-        self.calculate_layout(layout_style, text_sections.as_ref())
     }
 }

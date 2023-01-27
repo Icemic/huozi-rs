@@ -4,18 +4,162 @@ mod text_section;
 mod text_style;
 mod vertex;
 
+use std::{collections::HashMap, str::FromStr};
+
+use anyhow::Result;
 pub use color::*;
 pub use layout_style::*;
+use log::warn;
 pub use text_section::*;
 pub use text_style::*;
 pub use vertex::*;
 
 use crate::{
     constant::{ASCENT, FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE},
+    parser::{parse, Element},
     Huozi,
 };
 
 impl Huozi {
+    pub(self) fn parse_text_recursive(
+        &self,
+        elements: Vec<Element>,
+        current_style: &TextStyle,
+        style_prefabs: Option<&HashMap<&str, TextStyle>>,
+    ) -> Result<Vec<TextSection>, String> {
+        let mut sections = vec![];
+        for element in elements {
+            match element {
+                Element::Text(text) => {
+                    sections.push(TextSection {
+                        text: text.to_string(),
+                        style: current_style.clone(),
+                    });
+                }
+                Element::Block(block) => {
+                    let mut style = current_style.clone();
+                    if block.value.is_some() {
+                        let value = block.value.unwrap();
+                        match block.tag {
+                            "size" => {
+                                style.font_size = parse_str(value, style.font_size);
+                            }
+                            "color" | "fillColor" => {
+                                style.fill_color = parse_str(value, style.fill_color);
+                            }
+                            "lineHeight" => {
+                                style.line_height = parse_str(value, style.line_height);
+                            }
+                            "indent" => {
+                                style.indent = parse_str(value, style.indent);
+                            }
+                            "stroke" => {
+                                style.stroke = parse_str_optional(value, style.stroke);
+                            }
+                            "strokeColor" => {
+                                if style.stroke.is_none() {
+                                    style.stroke = Some(StrokeStyle::default());
+                                }
+                                let mut stroke = style.stroke.as_mut().unwrap();
+                                stroke.stroke_color = parse_str(value, stroke.stroke_color.clone());
+                            }
+                            "strokeWidth" => {
+                                if style.stroke.is_none() {
+                                    style.stroke = Some(StrokeStyle::default());
+                                }
+                                let mut stroke = style.stroke.as_mut().unwrap();
+                                stroke.stroke_width = parse_str(value, stroke.stroke_width);
+                            }
+                            "shadow" => {
+                                style.shadow = parse_str_optional(value, style.shadow);
+                            }
+                            "shadowOffsetX" => {
+                                if style.shadow.is_none() {
+                                    style.shadow = Some(ShadowStyle::default());
+                                }
+                                let mut shadow = style.shadow.as_mut().unwrap();
+                                shadow.shadow_offset_x = parse_str(value, shadow.shadow_offset_x);
+                            }
+                            "shadowOffsetY" => {
+                                if style.shadow.is_none() {
+                                    style.shadow = Some(ShadowStyle::default());
+                                }
+                                let mut shadow = style.shadow.as_mut().unwrap();
+                                shadow.shadow_offset_y = parse_str(value, shadow.shadow_offset_y);
+                            }
+                            "shadowWidth" => {
+                                if style.shadow.is_none() {
+                                    style.shadow = Some(ShadowStyle::default());
+                                }
+                                let mut shadow = style.shadow.as_mut().unwrap();
+                                shadow.shadow_width = parse_str(value, shadow.shadow_width);
+                            }
+                            "shadowBlur" => {
+                                if style.shadow.is_none() {
+                                    style.shadow = Some(ShadowStyle::default());
+                                }
+                                let mut shadow = style.shadow.as_mut().unwrap();
+                                shadow.shadow_blur = parse_str(value, shadow.shadow_blur);
+                            }
+                            "shadowColor" => {
+                                if style.shadow.is_none() {
+                                    style.shadow = Some(ShadowStyle::default());
+                                }
+                                let mut shadow = style.shadow.as_mut().unwrap();
+                                shadow.shadow_color = parse_str(value, shadow.shadow_color.clone());
+                            }
+                            _ => {
+                                warn!("unrecognized tag `{}`, ignored.", block.tag);
+                            }
+                        };
+                    } else {
+                        if let Some(style_prefabs) = style_prefabs {
+                            if let Some(style_prefab) = style_prefabs.get(block.tag) {
+                                style = style_prefab.clone();
+                            }
+                        } else {
+                            warn!("unrecognized tag `{}`, ignored.", block.tag)
+                        }
+                    }
+                    let inner_sections =
+                        self.parse_text_recursive(block.inner, &style, style_prefabs)?;
+                    sections.extend(inner_sections);
+                }
+            }
+        }
+
+        Ok(sections)
+    }
+    pub fn parse_text(
+        &self,
+        text: &str,
+        initial_text_style: &TextStyle,
+        style_prefabs: Option<&HashMap<&str, TextStyle>>,
+    ) -> Result<Vec<TextSection>, String> {
+        let elements = parse(text)?;
+        self.parse_text_recursive(elements, initial_text_style, style_prefabs)
+    }
+    #[cfg(feature = "parser")]
+    pub fn layout_parse(
+        &mut self,
+        text: &str,
+        layout_style: &LayoutStyle,
+        initial_text_style: &TextStyle,
+        style_prefabs: Option<&HashMap<&str, TextStyle>>,
+    ) -> Result<(Vec<Vertex>, Vec<u16>), String> {
+        let text_sections = self.parse_text(text, initial_text_style, style_prefabs)?;
+
+        Ok(self.layout(&text_sections, layout_style))
+    }
+
+    pub fn layout<'a, T: AsRef<Vec<TextSection>>>(
+        &mut self,
+        text_sections: T,
+        layout_style: &LayoutStyle,
+    ) -> (Vec<Vertex>, Vec<u16>) {
+        self.calculate_layout(layout_style, text_sections.as_ref())
+    }
+
     pub(crate) fn calculate_layout(
         &mut self,
         layout_style: &LayoutStyle,
@@ -339,4 +483,28 @@ impl Huozi {
 
         (vertices_shadow, indices_shadow)
     }
+}
+
+fn parse_str<T: FromStr>(str: &str, fallback: T) -> T {
+    str.parse::<T>().unwrap_or_else(|_| {
+        warn!(
+            "cannot parse string value `{}` to type `{}`.",
+            str,
+            std::any::type_name::<T>()
+        );
+        fallback
+    })
+}
+
+fn parse_str_optional<T: FromStr>(str: &str, fallback: Option<T>) -> Option<T> {
+    str.parse::<T>()
+        .and_then(|v| Ok(Some(v)))
+        .unwrap_or_else(|_| {
+            warn!(
+                "cannot parse string value `{}` to type `{}`.",
+                str,
+                std::any::type_name::<T>()
+            );
+            fallback
+        })
 }

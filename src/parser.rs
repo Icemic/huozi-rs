@@ -17,9 +17,9 @@ pub enum Element<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block<'a> {
-    inner: Vec<Element<'a>>,
-    tag: &'a str,
-    value: Option<&'a str>,
+    pub inner: Vec<Element<'a>>,
+    pub tag: &'a str,
+    pub value: Option<&'a str>,
 }
 
 pub type ParseResult<'a, T, E = VerboseError<&'a str>> = IResult<&'a str, T, E>;
@@ -155,6 +155,14 @@ mod tests {
         assert_eq!(
             parse(" some text ").unwrap(),
             vec![Element::Text(" some text ")]
+        );
+    }
+
+    #[test]
+    fn plain_text_multiple_line() {
+        assert_eq!(
+            parse(" some \n  text ").unwrap(),
+            vec![Element::Text(" some \n  text ")]
         );
     }
 

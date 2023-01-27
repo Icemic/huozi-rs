@@ -1,10 +1,10 @@
 use huozi::{
     charsets::{ASCII, CHS, CJK_SYMBOL},
     constant::TEXTURE_SIZE,
-    layout::Vertex,
+    layout::{LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle, Vertex},
     Huozi,
 };
-use log::info;
+use log::{error, info};
 use std::{
     iter,
     time::{SystemTime, UNIX_EPOCH},
@@ -262,7 +262,7 @@ impl State {
             // 全  球 。";
             let sample_text = "Innovation in China 中国智造，惠及全球。
 Innovation in China ——⸺全球。
-This is a sample text. gM 123.!\"\"?;:<>
+This is a sample text. gM 123.!\\\"\\\"?;:<>
 人人生而自由，在尊严和权利上一律平等。他们赋有理性和良心，并应以兄弟关系的精神相对待。
 人人有资格享有本宣言所载的一切权利和自由，不分种族、肤色、性别、语言、宗教、政治或其他见解、国籍或社会出身、财产、出生或其他身分等任何区别。并且不得因一人所属的国家或领土的政治的、行政的或者国际的地位之不同而有所区别，无论该领土是独立领土、托管领土、非自治领土或者处于其他任何主权受限制的情况之下。";
 
@@ -270,35 +270,58 @@ This is a sample text. gM 123.!\"\"?;:<>
 
             let t = SystemTime::now();
 
-            let (vertices, indices) = self.huozi.layout_parse(sample_text);
+            let layout_style = LayoutStyle {
+                direction: LayoutDirection::Horizontal,
+                box_width: 1200.,
+                box_height: 600.,
+                glyph_grid_size: 24.,
+                viewport_width: 1280.,
+                viewport_height: 720.,
+            };
 
-            info!(
-                "text layouting finished, {}ms",
-                SystemTime::now().duration_since(t).unwrap().as_millis()
-            );
+            let style = TextStyle {
+                stroke: Some(StrokeStyle::default()),
+                shadow: Some(ShadowStyle::default()),
+                ..TextStyle::default()
+            };
 
-            let vertex_buffer = self
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Vertex Buffer"),
-                    contents: bytemuck::cast_slice(&vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                });
-            let index_buffer = self
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Index Buffer"),
-                    contents: bytemuck::cast_slice(&indices),
-                    usage: wgpu::BufferUsages::INDEX,
-                });
-            let num_indices = indices.len() as u32;
+            match self
+                .huozi
+                .layout_parse(sample_text, &layout_style, &style, None)
+            {
+                Ok((vertices, indices)) => {
+                    info!(
+                        "text layouting finished, {}ms",
+                        SystemTime::now().duration_since(t).unwrap().as_millis()
+                    );
 
-            self.vertex_buffer = Some(vertex_buffer);
-            self.index_buffer = Some(index_buffer);
-            self.num_indices = Some(num_indices);
+                    let vertex_buffer =
+                        self.device
+                            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                                label: Some("Vertex Buffer"),
+                                contents: bytemuck::cast_slice(&vertices),
+                                usage: wgpu::BufferUsages::VERTEX,
+                            });
+                    let index_buffer =
+                        self.device
+                            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                                label: Some("Index Buffer"),
+                                contents: bytemuck::cast_slice(&indices),
+                                usage: wgpu::BufferUsages::INDEX,
+                            });
+                    let num_indices = indices.len() as u32;
 
-            self.texture
-                .write_bitmap(&self.queue, self.huozi.texture_image());
+                    self.vertex_buffer = Some(vertex_buffer);
+                    self.index_buffer = Some(index_buffer);
+                    self.num_indices = Some(num_indices);
+
+                    self.texture
+                        .write_bitmap(&self.queue, self.huozi.texture_image());
+                }
+                Err(err_msg) => {
+                    error!("{}", err_msg);
+                }
+            }
         }
     }
 
