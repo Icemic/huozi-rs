@@ -25,7 +25,7 @@ impl Huozi {
         &self,
         elements: Vec<Element>,
         current_style: &TextStyle,
-        style_prefabs: Option<&HashMap<&str, TextStyle>>,
+        style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<Vec<TextSection>, String> {
         let mut sections = vec![];
         for element in elements {
@@ -39,8 +39,8 @@ impl Huozi {
                 Element::Block(block) => {
                     let mut style = current_style.clone();
                     if block.value.is_some() {
-                        let value = block.value.unwrap();
-                        match block.tag {
+                        let value = &block.value.unwrap();
+                        match block.tag.as_str() {
                             "size" => {
                                 style.font_size = parse_str(value, style.font_size);
                             }
@@ -114,7 +114,7 @@ impl Huozi {
                         };
                     } else {
                         if let Some(style_prefabs) = style_prefabs {
-                            if let Some(style_prefab) = style_prefabs.get(block.tag) {
+                            if let Some(style_prefab) = style_prefabs.get(&block.tag) {
                                 style = style_prefab.clone();
                             }
                         } else {
@@ -134,7 +134,7 @@ impl Huozi {
         &self,
         text: &str,
         initial_text_style: &TextStyle,
-        style_prefabs: Option<&HashMap<&str, TextStyle>>,
+        style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<Vec<TextSection>, String> {
         let elements = parse(text)?;
         self.parse_text_recursive(elements, initial_text_style, style_prefabs)
@@ -145,7 +145,7 @@ impl Huozi {
         text: &str,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
-        style_prefabs: Option<&HashMap<&str, TextStyle>>,
+        style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<Vertex>, Vec<u16>), String> {
         let text_sections = self.parse_text(text, initial_text_style, style_prefabs)?;
 
