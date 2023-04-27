@@ -1,3 +1,4 @@
+use csscolorparser::Color;
 use huozi::{
     charsets::{ASCII, CHS, CJK_SYMBOL},
     constant::TEXTURE_SIZE,
@@ -296,6 +297,7 @@ This is a sample text. gM 123.!\\\"\\\"?;:<>
             };
 
             let style = TextStyle {
+                fill_color: Color::new(0.0, 0.0, 0.0, 1.0),
                 stroke: Some(StrokeStyle::default()),
                 shadow: Some(ShadowStyle::default()),
                 ..TextStyle::default()
@@ -365,9 +367,9 @@ This is a sample text. gM 123.!\\\"\\\"?;:<>
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 1.0,
-                            g: 1.0,
-                            b: 1.0,
+                            r: 0.5,
+                            g: 0.5,
+                            b: 0.5,
                             a: 1.0,
                         }),
                         store: true,

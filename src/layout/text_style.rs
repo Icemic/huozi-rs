@@ -16,7 +16,7 @@ pub struct TextStyle {
 impl Default for TextStyle {
     fn default() -> Self {
         Self {
-            font_size: 28.,
+            font_size: 32.,
             fill_color: Color::new(1., 1., 1., 1.),
             line_height: 1.5,
             indent: 0.,
@@ -35,7 +35,7 @@ pub struct StrokeStyle {
 impl Default for StrokeStyle {
     fn default() -> Self {
         Self {
-            stroke_color: Color::new(0.2, 0.2, 0.2, 1.),
+            stroke_color: Color::new(1.0, 1.0, 1.0, 1.),
             stroke_width: 3.,
         }
     }
