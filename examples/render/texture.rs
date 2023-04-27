@@ -43,6 +43,7 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format: format.unwrap_or(wgpu::TextureFormat::Rgba8UnormSrgb),
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &vec![],
         });
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
