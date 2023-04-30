@@ -1,6 +1,9 @@
 [package]
 description = "A simple typography engine for CJK languages, especially designed for game rich-text."
 edition = "2021"
+exclude = [
+  "examples",
+]
 license = "Apache-2.0"
 name = "huozi"
 repository = "https://github.com/Icemic/huozi-rs"
