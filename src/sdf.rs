@@ -163,7 +163,7 @@ pub fn edt1d(
     f[0] = grid[offset];
 
     let mut k = 0_i32;
-    let mut s = 0.;
+    let mut s;
     for q in 1..length {
         f[q] = grid[offset + q * stride];
 

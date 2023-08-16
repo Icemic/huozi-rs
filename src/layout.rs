@@ -60,14 +60,14 @@ impl Huozi {
                                 if style.stroke.is_none() {
                                     style.stroke = Some(StrokeStyle::default());
                                 }
-                                let mut stroke = style.stroke.as_mut().unwrap();
+                                let stroke = style.stroke.as_mut().unwrap();
                                 stroke.stroke_color = parse_str(value, stroke.stroke_color.clone());
                             }
                             "strokeWidth" => {
                                 if style.stroke.is_none() {
                                     style.stroke = Some(StrokeStyle::default());
                                 }
-                                let mut stroke = style.stroke.as_mut().unwrap();
+                                let stroke = style.stroke.as_mut().unwrap();
                                 stroke.stroke_width = parse_str(value, stroke.stroke_width);
                             }
                             "shadow" => {
@@ -77,35 +77,35 @@ impl Huozi {
                                 if style.shadow.is_none() {
                                     style.shadow = Some(ShadowStyle::default());
                                 }
-                                let mut shadow = style.shadow.as_mut().unwrap();
+                                let shadow = style.shadow.as_mut().unwrap();
                                 shadow.shadow_offset_x = parse_str(value, shadow.shadow_offset_x);
                             }
                             "shadowOffsetY" => {
                                 if style.shadow.is_none() {
                                     style.shadow = Some(ShadowStyle::default());
                                 }
-                                let mut shadow = style.shadow.as_mut().unwrap();
+                                let shadow = style.shadow.as_mut().unwrap();
                                 shadow.shadow_offset_y = parse_str(value, shadow.shadow_offset_y);
                             }
                             "shadowWidth" => {
                                 if style.shadow.is_none() {
                                     style.shadow = Some(ShadowStyle::default());
                                 }
-                                let mut shadow = style.shadow.as_mut().unwrap();
+                                let shadow = style.shadow.as_mut().unwrap();
                                 shadow.shadow_width = parse_str(value, shadow.shadow_width);
                             }
                             "shadowBlur" => {
                                 if style.shadow.is_none() {
                                     style.shadow = Some(ShadowStyle::default());
                                 }
-                                let mut shadow = style.shadow.as_mut().unwrap();
+                                let shadow = style.shadow.as_mut().unwrap();
                                 shadow.shadow_blur = parse_str(value, shadow.shadow_blur);
                             }
                             "shadowColor" => {
                                 if style.shadow.is_none() {
                                     style.shadow = Some(ShadowStyle::default());
                                 }
-                                let mut shadow = style.shadow.as_mut().unwrap();
+                                let shadow = style.shadow.as_mut().unwrap();
                                 shadow.shadow_color = parse_str(value, shadow.shadow_color.clone());
                             }
                             _ => {
