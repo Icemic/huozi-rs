@@ -87,7 +87,7 @@ impl State {
         let format = *caps
             .formats
             .iter()
-            .find(|f| f.describe().srgb)
+            .find(|f| f.is_srgb())
             .expect("Cannot find a proper surface format.");
 
         let config = wgpu::SurfaceConfiguration {

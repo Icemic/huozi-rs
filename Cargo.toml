@@ -28,14 +28,14 @@ env_logger = "0.10"
 fontdue = {version = "0.7.2", optional = true}
 image = {version = "0.24.6", default-features = false, features = ["png"]}
 log = "0.4"
-lru = "0.10.0"
+lru = "0.11.0"
 nom = {version = "7.1", optional = true}
-wgpu = {version = "0.15", optional = true}
+wgpu = {version = "0.17", optional = true}
 
 [dev-dependencies]
 cfg-if = "1"
 pollster = "0.3"
-wgpu = "0.15"
+wgpu = "0.17"
 winit = "0.28"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
@@ -48,4 +48,4 @@ web-sys = {version = "0.3", features = [
   "Window",
   "Element",
 ]}
-wgpu = {version = "0.15", features = ["webgl"]}
+wgpu = {version = "0.17", features = ["webgl"]}
