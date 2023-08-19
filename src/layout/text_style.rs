@@ -1,8 +1,11 @@
 use std::str::FromStr;
 
+use serde::{Deserialize, Serialize};
+
 use super::Color;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct TextStyle {
     // pub font_face: Font
     pub font_size: f64,
@@ -17,7 +20,7 @@ impl Default for TextStyle {
     fn default() -> Self {
         Self {
             font_size: 32.,
-            fill_color: Color::new(1., 1., 1., 1.),
+            fill_color: Color::new(0., 0., 0., 1.),
             line_height: 1.5,
             indent: 0.,
             stroke: None,
@@ -26,7 +29,8 @@ impl Default for TextStyle {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct StrokeStyle {
     pub stroke_color: Color,
     pub stroke_width: f32,
@@ -44,12 +48,13 @@ impl Default for StrokeStyle {
 impl FromStr for StrokeStyle {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(_: &str) -> Result<Self, Self::Err> {
         unimplemented!()
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct ShadowStyle {
     pub shadow_color: Color,
     pub shadow_offset_x: f32,
@@ -73,7 +78,7 @@ impl Default for ShadowStyle {
 impl FromStr for ShadowStyle {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(_: &str) -> Result<Self, Self::Err> {
         unimplemented!()
     }
 }

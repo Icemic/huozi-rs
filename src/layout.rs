@@ -143,37 +143,52 @@ impl Huozi {
     pub fn layout_parse(
         &mut self,
         text: &str,
+        viewport_width: f64,
+        viewport_height: f64,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<(Vec<Vertex>, Vec<u16>), String> {
+    ) -> Result<(Vec<Vertex>, Vec<u16>, u32, u32), String> {
         let text_sections = self.parse_text(text, initial_text_style, style_prefabs)?;
 
-        Ok(self.layout(&text_sections, layout_style))
+        Ok(self.layout(
+            &text_sections,
+            viewport_width,
+            viewport_height,
+            layout_style,
+        ))
     }
 
     pub fn layout<'a, T: AsRef<Vec<TextSection>>>(
         &mut self,
         text_sections: T,
+        viewport_width: f64,
+        viewport_height: f64,
         layout_style: &LayoutStyle,
-    ) -> (Vec<Vertex>, Vec<u16>) {
-        self.calculate_layout(layout_style, text_sections.as_ref())
+    ) -> (Vec<Vertex>, Vec<u16>, u32, u32) {
+        self.calculate_layout(
+            viewport_width,
+            viewport_height,
+            layout_style,
+            text_sections.as_ref(),
+        )
     }
 
     pub(crate) fn calculate_layout(
         &mut self,
+        viewport_width: f64,
+        viewport_height: f64,
         layout_style: &LayoutStyle,
         text_sections: &[TextSection],
-    ) -> (Vec<Vertex>, Vec<u16>) {
+    ) -> (Vec<Vertex>, Vec<u16>, u32, u32) {
+        let mut total_width: f64 = 0.;
+        let mut total_height: f64 = 0.;
+
         let mut current_x = text_sections
             .first()
             .and_then(|f| Some(f.style.indent * FONT_SIZE))
             .unwrap_or(0.);
         let mut current_y = 0.;
-
-        // assume a standard size of screen
-        let viewport_width = layout_style.viewport_width;
-        let viewport_height = layout_style.viewport_height;
 
         let max_width = layout_style.box_width;
         let max_height = layout_style.box_height;
@@ -210,11 +225,19 @@ impl Huozi {
             } = style.shadow.clone().unwrap_or_default();
             let shadow_color = shadow_color.to_linear_rgba_f32();
 
+            // total size of this section in FONT_SIZE, so it must be scaled to font size later.
+            let mut total_width_of_section: f64 = 0.;
+            let mut total_height_of_section: f64 = 0.;
+
             for ch in text.chars() {
                 let glyph = self.get_glyph(ch);
                 let metrics = &glyph.metrics;
 
+                // handles line break
                 if glyph.ch == '\n' || glyph.ch == '\r' {
+                    // update actual width
+                    total_width_of_section = total_width_of_section.max(current_x);
+                    // reset x
                     current_x = style.indent * FONT_SIZE;
                     // use original font size (when grid size is 64), it will be scaled in offset_y later.
                     current_y += FONT_SIZE * style.line_height;
@@ -224,6 +247,9 @@ impl Huozi {
                         break 'out;
                     }
 
+                    // update actual height to current_y with additional a line
+                    total_height_of_section = current_y + FONT_SIZE * style.line_height;
+
                     continue;
                 }
 
@@ -231,6 +257,9 @@ impl Huozi {
 
                 // check text overflow
                 if (current_x + h_advance) / FONT_SIZE * style.font_size >= max_width {
+                    // update actual width to max width
+                    total_width_of_section = max_width * FONT_SIZE / style.font_size;
+                    // reset x
                     current_x = 0.;
                     // use original font size (when grid size is 64), it will be scaled in offset_y later.
                     current_y += FONT_SIZE * style.line_height;
@@ -239,6 +268,9 @@ impl Huozi {
                     if current_y / FONT_SIZE * style.font_size >= max_height {
                         break 'out;
                     }
+
+                    // update actual height to current_y with additional a line
+                    total_height_of_section = current_y + FONT_SIZE * style.line_height;
                 }
 
                 let x_scale = metrics.x_scale.unwrap_or(1.) as f64;
@@ -464,6 +496,10 @@ impl Huozi {
 
                 current_x += h_advance;
             }
+
+            // update total size
+            total_width = total_width.max(total_width_of_section / FONT_SIZE * style.font_size);
+            total_height += total_height_of_section / FONT_SIZE * style.font_size;
         }
 
         let indices_offset_fill = (vertices_shadow.len() + vertices_stroke.len()) as u16;
@@ -481,7 +517,12 @@ impl Huozi {
         indices_shadow.append(&mut indices_stroke);
         indices_shadow.append(&mut indices_fill);
 
-        (vertices_shadow, indices_shadow)
+        (
+            vertices_shadow,
+            indices_shadow,
+            total_width as u32,
+            total_height as u32,
+        )
     }
 }
 

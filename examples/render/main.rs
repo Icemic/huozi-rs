@@ -257,7 +257,7 @@ impl State {
         false
     }
 
-    fn update(&mut self, time: u128) {
+    fn update(&mut self, _: u128) {
         // self.uniforms.color[0] = (time % 2000) as f32 / 2000. * 1.0;
         // self.queue.write_buffer(
         //     &self.uniform_buffer,
@@ -287,13 +287,14 @@ This is a sample text. gM 123.!\\\"\\\"?;:<>
 
             let t = SystemTime::now();
 
+            let viewport_width = 1280.;
+            let viewport_height = 720.;
+
             let layout_style = LayoutStyle {
                 direction: LayoutDirection::Horizontal,
                 box_width: 1200.,
                 box_height: 600.,
                 glyph_grid_size: 24.,
-                viewport_width: 1280.,
-                viewport_height: 720.,
             };
 
             let style = TextStyle {
@@ -303,11 +304,15 @@ This is a sample text. gM 123.!\\\"\\\"?;:<>
                 ..TextStyle::default()
             };
 
-            match self
-                .huozi
-                .layout_parse(sample_text, &layout_style, &style, None)
-            {
-                Ok((vertices, indices)) => {
+            match self.huozi.layout_parse(
+                sample_text,
+                viewport_width,
+                viewport_height,
+                &layout_style,
+                &style,
+                None,
+            ) {
+                Ok((vertices, indices, _, _)) => {
                     info!(
                         "text layouting finished, {}ms",
                         SystemTime::now().duration_since(t).unwrap().as_millis()
