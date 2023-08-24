@@ -15,7 +15,7 @@ pub use text_style::*;
 pub use vertex::*;
 
 use crate::{
-    constant::{ASCENT, FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE},
+    constant::{ASCENT, FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE, VIEWPORT_HEIGHT, VIEWPORT_WIDTH},
     parser::{parse, Element},
     Huozi,
 };
@@ -143,41 +143,24 @@ impl Huozi {
     pub fn layout_parse(
         &mut self,
         text: &str,
-        viewport_width: f64,
-        viewport_height: f64,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<Vertex>, Vec<u16>, u32, u32), String> {
         let text_sections = self.parse_text(text, initial_text_style, style_prefabs)?;
-
-        Ok(self.layout(
-            &text_sections,
-            viewport_width,
-            viewport_height,
-            layout_style,
-        ))
+        Ok(self.layout(&text_sections, layout_style))
     }
 
     pub fn layout<'a, T: AsRef<Vec<TextSection>>>(
         &mut self,
         text_sections: T,
-        viewport_width: f64,
-        viewport_height: f64,
         layout_style: &LayoutStyle,
     ) -> (Vec<Vertex>, Vec<u16>, u32, u32) {
-        self.calculate_layout(
-            viewport_width,
-            viewport_height,
-            layout_style,
-            text_sections.as_ref(),
-        )
+        self.calculate_layout(layout_style, text_sections.as_ref())
     }
 
     pub(crate) fn calculate_layout(
         &mut self,
-        viewport_width: f64,
-        viewport_height: f64,
         layout_style: &LayoutStyle,
         text_sections: &[TextSection],
     ) -> (Vec<Vertex>, Vec<u16>, u32, u32) {
@@ -317,36 +300,36 @@ impl Huozi {
 
                 // calculate four vertices without multiplying with transform matrix
 
-                let tx = offset_x / viewport_width * 2.;
-                let ty = 1. - offset_y / viewport_height * 2.;
+                let tx = offset_x / VIEWPORT_WIDTH;
+                let ty = offset_y / VIEWPORT_HEIGHT;
 
                 let w1 = 0.;
-                let w0 = actual_grid_size_w / viewport_width * 2.;
-                let h1 = -1. * actual_grid_size_h / viewport_height * 2.;
-                let h0 = 0.;
+                let w0 = actual_grid_size_w / VIEWPORT_WIDTH;
+                let h1 = 0.;
+                let h0 = actual_grid_size_h / VIEWPORT_HEIGHT;
 
                 // left top
-                let p0x = w1 + tx - 1.;
+                let p0x = w1 + tx;
                 let p0y = h1 + ty;
 
                 // left bottom
-                let p1x = w0 + tx - 1.;
-                let p1y = h1 + ty;
+                let p1x = w1 + tx;
+                let p1y = h0 + ty;
 
                 // right top
-                let p2x = w0 + tx - 1.;
+                let p2x = w0 + tx;
                 let p2y = h0 + ty;
 
                 // right bottom
-                let p3x = w1 + tx - 1.;
-                let p3y = h0 + ty;
+                let p3x = w0 + tx;
+                let p3y = h1 + ty;
 
                 // insert vertices for fill
                 let vertex_index_offset = vertices_fill.len() as u16;
 
                 vertices_fill.push(Vertex {
                     position: [p0x as f32, p0y as f32, 0.0],
-                    tex_coords: [glyph.u_min, glyph.v_max],
+                    tex_coords: [glyph.u_min, glyph.v_min],
                     page: glyph.page,
                     buffer,
                     gamma,
@@ -354,7 +337,7 @@ impl Huozi {
                 });
                 vertices_fill.push(Vertex {
                     position: [p1x as f32, p1y as f32, 0.0],
-                    tex_coords: [glyph.u_max, glyph.v_max],
+                    tex_coords: [glyph.u_min, glyph.v_max],
                     page: glyph.page,
                     buffer,
                     gamma,
@@ -362,7 +345,7 @@ impl Huozi {
                 });
                 vertices_fill.push(Vertex {
                     position: [p2x as f32, p2y as f32, 0.0],
-                    tex_coords: [glyph.u_max, glyph.v_min],
+                    tex_coords: [glyph.u_max, glyph.v_max],
                     page: glyph.page,
                     buffer,
                     gamma,
@@ -370,7 +353,7 @@ impl Huozi {
                 });
                 vertices_fill.push(Vertex {
                     position: [p3x as f32, p3y as f32, 0.0],
-                    tex_coords: [glyph.u_min, glyph.v_min],
+                    tex_coords: [glyph.u_max, glyph.v_min],
                     page: glyph.page,
                     buffer,
                     gamma,
@@ -397,7 +380,7 @@ impl Huozi {
                             / (style.font_size / FONT_SIZE) as f32;
                     vertices_stroke.push(Vertex {
                         position: [p0x as f32, p0y as f32, 0.0],
-                        tex_coords: [glyph.u_min, glyph.v_max],
+                        tex_coords: [glyph.u_min, glyph.v_min],
                         page: glyph.page,
                         buffer,
                         gamma,
@@ -405,7 +388,7 @@ impl Huozi {
                     });
                     vertices_stroke.push(Vertex {
                         position: [p1x as f32, p1y as f32, 0.0],
-                        tex_coords: [glyph.u_max, glyph.v_max],
+                        tex_coords: [glyph.u_min, glyph.v_max],
                         page: glyph.page,
                         buffer,
                         gamma,
@@ -413,7 +396,7 @@ impl Huozi {
                     });
                     vertices_stroke.push(Vertex {
                         position: [p2x as f32, p2y as f32, 0.0],
-                        tex_coords: [glyph.u_max, glyph.v_min],
+                        tex_coords: [glyph.u_max, glyph.v_max],
                         page: glyph.page,
                         buffer,
                         gamma,
@@ -421,7 +404,7 @@ impl Huozi {
                     });
                     vertices_stroke.push(Vertex {
                         position: [p3x as f32, p3y as f32, 0.0],
-                        tex_coords: [glyph.u_min, glyph.v_min],
+                        tex_coords: [glyph.u_max, glyph.v_min],
                         page: glyph.page,
                         buffer,
                         gamma,
@@ -449,11 +432,11 @@ impl Huozi {
                             / (style.font_size / FONT_SIZE) as f32;
                     let gamma =
                         GAMMA_COEFFICIENT * shadow_blur / 2. / (style.font_size / FONT_SIZE) as f32;
-                    let offset_x = shadow_offset_x / viewport_width as f32 * 2.;
-                    let offset_y = -shadow_offset_y / viewport_height as f32 * 2.;
+                    let offset_x = shadow_offset_x / VIEWPORT_WIDTH as f32 * 2.;
+                    let offset_y = shadow_offset_y / VIEWPORT_HEIGHT as f32 * 2.;
                     vertices_shadow.push(Vertex {
                         position: [p0x as f32 + offset_x, p0y as f32 + offset_y, 0.0],
-                        tex_coords: [glyph.u_min, glyph.v_max],
+                        tex_coords: [glyph.u_min, glyph.v_min],
                         page: glyph.page,
                         buffer,
                         gamma,
@@ -461,7 +444,7 @@ impl Huozi {
                     });
                     vertices_shadow.push(Vertex {
                         position: [p1x as f32 + offset_x, p1y as f32 + offset_y, 0.0],
-                        tex_coords: [glyph.u_max, glyph.v_max],
+                        tex_coords: [glyph.u_min, glyph.v_max],
                         page: glyph.page,
                         buffer,
                         gamma,
@@ -469,7 +452,7 @@ impl Huozi {
                     });
                     vertices_shadow.push(Vertex {
                         position: [p2x as f32 + offset_x, p2y as f32 + offset_y, 0.0],
-                        tex_coords: [glyph.u_max, glyph.v_min],
+                        tex_coords: [glyph.u_max, glyph.v_max],
                         page: glyph.page,
                         buffer,
                         gamma,
@@ -477,7 +460,7 @@ impl Huozi {
                     });
                     vertices_shadow.push(Vertex {
                         position: [p3x as f32 + offset_x, p3y as f32 + offset_y, 0.0],
-                        tex_coords: [glyph.u_min, glyph.v_min],
+                        tex_coords: [glyph.u_max, glyph.v_min],
                         page: glyph.page,
                         buffer,
                         gamma,

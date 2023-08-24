@@ -21,6 +21,9 @@ use winit::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+use crate::mvp::MVPUniform;
+
+mod mvp;
 mod texture;
 
 struct State {
@@ -30,6 +33,9 @@ struct State {
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: wgpu::RenderPipeline,
+    #[allow(dead_code)]
+    mvp_buffer: wgpu::Buffer,
+    mvp_bind_group: wgpu::BindGroup,
     vertex_buffer: Option<wgpu::Buffer>,
     index_buffer: Option<wgpu::Buffer>,
     num_indices: Option<u32>,
@@ -147,17 +153,55 @@ impl State {
             label: Some("texture_bind_group"),
         });
 
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+        let logical_size = size.to_logical(window.scale_factor());
+        let mvp_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::bytes_of(&MVPUniform {
+                width: logical_size.width,
+                height: logical_size.height,
+            }),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
+
+        let mvp_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Uniform Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(
+                            std::mem::size_of::<MVPUniform>() as u64
+                        ),
+                    },
+                    count: None,
+                }],
+            });
+
+        let mvp_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Uniform Bind Group"),
+            layout: &mvp_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: mvp_buffer.as_entire_binding(),
+            }],
+        });
+
+        println!("logical_size: {:?}", logical_size);
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout],
+                bind_group_layouts: &[&mvp_bind_group_layout, &texture_bind_group_layout],
                 push_constant_ranges: &[],
             });
+
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+        });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
@@ -233,6 +277,8 @@ impl State {
             config,
             size,
             render_pipeline,
+            mvp_buffer,
+            mvp_bind_group,
             vertex_buffer: None,
             index_buffer: None,
             num_indices: None,
@@ -287,9 +333,6 @@ This is a sample text. gM 123.!\\\"\\\"?;:<>
 
             let t = SystemTime::now();
 
-            let viewport_width = 1280.;
-            let viewport_height = 720.;
-
             let layout_style = LayoutStyle {
                 direction: LayoutDirection::Horizontal,
                 box_width: 1200.,
@@ -304,14 +347,10 @@ This is a sample text. gM 123.!\\\"\\\"?;:<>
                 ..TextStyle::default()
             };
 
-            match self.huozi.layout_parse(
-                sample_text,
-                viewport_width,
-                viewport_height,
-                &layout_style,
-                &style,
-                None,
-            ) {
+            match self
+                .huozi
+                .layout_parse(sample_text, &layout_style, &style, None)
+            {
                 Ok((vertices, indices, _, _)) => {
                     info!(
                         "text layouting finished, {}ms",
@@ -388,7 +427,8 @@ This is a sample text. gM 123.!\\\"\\\"?;:<>
             let num_indices = self.num_indices.unwrap();
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
+            render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
             render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..num_indices, 0, 0..1);
