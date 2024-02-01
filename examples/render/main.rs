@@ -8,13 +8,14 @@ use huozi::{
 use log::{error, info};
 use std::{
     iter,
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 use wgpu::{util::DeviceExt, BlendState};
 use winit::{
     dpi::LogicalSize,
     event::*,
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::EventLoop,
     keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowBuilder},
 };
@@ -28,7 +29,7 @@ mod mvp;
 mod texture;
 
 struct State {
-    surface: wgpu::Surface,
+    surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
@@ -50,7 +51,7 @@ struct State {
 }
 
 impl State {
-    async fn new(window: &Window) -> Self {
+    async fn new(window: &Arc<Window>) -> Self {
         let size = window.inner_size();
 
         // The instance is a handle to our GPU
@@ -60,11 +61,9 @@ impl State {
             dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
             ..Default::default()
         });
-        let surface = unsafe {
-            instance
-                .create_surface(window)
-                .expect("Failed to create surface.")
-        };
+        let surface = instance
+            .create_surface(window.clone())
+            .expect("Failed to create surface.");
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -77,10 +76,10 @@ impl State {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
-                    features: wgpu::Features::empty(),
+                    required_features: wgpu::Features::empty(),
                     // WebGL doesn't support all of wgpu's features, so if
                     // we're building for the web we'll have to disable some.
-                    limits: if cfg!(target_arch = "wasm32") {
+                    required_limits: if cfg!(target_arch = "wasm32") {
                         wgpu::Limits::downlevel_webgl2_defaults()
                     } else {
                         wgpu::Limits::default()
@@ -106,6 +105,7 @@ impl State {
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![],
+            desired_maximum_frame_latency: 1,
         };
         surface.configure(&device, &config);
 
@@ -453,6 +453,7 @@ pub async fn run() {
 
     let event_loop = EventLoop::new().unwrap();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let window = Arc::new(window);
     window.set_max_inner_size(Some(LogicalSize::new(1280, 720)));
     window.set_min_inner_size(Some(LogicalSize::new(1280, 720)));
 
