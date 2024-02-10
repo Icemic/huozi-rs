@@ -30,6 +30,8 @@ pub struct Huozi {
     image: RgbaImage,
     cache: lru::LruCache<char, Glyph>,
     next_grid_index: u32,
+    /// increase this flag when the cache is changed
+    image_version: u64,
 }
 
 impl Huozi {
@@ -57,6 +59,7 @@ impl Huozi {
             image,
             cache,
             next_grid_index: 0,
+            image_version: 0,
         }
     }
 
@@ -135,6 +138,8 @@ impl Huozi {
             glyph.u_max = (grid_x + grid_size) as f32 / texture_width;
             glyph.v_max = (grid_y + grid_size) as f32 / texture_width;
 
+            self.image_version += 1;
+
             glyph
         }
     }
@@ -152,6 +157,11 @@ impl Huozi {
 
             self.get_glyph(ch);
         }
+    }
+
+    #[cfg(feature = "sdf")]
+    pub fn image_version(&self) -> u64 {
+        self.image_version
     }
 
     #[cfg(feature = "sdf")]
