@@ -348,10 +348,15 @@ This is a sample text. gM 123.!\\\"\\\"?;:<>
                 .huozi
                 .layout_parse(sample_text, &layout_style, &style, None)
             {
-                Ok((vertices, indices, _, _)) => {
+                Ok((vertices, indices, total_width, total_height)) => {
                     info!(
                         "text layouting finished, {}ms",
                         SystemTime::now().duration_since(t).unwrap().as_millis()
+                    );
+
+                    info!(
+                        "total_width: {}, total_height: {}",
+                        total_width, total_height
                     );
 
                     let vertex_buffer =

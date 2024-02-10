@@ -480,6 +480,10 @@ impl Huozi {
                 current_x += h_advance;
             }
 
+            // in case of the last line without line break
+            total_width_of_section = total_width_of_section.max(current_x);
+            total_height_of_section = current_y + FONT_SIZE * style.line_height;
+
             // update total size
             total_width = total_width.max(total_width_of_section / FONT_SIZE * style.font_size);
             total_height += total_height_of_section / FONT_SIZE * style.font_size;
