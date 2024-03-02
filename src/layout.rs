@@ -16,6 +16,7 @@ pub use vertex::*;
 
 use crate::{
     constant::{ASCENT, FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE, VIEWPORT_HEIGHT, VIEWPORT_WIDTH},
+    glyph_vertices::GlyphVertices,
     parser::{parse, Element},
     Huozi,
 };
@@ -146,26 +147,20 @@ impl Huozi {
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<(Vec<Vertex>, Vec<u16>, u32, u32), String> {
+    ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
         let text_sections = self.parse_text(text, initial_text_style, style_prefabs)?;
-        Ok(self.layout(&text_sections, layout_style))
+        Ok(self.layout(&layout_style, &text_sections))
     }
 
     pub fn layout<'a, T: AsRef<Vec<TextSection>>>(
         &mut self,
+        layout_style: &LayoutStyle,
         text_sections: T,
-        layout_style: &LayoutStyle,
-    ) -> (Vec<Vertex>, Vec<u16>, u32, u32) {
-        self.calculate_layout(layout_style, text_sections.as_ref())
-    }
-
-    pub(crate) fn calculate_layout(
-        &mut self,
-        layout_style: &LayoutStyle,
-        text_sections: &[TextSection],
-    ) -> (Vec<Vertex>, Vec<u16>, u32, u32) {
+    ) -> (Vec<GlyphVertices>, u32, u32) {
         let mut total_width: f64 = 0.;
         let mut total_height: f64 = 0.;
+
+        let text_sections = text_sections.as_ref();
 
         let mut current_x = text_sections
             .first()
@@ -173,17 +168,15 @@ impl Huozi {
             .unwrap_or(0.);
         let mut current_y = 0.;
 
+        let mut current_col: u32 = 0;
+        let mut current_row: u32 = 0;
+
         let max_width = layout_style.box_width;
         let max_height = layout_style.box_height;
 
-        let mut vertices_fill = vec![];
-        let mut indices_fill = vec![];
-
-        let mut vertices_stroke = vec![];
-        let mut indices_stroke = vec![];
-
-        let mut vertices_shadow = vec![];
-        let mut indices_shadow = vec![];
+        // preallocate memory for  vertices and indices
+        let mut glyph_vertices_vec =
+            Vec::with_capacity(text_sections.iter().map(|s| s.text.len()).sum());
 
         'out: for section in text_sections {
             let style = &section.style;
@@ -225,6 +218,9 @@ impl Huozi {
                     // use original font size (when grid size is 64), it will be scaled in offset_y later.
                     current_y += FONT_SIZE * style.line_height;
 
+                    current_col = 0;
+                    current_row += 1;
+
                     // if text overflows the box, ignore the rest characters
                     if current_y / FONT_SIZE * style.font_size >= max_height {
                         break 'out;
@@ -246,6 +242,9 @@ impl Huozi {
                     current_x = 0.;
                     // use original font size (when grid size is 64), it will be scaled in offset_y later.
                     current_y += FONT_SIZE * style.line_height;
+
+                    current_col = 0;
+                    current_row += 1;
 
                     // if text overflows the box, ignore the rest characters
                     if current_y / FONT_SIZE * style.font_size >= max_height {
@@ -324,107 +323,95 @@ impl Huozi {
                 let p3x = w0 + tx;
                 let p3y = h1 + ty;
 
-                // insert vertices for fill
-                let vertex_index_offset = vertices_fill.len() as u16;
+                let mut vertices_fill = Vec::with_capacity(4);
+                let mut vertices_stroke = Vec::with_capacity(4);
+                let mut vertices_shadow = Vec::with_capacity(4);
+                let mut indices = Vec::with_capacity(4);
 
-                vertices_fill.push(Vertex {
-                    position: [p0x as f32, p0y as f32, 0.0],
-                    tex_coords: [glyph.u_min, glyph.v_min],
-                    page: glyph.page,
-                    buffer,
-                    gamma,
-                    color: fill_color,
-                });
-                vertices_fill.push(Vertex {
-                    position: [p1x as f32, p1y as f32, 0.0],
-                    tex_coords: [glyph.u_min, glyph.v_max],
-                    page: glyph.page,
-                    buffer,
-                    gamma,
-                    color: fill_color,
-                });
-                vertices_fill.push(Vertex {
-                    position: [p2x as f32, p2y as f32, 0.0],
-                    tex_coords: [glyph.u_max, glyph.v_max],
-                    page: glyph.page,
-                    buffer,
-                    gamma,
-                    color: fill_color,
-                });
-                vertices_fill.push(Vertex {
-                    position: [p3x as f32, p3y as f32, 0.0],
-                    tex_coords: [glyph.u_max, glyph.v_min],
-                    page: glyph.page,
-                    buffer,
-                    gamma,
-                    color: fill_color,
-                });
-
-                indices_fill.extend([
-                    vertex_index_offset + 0,
-                    vertex_index_offset + 1,
-                    vertex_index_offset + 2,
-                    vertex_index_offset + 0,
-                    vertex_index_offset + 2,
-                    vertex_index_offset + 3,
-                ]);
-
-                // insert vertices for stroke
-
-                if style.stroke.is_some() {
-                    let vertex_index_offset = vertices_stroke.len() as u16;
-                    // awesome magic number and algorithm, not sure why...
-                    let buffer = 0.7
-                        - GAMMA_COEFFICIENT * stroke_width
-                            / 2.
-                            / (style.font_size / FONT_SIZE) as f32;
-                    vertices_stroke.push(Vertex {
+                vertices_fill.extend([
+                    Vertex {
                         position: [p0x as f32, p0y as f32, 0.0],
                         tex_coords: [glyph.u_min, glyph.v_min],
                         page: glyph.page,
                         buffer,
                         gamma,
-                        color: stroke_color,
-                    });
-                    vertices_stroke.push(Vertex {
+                        color: fill_color,
+                    },
+                    Vertex {
                         position: [p1x as f32, p1y as f32, 0.0],
                         tex_coords: [glyph.u_min, glyph.v_max],
                         page: glyph.page,
                         buffer,
                         gamma,
-                        color: stroke_color,
-                    });
-                    vertices_stroke.push(Vertex {
+                        color: fill_color,
+                    },
+                    Vertex {
                         position: [p2x as f32, p2y as f32, 0.0],
                         tex_coords: [glyph.u_max, glyph.v_max],
                         page: glyph.page,
                         buffer,
                         gamma,
-                        color: stroke_color,
-                    });
-                    vertices_stroke.push(Vertex {
+                        color: fill_color,
+                    },
+                    Vertex {
                         position: [p3x as f32, p3y as f32, 0.0],
                         tex_coords: [glyph.u_max, glyph.v_min],
                         page: glyph.page,
                         buffer,
                         gamma,
-                        color: stroke_color,
-                    });
+                        color: fill_color,
+                    },
+                ]);
 
-                    indices_stroke.extend([
-                        vertex_index_offset + 0,
-                        vertex_index_offset + 1,
-                        vertex_index_offset + 2,
-                        vertex_index_offset + 0,
-                        vertex_index_offset + 2,
-                        vertex_index_offset + 3,
+                indices.extend([0, 1, 2, 0, 2, 3]);
+
+                // insert vertices for stroke
+
+                if style.stroke.is_some() {
+                    // awesome magic number and algorithm, not sure why...
+                    let buffer = 0.7
+                        - GAMMA_COEFFICIENT * stroke_width
+                            / 2.
+                            / (style.font_size / FONT_SIZE) as f32;
+                    vertices_stroke.extend([
+                        Vertex {
+                            position: [p0x as f32, p0y as f32, 0.0],
+                            tex_coords: [glyph.u_min, glyph.v_min],
+                            page: glyph.page,
+                            buffer,
+                            gamma,
+                            color: stroke_color,
+                        },
+                        Vertex {
+                            position: [p1x as f32, p1y as f32, 0.0],
+                            tex_coords: [glyph.u_min, glyph.v_max],
+                            page: glyph.page,
+                            buffer,
+                            gamma,
+                            color: stroke_color,
+                        },
+                        Vertex {
+                            position: [p2x as f32, p2y as f32, 0.0],
+                            tex_coords: [glyph.u_max, glyph.v_max],
+                            page: glyph.page,
+                            buffer,
+                            gamma,
+                            color: stroke_color,
+                        },
+                        Vertex {
+                            position: [p3x as f32, p3y as f32, 0.0],
+                            tex_coords: [glyph.u_max, glyph.v_min],
+                            page: glyph.page,
+                            buffer,
+                            gamma,
+                            color: stroke_color,
+                        },
                     ]);
                 }
 
                 // insert vertices for shadow
 
                 if style.shadow.is_some() {
-                    let vertex_index_offset = vertices_shadow.len() as u16;
                     // awesome magic number and algorithm, not sure why...
                     let buffer = 0.7
                         - GAMMA_COEFFICIENT * shadow_width
@@ -434,50 +421,59 @@ impl Huozi {
                         GAMMA_COEFFICIENT * shadow_blur / 2. / (style.font_size / FONT_SIZE) as f32;
                     let offset_x = shadow_offset_x / VIEWPORT_WIDTH as f32 * 2.;
                     let offset_y = shadow_offset_y / VIEWPORT_HEIGHT as f32 * 2.;
-                    vertices_shadow.push(Vertex {
-                        position: [p0x as f32 + offset_x, p0y as f32 + offset_y, 0.0],
-                        tex_coords: [glyph.u_min, glyph.v_min],
-                        page: glyph.page,
-                        buffer,
-                        gamma,
-                        color: shadow_color,
-                    });
-                    vertices_shadow.push(Vertex {
-                        position: [p1x as f32 + offset_x, p1y as f32 + offset_y, 0.0],
-                        tex_coords: [glyph.u_min, glyph.v_max],
-                        page: glyph.page,
-                        buffer,
-                        gamma,
-                        color: shadow_color,
-                    });
-                    vertices_shadow.push(Vertex {
-                        position: [p2x as f32 + offset_x, p2y as f32 + offset_y, 0.0],
-                        tex_coords: [glyph.u_max, glyph.v_max],
-                        page: glyph.page,
-                        buffer,
-                        gamma,
-                        color: shadow_color,
-                    });
-                    vertices_shadow.push(Vertex {
-                        position: [p3x as f32 + offset_x, p3y as f32 + offset_y, 0.0],
-                        tex_coords: [glyph.u_max, glyph.v_min],
-                        page: glyph.page,
-                        buffer,
-                        gamma,
-                        color: shadow_color,
-                    });
-
-                    indices_shadow.extend([
-                        vertex_index_offset + 0,
-                        vertex_index_offset + 1,
-                        vertex_index_offset + 2,
-                        vertex_index_offset + 0,
-                        vertex_index_offset + 2,
-                        vertex_index_offset + 3,
+                    vertices_shadow.extend([
+                        Vertex {
+                            position: [p0x as f32 + offset_x, p0y as f32 + offset_y, 0.0],
+                            tex_coords: [glyph.u_min, glyph.v_min],
+                            page: glyph.page,
+                            buffer,
+                            gamma,
+                            color: shadow_color,
+                        },
+                        Vertex {
+                            position: [p1x as f32 + offset_x, p1y as f32 + offset_y, 0.0],
+                            tex_coords: [glyph.u_min, glyph.v_max],
+                            page: glyph.page,
+                            buffer,
+                            gamma,
+                            color: shadow_color,
+                        },
+                        Vertex {
+                            position: [p2x as f32 + offset_x, p2y as f32 + offset_y, 0.0],
+                            tex_coords: [glyph.u_max, glyph.v_max],
+                            page: glyph.page,
+                            buffer,
+                            gamma,
+                            color: shadow_color,
+                        },
+                        Vertex {
+                            position: [p3x as f32 + offset_x, p3y as f32 + offset_y, 0.0],
+                            tex_coords: [glyph.u_max, glyph.v_min],
+                            page: glyph.page,
+                            buffer,
+                            gamma,
+                            color: shadow_color,
+                        },
                     ]);
                 }
 
+                let glyph_vertices = GlyphVertices {
+                    fill: vertices_fill,
+                    stroke: vertices_stroke,
+                    shadow: vertices_shadow,
+                    indices,
+                    col: current_col,
+                    row: current_row,
+                    x: current_x.round() as u32,
+                    y: current_y.round() as u32,
+                    width: h_advance.round() as u32,
+                    height: (FONT_SIZE * style.line_height).round() as u32,
+                };
+
+                glyph_vertices_vec.push(glyph_vertices);
+
                 current_x += h_advance;
+                current_col += 1;
             }
 
             // in case of the last line without line break
@@ -489,26 +485,10 @@ impl Huozi {
             total_height += total_height_of_section / FONT_SIZE * style.font_size;
         }
 
-        let indices_offset_fill = (vertices_shadow.len() + vertices_stroke.len()) as u16;
-        let indices_offset_stroke = vertices_shadow.len() as u16;
-
-        indices_fill
-            .iter_mut()
-            .for_each(|v| *v += indices_offset_fill);
-        indices_stroke
-            .iter_mut()
-            .for_each(|v| *v += indices_offset_stroke);
-
-        vertices_shadow.append(&mut vertices_stroke);
-        vertices_shadow.append(&mut vertices_fill);
-        indices_shadow.append(&mut indices_stroke);
-        indices_shadow.append(&mut indices_fill);
-
         (
-            vertices_shadow,
-            indices_shadow,
-            total_width as u32,
-            total_height as u32,
+            glyph_vertices_vec,
+            total_width.round() as u32,
+            total_height.round() as u32,
         )
     }
 }

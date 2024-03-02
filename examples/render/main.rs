@@ -320,11 +320,13 @@ impl State {
             // ⸻全球。
             // 　　全球。
             // 全  球 。";
-            let sample_text = "Innovation in China 中国智造，惠及全球。
-Innovation in China ——⸺全球。
-This is a sample text. gM 123.!\\\"\\\"?;:<>
-人人生而自由，在尊严和权利上一律平等。他们赋有理性和良心，并应以兄弟关系的精神相对待。
-人人有资格享有本宣言所载的一切权利和自由，不分种族、肤色、性别、语言、宗教、政治或其他见解、国籍或社会出身、财产、出生或其他身分等任何区别。并且不得因一人所属的国家或领土的政治的、行政的或者国际的地位之不同而有所区别，无论该领土是独立领土、托管领土、非自治领土或者处于其他任何主权受限制的情况之下。";
+            let sample_text = "Innovation in China 中国智造，惠及全球。\n\
+            Innovation in China ——⸺全球。\n\
+            This is a sample text. gM 123.!\\\"\\\"?;:<>\n\
+            人人生而自由，在尊严和权利上一律平等。他们赋有理性和良心，并应以兄弟关系的精神相对待。\n\
+            人人有资格享有本宣言所载的一切权利和自由，不分种族、肤色、性别、语言、宗教、政治或其他见解、国籍或社会出身、财产、出生或其他身分等任\
+            何区别。并且不得因一人所属的国家或领土的政治的、行政的或者国际的地位之不同而有所区别，无论该领土是独立领土、托管领土、非自治领土或者\
+            处于其他任何主权受限制的情况之下。";
 
             // let sample_text = "在游戏或其他多媒体内容中，文字被放置于通常称作“文本框”的版心内。与报刊杂志等紧凑的设计不同，游戏画面中的文本框四周时常留有足够多的空白以保证用户界面的美观，这使得后者在文字的布局调整方面具有更多先天的余地。以《W3C 中文排版需求》草案为参考，面向游戏或其他多媒体内容中文字使用的一般场景，开发了本工具。";
 
@@ -348,7 +350,7 @@ This is a sample text. gM 123.!\\\"\\\"?;:<>
                 .huozi
                 .layout_parse(sample_text, &layout_style, &style, None)
             {
-                Ok((vertices, indices, total_width, total_height)) => {
+                Ok((glyphs, total_width, total_height)) => {
                     info!(
                         "text layouting finished, {}ms",
                         SystemTime::now().duration_since(t).unwrap().as_millis()
@@ -358,6 +360,36 @@ This is a sample text. gM 123.!\\\"\\\"?;:<>
                         "total_width: {}, total_height: {}",
                         total_width, total_height
                     );
+
+                    let mut vertices: Vec<Vertex> = Vec::with_capacity(glyphs.len() * 4 * 3);
+                    let mut indices: Vec<u16> = Vec::with_capacity(glyphs.len() * 6);
+
+                    let mut index_offset = 0;
+
+                    if style.shadow.is_some() {
+                        for glyph in glyphs.iter() {
+                            vertices.extend(&glyph.shadow);
+                            indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+
+                            index_offset += glyph.shadow.len() as u16;
+                        }
+                    }
+
+                    if style.stroke.is_some() {
+                        for glyph in glyphs.iter() {
+                            vertices.extend(&glyph.stroke);
+                            indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+
+                            index_offset += glyph.stroke.len() as u16;
+                        }
+                    }
+
+                    for glyph in glyphs.iter() {
+                        vertices.extend(&glyph.fill);
+                        indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+
+                        index_offset += glyph.fill.len() as u16;
+                    }
 
                     let vertex_buffer =
                         self.device

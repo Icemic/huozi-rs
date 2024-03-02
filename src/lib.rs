@@ -2,6 +2,8 @@
 pub mod charsets;
 pub mod constant;
 pub mod font_extractor;
+#[cfg(feature = "layout")]
+pub mod glyph_vertices;
 mod huozi;
 #[cfg(feature = "layout")]
 pub mod layout;
