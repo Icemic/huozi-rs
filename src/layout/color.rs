@@ -1,4 +1,4 @@
-pub use csscolorparser::*;
+pub use csscolorparser::{parse as parse_color, Color, ParseColorError};
 
 pub trait ColorExt {
     fn to_linear_rgba_f32(&self) -> [f32; 4];
