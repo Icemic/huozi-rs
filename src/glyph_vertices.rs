@@ -2,6 +2,7 @@ use crate::layout::Vertex;
 
 /// Represents the vertices of a glyph, which consists of three layers: the shadow, the stroke, and the fill.\
 /// It is recommanded to draw the layers in the order of shadow, stroke, and fill.
+#[derive(Debug, Clone)]
 pub struct GlyphVertices {
     /// The vertices of the shadow layer.
     pub shadow: Vec<Vertex>,
