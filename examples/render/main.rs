@@ -250,7 +250,8 @@ impl State {
 
         // initialize huozi instance
         let t = SystemTime::now();
-        let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
+        // let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
+        let font_data = include_bytes!("../assets/SourceHanSansSC-Regular.otf").to_vec();
         // let font_data = std::fs::read("examples/assets/Zhudou Sans Regular.ttf").unwrap();
         // let font_data = std::fs::read("examples/assets/SourceHanSerifSC-Regular.otf").unwrap();
         // let font_data = std::fs::read("examples/assets/LXGWWenKaiLite-Regular.ttf").unwrap();
@@ -479,72 +480,70 @@ impl State {
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
-pub async fn run() {
-    cfg_if::cfg_if! {
-        if #[cfg(target_arch = "wasm32")] {
-            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-            console_log::init_with_level(log::Level::Warn).expect("Could't initialize logger");
-        } else {
-            let env = env_logger::Env::default().default_filter_or("huozi=debug,render=debug");
-            env_logger::init_from_env(env);
-        }
-    }
-
-    let event_loop = EventLoop::new().unwrap();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
-    let window = Arc::new(window);
-    window.set_max_inner_size(Some(LogicalSize::new(1280, 720)));
-    window.set_min_inner_size(Some(LogicalSize::new(1280, 720)));
-
-    let _ = window.request_inner_size(LogicalSize::new(1280, 720));
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        // Winit prevents sizing with CSS, so we have to set
-        // the size manually when on web.
-        use winit::dpi::PhysicalSize;
-        window.set_inner_size(PhysicalSize::new(450, 400));
-
-        use winit::platform::web::WindowExtWebSys;
-        web_sys::window()
-            .and_then(|win| win.document())
-            .and_then(|doc| {
-                let dst = doc.get_element_by_id("wasm-example")?;
-                let canvas = web_sys::Element::from(window.canvas());
-                dst.append_child(&canvas).ok()?;
-                Some(())
-            })
-            .expect("Couldn't append canvas to document body.");
-    }
-
-    // State::new uses async code, so we're going to wait for it to finish
-    let mut state = State::new(&window).await;
+pub fn run(event_loop: EventLoop<()>) {
+    let mut window = None;
+    let mut state = None;
 
     let _ = event_loop.run(move |event, target| {
         match event {
+            Event::Resumed => {
+                let _window = WindowBuilder::new().build(&target).unwrap();
+                let _window = Arc::new(_window);
+                _window.set_max_inner_size(Some(LogicalSize::new(1280, 720)));
+                _window.set_min_inner_size(Some(LogicalSize::new(1280, 720)));
+
+                let _ = _window.request_inner_size(LogicalSize::new(1280, 720));
+
+                #[cfg(target_arch = "wasm32")]
+                {
+                    // Winit prevents sizing with CSS, so we have to set
+                    // the size manually when on web.
+                    use winit::dpi::PhysicalSize;
+                    window.set_inner_size(PhysicalSize::new(450, 400));
+
+                    use winit::platform::web::WindowExtWebSys;
+                    web_sys::window()
+                        .and_then(|win| win.document())
+                        .and_then(|doc| {
+                            let dst = doc.get_element_by_id("wasm-example")?;
+                            let canvas = web_sys::Element::from(window.canvas());
+                            dst.append_child(&canvas).ok()?;
+                            Some(())
+                        })
+                        .expect("Couldn't append canvas to document body.");
+                }
+
+                // State::new uses async code, so we're going to wait for it to finish
+                let _state = pollster::block_on(State::new(&_window));
+
+                window = Some(_window);
+                state = Some(_state);
+            }
             Event::WindowEvent {
                 ref event,
                 window_id,
-            } if window_id == window.id() => {
+            } if window.is_some() && window_id == window.as_ref().unwrap().id() => {
                 match event {
                     WindowEvent::RedrawRequested => {
-                        let time = SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .unwrap()
-                            .as_millis();
-                        state.update(time);
-                        match state.render() {
-                            Ok(_) => {}
-                            // Reconfigure the surface if it's lost or outdated
-                            Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                                state.resize(state.size)
+                        if let Some(state) = state.as_mut() {
+                            let time = SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .unwrap()
+                                .as_millis();
+                            state.update(time);
+                            match state.render() {
+                                Ok(_) => {}
+                                // Reconfigure the surface if it's lost or outdated
+                                Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                                    state.resize(state.size)
+                                }
+                                // The system is out of memory, we should probably quit
+                                Err(wgpu::SurfaceError::OutOfMemory) => {
+                                    target.exit();
+                                }
+                                // We're ignoring timeouts
+                                Err(wgpu::SurfaceError::Timeout) => log::warn!("Surface timeout"),
                             }
-                            // The system is out of memory, we should probably quit
-                            Err(wgpu::SurfaceError::OutOfMemory) => {
-                                target.exit();
-                            }
-                            // We're ignoring timeouts
-                            Err(wgpu::SurfaceError::Timeout) => log::warn!("Surface timeout"),
                         }
                     }
                     WindowEvent::CloseRequested
@@ -558,7 +557,9 @@ pub async fn run() {
                         ..
                     } => target.exit(),
                     WindowEvent::Resized(physical_size) => {
-                        state.resize(*physical_size);
+                        if let Some(state) = state.as_mut() {
+                            state.resize(*physical_size);
+                        }
                     }
                     _ => {}
                 }
@@ -567,7 +568,9 @@ pub async fn run() {
             Event::AboutToWait => {
                 // RedrawRequested will only trigger once, unless we manually
                 // request it.
-                window.request_redraw();
+                if let Some(window) = window.as_ref() {
+                    window.request_redraw();
+                }
             }
             _ => {}
         }
@@ -575,5 +578,35 @@ pub async fn run() {
 }
 
 fn main() {
-    pollster::block_on(run());
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+            console_log::init_with_level(log::Level::Warn).expect("Could't initialize logger");
+        } else {
+            let env = env_logger::Env::default().default_filter_or("huozi=debug,render=debug");
+            env_logger::init_from_env(env);
+        }
+    }
+    let event_loop = EventLoop::new().unwrap();
+    run(event_loop);
+}
+
+#[cfg(target_os = "android")]
+use winit::platform::android::activity::AndroidApp;
+
+#[allow(dead_code)]
+#[cfg(target_os = "android")]
+#[no_mangle]
+fn android_main(app: AndroidApp) {
+    use winit::platform::android::EventLoopBuilderExtAndroid;
+
+    android_logger::init_once(
+        android_logger::Config::default().with_max_level(log::LevelFilter::Info),
+    );
+
+    let event_loop = winit::event_loop::EventLoopBuilder::new()
+        .with_android_app(app)
+        .build()
+        .unwrap();
+    run(event_loop);
 }
