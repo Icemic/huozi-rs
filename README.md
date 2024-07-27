@@ -38,7 +38,7 @@
 - [x] 输出为图片或纹理，提供顶点坐标和纹理坐标
 - [ ] W3C 汉字排版需求
 - [ ] 支持更多文字效果
-- [ ] 通过 WebAssembly 支持 Web 平台
+- [x] 支持 Windows、macOS、Linux、Android、iOS、Web (WebAssembly) 平台
 
 尚在早期开发阶段（咕），尤其是排版功能高度缺失，欢迎任何 Issue 和 Pull Request！
 
