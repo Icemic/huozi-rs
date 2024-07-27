@@ -2,7 +2,9 @@ use csscolorparser::Color;
 use huozi::{
     charsets::{ASCII, CHS, CJK_SYMBOL},
     constant::TEXTURE_SIZE,
-    layout::{LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle, Vertex},
+    layout::{
+        ColorSpace, LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle, Vertex,
+    },
     Huozi,
 };
 use log::{error, info};
@@ -94,7 +96,7 @@ impl State {
         let format = *caps
             .formats
             .iter()
-            .find(|f| f.is_srgb())
+            .find(|f| !f.is_srgb())
             .expect("Cannot find a proper surface format.");
 
         let config = wgpu::SurfaceConfiguration {
@@ -339,7 +341,7 @@ impl State {
                 direction: LayoutDirection::Horizontal,
                 box_width: 1200.,
                 box_height: 600.,
-                glyph_grid_size: 24.,
+                glyph_grid_size: 32.,
             };
 
             let style = TextStyle {
@@ -349,10 +351,13 @@ impl State {
                 ..TextStyle::default()
             };
 
-            match self
-                .huozi
-                .layout_parse(sample_text, &layout_style, &style, None)
-            {
+            match self.huozi.layout_parse(
+                sample_text,
+                &layout_style,
+                &style,
+                ColorSpace::SRGB,
+                None,
+            ) {
                 Ok((glyphs, total_width, total_height)) => {
                     info!(
                         "text layouting finished, {}ms",
@@ -448,9 +453,9 @@ impl State {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.5,
-                            g: 0.5,
-                            b: 0.5,
+                            r: 0.737,
+                            g: 0.737,
+                            b: 0.737,
                             a: 1.0,
                         }),
                         store: wgpu::StoreOp::Store,

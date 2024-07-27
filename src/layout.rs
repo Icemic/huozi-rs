@@ -21,6 +21,11 @@ use crate::{
     Huozi,
 };
 
+pub enum ColorSpace {
+    Linear,
+    SRGB,
+}
+
 impl Huozi {
     pub(self) fn parse_text_recursive(
         &self,
@@ -146,16 +151,18 @@ impl Huozi {
         text: &str,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
+        color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
         let text_sections = self.parse_text(text, initial_text_style, style_prefabs)?;
-        Ok(self.layout(&layout_style, &text_sections))
+        Ok(self.layout(&layout_style, &text_sections, color_space))
     }
 
     pub fn layout<'a, T: AsRef<Vec<TextSection>>>(
         &mut self,
         layout_style: &LayoutStyle,
         text_sections: T,
+        color_space: ColorSpace,
     ) -> (Vec<GlyphVertices>, u32, u32) {
         let mut total_width: f64 = 0.;
         let mut total_height: f64 = 0.;
@@ -182,15 +189,15 @@ impl Huozi {
             let style = &section.style;
             let text = &section.text;
 
-            let buffer = 0.74;
+            let buffer = 0.745;
             let gamma = 0.;
-            let fill_color = style.fill_color.to_linear_rgba_f32();
+            let fill_color = get_color_value(&style.fill_color, &color_space);
 
             let StrokeStyle {
                 stroke_color,
                 stroke_width,
             } = style.stroke.clone().unwrap_or_default();
-            let stroke_color = stroke_color.to_linear_rgba_f32();
+            let stroke_color = get_color_value(&stroke_color, &color_space);
 
             let ShadowStyle {
                 shadow_color,
@@ -199,7 +206,7 @@ impl Huozi {
                 shadow_blur,
                 shadow_width,
             } = style.shadow.clone().unwrap_or_default();
-            let shadow_color = shadow_color.to_linear_rgba_f32();
+            let shadow_color = get_color_value(&shadow_color, &color_space);
 
             // total size of this section in FONT_SIZE, so it must be scaled to font size later.
             let mut total_width_of_section: f64 = 0.;
@@ -515,4 +522,12 @@ fn parse_str_optional<T: FromStr>(str: &str, fallback: Option<T>) -> Option<T> {
             );
             fallback
         })
+}
+
+#[inline]
+fn get_color_value(color: &Color, color_space: &ColorSpace) -> [f32; 4] {
+    match color_space {
+        ColorSpace::Linear => color.to_linear_rgba_f32(),
+        ColorSpace::SRGB => color.to_srgb_rgba_f32(),
+    }
 }

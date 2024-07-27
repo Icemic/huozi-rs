@@ -10,6 +10,8 @@ use crate::font_extractor::{GlyphExtractor, GlyphExtractorTrait, GlyphMetrics};
 #[cfg(feature = "sdf")]
 use crate::sdf::TinySDF;
 
+pub use crate::layout::ColorSpace;
+
 #[derive(Debug, Clone, Default)]
 pub struct Glyph {
     pub ch: char,

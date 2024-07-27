@@ -66,7 +66,7 @@ pub struct ShadowStyle {
 impl Default for ShadowStyle {
     fn default() -> Self {
         Self {
-            shadow_color: Color::new(0.2, 0.2, 0.2, 0.8),
+            shadow_color: Color::new(0.5, 0.5, 0.5, 0.8),
             shadow_offset_x: 1.,
             shadow_offset_y: 1.,
             shadow_blur: 8.,

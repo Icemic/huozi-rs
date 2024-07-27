@@ -2,6 +2,7 @@ pub use csscolorparser::{parse as parse_color, Color, ParseColorError};
 
 pub trait ColorExt {
     fn to_linear_rgba_f32(&self) -> [f32; 4];
+    fn to_srgb_rgba_f32(&self) -> [f32; 4];
 }
 
 impl ColorExt for Color {
@@ -13,5 +14,8 @@ impl ColorExt for Color {
             color.2 as f32,
             color.3 as f32,
         ]
+    }
+    fn to_srgb_rgba_f32(&self) -> [f32; 4] {
+        [self.r as f32, self.g as f32, self.b as f32, self.a as f32]
     }
 }
