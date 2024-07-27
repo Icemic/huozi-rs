@@ -57,6 +57,7 @@ winit = {version = "0.29", features = ["android-game-activity"]}
 
 [[example]]
 name = "render"
+path = "examples/render/main.rs"
 
 [[example]]
 crate-type = ["cdylib"]
