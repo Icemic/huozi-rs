@@ -13,6 +13,7 @@ version = "0.7.0"
 ab_glyph = ["dep:ab_glyph"]
 charsets = []
 default = ["fontdue", "wgpu", "charsets", "sdf", "layout", "parser"]
+font_kit = ["dep:font-kit", "dep:pathfinder_geometry"]
 fontdue = ["dep:fontdue"]
 layout = []
 parser = ["dep:nom"]
@@ -24,11 +25,13 @@ ab_glyph = {version = "0.2", optional = true}
 anyhow = "1"
 bytemuck = {version = "1.4", features = ["derive"]}
 csscolorparser = {version = "0.6", features = ["serde"]}
+font-kit = {version = "0.14", optional = true}
 fontdue = {version = "0.9.2", optional = true}
 image = {version = "0.25", default-features = false, features = ["png"]}
 log = "0.4"
 lru = "0.12.0"
 nom = {version = "7.1", optional = true}
+pathfinder_geometry = {version = "0.5.1", optional = true}
 serde = {version = "1", features = ["derive"]}
 wgpu = {version = "22.0", optional = true}
 
