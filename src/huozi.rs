@@ -96,21 +96,31 @@ impl Huozi {
 
             let line_count = self.image.width() as i32 / grid_size;
 
-            let (page, index_in_page) = if let Some((_, expired_glyph)) = self.cache.push(ch, glyph)
-            {
-                (expired_glyph.page, expired_glyph.index)
-            } else {
-                let page = self.next_grid_index as i32 / (line_count * line_count);
-                let index_in_page = self.next_grid_index as i32 % (line_count * line_count);
+            let (page, index_in_page, overwrite) =
+                if let Some((_, expired_glyph)) = self.cache.push(ch, glyph) {
+                    (expired_glyph.page, expired_glyph.index, true)
+                } else {
+                    let page = self.next_grid_index as i32 / (line_count * line_count);
+                    let index_in_page = self.next_grid_index as i32 % (line_count * line_count);
 
-                self.next_grid_index += 1;
+                    self.next_grid_index += 1;
 
-                (page, index_in_page as u32)
-            };
+                    (page, index_in_page as u32, false)
+                };
 
             // the next empty texture block, aligned by grid size
             let grid_x = grid_size * (index_in_page as i32 % line_count as i32);
             let grid_y = grid_size * (index_in_page as i32 / line_count as i32);
+
+            // clear the block if it's reused from an expired glyph
+            if overwrite {
+                for y in grid_y..grid_y + grid_size {
+                    for x in grid_x..grid_x + grid_size {
+                        let pixel = self.image.get_pixel_mut(x as u32, y as u32);
+                        pixel.0[page as usize] = 0;
+                    }
+                }
+            }
 
             let offset_x = grid_x + (GRID_SIZE / 2. - width as f64 / 2.).ceil() as i32;
             let offset_y = grid_y + (GRID_SIZE / 2. - height as f64 / 2.).ceil() as i32;
