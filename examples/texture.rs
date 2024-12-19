@@ -1,7 +1,7 @@
 use huozi::charsets::{ASCII, CHS, CJK_SYMBOL};
 
 fn main() {
-    let font_data = std::fs::read("assets/SourceHanSansCN-Normal.otf").unwrap();
+    let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
     let mut huozi = huozi::Huozi::new(font_data);
     // for this demo, just load the first 1024 characters, it will completely fill the red channel.
     huozi.preload(
