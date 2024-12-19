@@ -189,7 +189,9 @@ impl Huozi {
             let style = &section.style;
             let text = &section.text;
 
-            let buffer = 0.745;
+            let buffer = 0.74;
+            // 0.6 is a magic number, to enable anti-aliasing
+            // let gamma = GAMMA_COEFFICIENT * 0.6 / 2. / (style.font_size / FONT_SIZE) as f32;
             let gamma = 0.;
             let fill_color = get_color_value(&style.fill_color, &color_space);
 
@@ -425,7 +427,7 @@ impl Huozi {
                             / 2.
                             / (style.font_size / FONT_SIZE) as f32;
                     let gamma =
-                        GAMMA_COEFFICIENT * shadow_blur / 2. / (style.font_size / FONT_SIZE) as f32;
+                        GAMMA_COEFFICIENT * shadow_blur / 2. / (style.font_size / FONT_SIZE * 2.) as f32;
                     let offset_x = shadow_offset_x / VIEWPORT_WIDTH as f32 * 2.;
                     let offset_y = shadow_offset_y / VIEWPORT_HEIGHT as f32 * 2.;
                     vertices_shadow.extend([
