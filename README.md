@@ -11,6 +11,7 @@
 <p align="center">
 <a href="https://crates.io/crates/huozi" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/crates/v/huozi.svg?style=flat-square" alt="" /></a>
 <a href="https://docs.rs/huozi/latest/huozi/" target="_blank" rel="noopener noreferrer"><img alt="docs.rs" src="https://img.shields.io/docsrs/huozi?style=flat-square"></a>
+<a href="https://app.fossa.com/projects/git%2Bgithub.com%2FIcemic%2Fhuozi-rs?ref=badge_shield" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2FIcemic%2Fhuozi-rs.svg?type=shield"/></a>
 <img src="https://img.shields.io/github/issues/icemic/huozi-rs.svg?style=flat-square" alt="" />
 <a href="#许可"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg?style=flat-square" alt="" /></a>
 </p>
@@ -47,3 +48,7 @@ Any translation is welcome!
 ## 使用
 
 见 examples 目录。
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FIcemic%2Fhuozi-rs.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FIcemic%2Fhuozi-rs?ref=badge_large)
