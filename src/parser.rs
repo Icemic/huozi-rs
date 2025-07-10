@@ -3,11 +3,12 @@ use nom::{
     bytes::complete::{escaped_transform, is_not, tag},
     character::complete::{char, multispace0},
     combinator::{cut, eof, map, not, value, verify},
-    error::{context, convert_error, VerboseError},
+    error::context,
     multi::{many0, many_till},
-    sequence::{preceded, separated_pair, terminated, tuple},
-    IResult,
+    sequence::{preceded, separated_pair, terminated},
+    IResult, Parser,
 };
+use nom_language::error::{convert_error, VerboseError};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Element {
@@ -46,7 +47,8 @@ fn string_quoted(input: &str) -> ParseResult<String> {
     context(
         "String Quoted",
         preceded(char('\"'), cut(terminated(escaped_str, char('\"')))),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn string_without_space(input: &str) -> ParseResult<String> {
@@ -56,11 +58,12 @@ fn string_without_space(input: &str) -> ParseResult<String> {
         map(preceded(multispace0, is_not(chars)), |s: &str| {
             s.to_string()
         }),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn plain_text(input: &str) -> ParseResult<Element> {
-    context("PlainText", map(escaped_str, |s: String| Element::Text(s)))(input)
+    context("PlainText", map(escaped_str, |s: String| Element::Text(s))).parse(input)
 }
 
 fn tag_head_keypair(input: &str) -> ParseResult<(String, Option<String>)> {
@@ -77,28 +80,30 @@ fn tag_head_keypair(input: &str) -> ParseResult<(String, Option<String>)> {
             ),
             map(preceded(multispace0, tag_key), |s| (s, None)),
         )),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn tag_key(input: &str) -> ParseResult<String> {
-    context("TagKey", string_without_space)(input)
+    context("TagKey", string_without_space).parse(input)
 }
 
 fn tag_value(input: &str) -> ParseResult<String> {
-    context("TagValue", alt((string_without_space, string_quoted)))(input)
+    context("TagValue", alt((string_without_space, string_quoted))).parse(input)
 }
 
 fn tag_head(input: &str) -> ParseResult<(String, Option<String>)> {
     context(
         "TagHead",
         preceded(
-            tuple((char('['), not(char('/')))),
+            (char('['), not(char('/'))),
             cut(terminated(
                 tag_head_keypair,
                 preceded(multispace0, char(']')),
             )),
         ),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn tag_end(input: &str) -> ParseResult<String> {
@@ -108,7 +113,8 @@ fn tag_end(input: &str) -> ParseResult<String> {
             tag("[/"),
             cut(terminated(tag_value, preceded(multispace0, char(']')))),
         ),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn closed_tag(input: &str) -> ParseResult<Element> {
@@ -116,7 +122,7 @@ fn closed_tag(input: &str) -> ParseResult<Element> {
         "Tag",
         map(
             verify(
-                tuple((tag_head, elements, tag_end)),
+                (tag_head, elements, tag_end),
                 |&((ref head_key, _), _, ref end_key)| head_key == end_key,
             ),
             |((key, value), inner, _)| {
@@ -127,19 +133,20 @@ fn closed_tag(input: &str) -> ParseResult<Element> {
                 })
             },
         ),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn element(input: &str) -> ParseResult<Element> {
-    context("Element", alt((plain_text, closed_tag)))(input)
+    context("Element", alt((plain_text, closed_tag))).parse(input)
 }
 
 fn elements(input: &str) -> ParseResult<Vec<Element>> {
-    context("Element[]", many0(element))(input)
+    context("Element[]", many0(element)).parse(input)
 }
 
 pub fn parse(input: &str) -> Result<Vec<Element>, String> {
-    match context("Root", many_till(element, eof))(input) {
+    match context("Root", many_till(element, eof)).parse(input) {
         Ok((_, (r, _))) => Ok(r),
         Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => Err(convert_error(input, e)),
         Err(nom::Err::Incomplete(_)) => {

@@ -16,7 +16,7 @@ default = ["fontdue", "wgpu", "charsets", "sdf", "layout", "parser"]
 font_kit = ["dep:font-kit", "dep:pathfinder_geometry"]
 fontdue = ["dep:fontdue"]
 layout = []
-parser = ["dep:nom"]
+parser = ["dep:nom", "dep:nom-language"]
 sdf = []
 wgpu = ["dep:wgpu"]
 
@@ -30,7 +30,8 @@ fontdue = {version = "0.9.2", optional = true}
 image = {version = "0.25", default-features = false, features = ["png"]}
 log = "0.4"
 lru = "0.16.0"
-nom = {version = "7.1", optional = true}
+nom = {version = "8.0", optional = true}
+nom-language = {version = "0.1", optional = true}
 pathfinder_geometry = {version = "0.5.1", optional = true}
 serde = {version = "1", features = ["derive"]}
 wgpu = {version = "22.0", optional = true}
