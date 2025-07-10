@@ -211,7 +211,7 @@ impl Huozi {
 
             // total size of this section in FONT_SIZE, so it must be scaled to font size later.
             let mut total_width_of_section: f64 = 0.;
-            let mut total_height_of_section: f64 = 0.;
+            let mut _total_height_of_section: f64 = 0.;
 
             for ch in text.chars() {
                 let glyph = self.get_glyph(ch);
@@ -235,7 +235,7 @@ impl Huozi {
                     }
 
                     // update actual height to current_y with additional a line
-                    total_height_of_section = current_y + FONT_SIZE * style.line_height;
+                    _total_height_of_section = current_y + FONT_SIZE * style.line_height;
 
                     continue;
                 }
@@ -260,7 +260,7 @@ impl Huozi {
                     }
 
                     // update actual height to current_y with additional a line
-                    total_height_of_section = current_y + FONT_SIZE * style.line_height;
+                    _total_height_of_section = current_y + FONT_SIZE * style.line_height;
                 }
 
                 let x_scale = metrics.x_scale.unwrap_or(1.) as f64;
@@ -487,11 +487,11 @@ impl Huozi {
 
             // in case of the last line without line break
             total_width_of_section = total_width_of_section.max(current_x);
-            total_height_of_section = current_y + FONT_SIZE * style.line_height;
+            _total_height_of_section = current_y + FONT_SIZE * style.line_height;
 
             // update total size
             total_width = total_width.max(total_width_of_section / FONT_SIZE * style.font_size);
-            total_height += total_height_of_section / FONT_SIZE * style.font_size;
+            total_height += _total_height_of_section / FONT_SIZE * style.font_size;
         }
 
         (

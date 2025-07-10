@@ -18,8 +18,8 @@ impl Into<GlyphMetrics> for Metrics {
             y_min: self.ymin as f32,
             x_max: self.xmin as f32 + self.width as f32,
             y_max: self.ymin as f32 + self.height as f32,
-            /// scale glyph size once it larger than 1em, it will affect width or height.
-            /// For example, `width / x_scale` should be the actual size if `x_scale` is not None.
+            // scale glyph size once it larger than 1em, it will affect width or height.
+            // For example, `width / x_scale` should be the actual size if `x_scale` is not None.
             x_scale: None,
             y_scale: None,
         }

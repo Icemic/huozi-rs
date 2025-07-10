@@ -1,5 +1,3 @@
-use crate::Glyph;
-
 use super::TextStyle;
 
 /// An item in a sequence of text which is divided to groups by its' same style.
