@@ -1,4 +1,3 @@
-mod color;
 mod layout_style;
 mod text_section;
 mod text_style;
@@ -7,7 +6,7 @@ mod vertex;
 use std::{collections::HashMap, str::FromStr};
 
 use anyhow::Result;
-pub use color::*;
+use csscolorparser::Color;
 pub use layout_style::*;
 use log::warn;
 pub use text_section::*;
@@ -426,8 +425,9 @@ impl Huozi {
                         - GAMMA_COEFFICIENT * shadow_width
                             / 2.
                             / (style.font_size / FONT_SIZE) as f32;
-                    let gamma =
-                        GAMMA_COEFFICIENT * shadow_blur / 2. / (style.font_size / FONT_SIZE * 2.) as f32;
+                    let gamma = GAMMA_COEFFICIENT * shadow_blur
+                        / 2.
+                        / (style.font_size / FONT_SIZE * 2.) as f32;
                     let offset_x = shadow_offset_x / VIEWPORT_WIDTH as f32 * 2.;
                     let offset_y = shadow_offset_y / VIEWPORT_HEIGHT as f32 * 2.;
                     vertices_shadow.extend([
@@ -529,7 +529,7 @@ fn parse_str_optional<T: FromStr>(str: &str, fallback: Option<T>) -> Option<T> {
 #[inline]
 fn get_color_value(color: &Color, color_space: &ColorSpace) -> [f32; 4] {
     match color_space {
-        ColorSpace::Linear => color.to_linear_rgba_f32(),
-        ColorSpace::SRGB => color.to_srgb_rgba_f32(),
+        ColorSpace::Linear => color.to_linear_rgba(),
+        ColorSpace::SRGB => color.to_array(),
     }
 }

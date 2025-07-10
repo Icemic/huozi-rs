@@ -1,8 +1,7 @@
 use std::str::FromStr;
 
+use csscolorparser::Color;
 use serde::{Deserialize, Serialize};
-
-use super::Color;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
