@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.9.0 (2025-07-10)
 
+<csr-id-30933fff198c564bac4da833839befb450d2758d/>
+<csr-id-9273541ecd536ce9df96609fc47cf7025cbb56e3/>
+
 ### Chore
 
  - <csr-id-30933fff198c564bac4da833839befb450d2758d/> add TsangerYuYang font assets with LFS support
  - <csr-id-9273541ecd536ce9df96609fc47cf7025cbb56e3/> Remove unused variables and update comment format
+
+### Chore
+
+ - <csr-id-b71b1d09d23621da8c62398fd0b293d5b151ef79/> add comprehensive changelog documentation
 
 ### New Features
 
@@ -24,9 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release.
+ - 5 commits contributed to the release.
  - 203 days passed between releases.
- - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
@@ -36,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Add comprehensive changelog documentation ([`b71b1d0`](https://github.com/Icemic/huozi-rs/commit/b71b1d09d23621da8c62398fd0b293d5b151ef79))
     - Add TsangerYuYang font assets with LFS support ([`30933ff`](https://github.com/Icemic/huozi-rs/commit/30933fff198c564bac4da833839befb450d2758d))
     - Remove unused variables and update comment format ([`9273541`](https://github.com/Icemic/huozi-rs/commit/9273541ecd536ce9df96609fc47cf7025cbb56e3))
     - Upgrade nom parser to v8.0 ([`4e64b56`](https://github.com/Icemic/huozi-rs/commit/4e64b5616c5fb7948439d82b738d341e9a37173b))
@@ -43,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 </details>
 
 ## v0.8.0 (2024-12-19)
+
+<csr-id-849d16cdb1a250ed5219747d3d6e02450089a6ec/>
 
 ### Chore
 
@@ -84,6 +94,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.7.0 (2024-07-28)
 
+<csr-id-f3fb438776f557ca5bc61f9181206cb954f4b01e/>
+<csr-id-79a67baaaa980e7a1edc405e9625a56f496c0241/>
+<csr-id-70abde19be0a2e134c702fbe908816814f30574f/>
+
 ### Chore
 
  - <csr-id-f3fb438776f557ca5bc61f9181206cb954f4b01e/> Release huozi version 0.7.0
@@ -115,6 +129,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.6.0 (2024-07-07)
 
+<csr-id-8139e3141b3010d21b8b9ecc3bd2172a1e918e84/>
+
 ### Chore
 
  - <csr-id-8139e3141b3010d21b8b9ecc3bd2172a1e918e84/> Release huozi version 0.6.0
@@ -141,6 +157,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.5.2 (2024-03-05)
 
+<csr-id-c323551fa196476244e77e43fbf3f9c56aeec3ee/>
+
 ### Chore
 
  - <csr-id-c323551fa196476244e77e43fbf3f9c56aeec3ee/> Release huozi version 0.5.2
@@ -166,6 +184,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 </details>
 
 ## v0.5.1 (2024-03-03)
+
+<csr-id-3914f70736992f3ce6d19b31bdfbbf4e78d4f403/>
+<csr-id-29276b37326ff7694471bbe938f1001edc4fede3/>
 
 ### Chore
 
@@ -196,6 +217,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.4.2 (2024-02-11)
 
+<csr-id-466c0a75c8cc2de5eb65f2525b6b9e17624b3dcc/>
+
 ### Chore
 
  - <csr-id-466c0a75c8cc2de5eb65f2525b6b9e17624b3dcc/> Release huozi version 0.4.2
@@ -225,6 +248,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.4.1 (2024-02-10)
 
+<csr-id-9611f3a97ef85dfedc773199363f652647b83a73/>
+
 ### Chore
 
  - <csr-id-9611f3a97ef85dfedc773199363f652647b83a73/> Release huozi version 0.4.1
@@ -252,6 +277,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.4.0 (2024-02-02)
 
+<csr-id-8c89261042bd9d74297a1af623a19f327594a698/>
+
 ### Chore
 
  - <csr-id-8c89261042bd9d74297a1af623a19f327594a698/> Release huozi version 0.4.0
@@ -278,6 +305,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.3.0 (2023-12-15)
 
+<csr-id-0846e566036bf908fa5a959ed4d2be4786df5443/>
+
 ### Chore
 
  - <csr-id-0846e566036bf908fa5a959ed4d2be4786df5443/> Release huozi version 0.3.0
@@ -303,6 +332,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 </details>
 
 ## v0.2.0 (2023-08-24)
+
+<csr-id-cf73c122bd0ad34d9495ccb39bf05cc15b4b3a4e/>
 
 ### Chore
 
@@ -343,6 +374,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 </details>
 
 ## v0.1.0 (2023-04-30)
+
+<csr-id-f4eda510ecba5c0a56c4006798ba3b6021005fb0/>
+<csr-id-760bfea80da5cc408f5b083550512ffd2bf30d5a/>
+<csr-id-10c52143972473b87f05dd50e8d966a2b9a3e5c1/>
 
 ### Chore
 
