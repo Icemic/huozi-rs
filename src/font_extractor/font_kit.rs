@@ -59,13 +59,8 @@ impl GlyphExtractorTrait for GlyphExtractor {
         }
     }
     fn get_bitmap_and_metrics(&self, ch: char) -> (Vec<u8>, GlyphMetrics) {
-        // let mut canvas = self.canvas.lock().unwrap();
-        let mut canvas = Canvas::new(
-            Vector2I::new(self.font_size as i32, self.font_size as i32),
-            Format::A8,
-        );
         if let Some(glyph_id) = self.font.glyph_for_char(ch) {
-            let transform = Transform2F::default();
+            let mut transform = Transform2F::default();
             let hinting_options = HintingOptions::None;
             let rasterization_options = RasterizationOptions::GrayscaleAa;
 
@@ -80,79 +75,74 @@ impl GlyphExtractorTrait for GlyphExtractor {
                 )
                 .unwrap();
 
-            let mut metrics = if rect.width() as f32 > self.font_size {
+            let mut metrics: GlyphMetrics = rect.into();
+
+            if rect.width() as f32 > self.font_size {
                 let x_scale = self.font_size / rect.width() as f32;
-                let y_scale = x_scale;
+                transform = transform.scale(x_scale);
 
                 rect = self
                     .font
                     .raster_bounds(
                         glyph_id,
-                        self.font_size * x_scale,
+                        self.font_size,
                         transform,
                         hinting_options,
                         rasterization_options,
                     )
                     .unwrap();
 
-                let mut metrics: GlyphMetrics = rect.into();
-
+                metrics.width = rect.width() as u32;
+                metrics.height = rect.height() as u32;
                 metrics.x_scale = Some(x_scale);
-                metrics.y_scale = Some(y_scale);
-
-                metrics
+                metrics.y_scale = Some(x_scale);
             } else if rect.height() as f32 > self.font_size {
                 let y_scale = self.font_size / rect.height() as f32;
-                let x_scale = y_scale;
+                transform = transform.scale(y_scale);
 
                 rect = self
                     .font
                     .raster_bounds(
                         glyph_id,
-                        self.font_size * x_scale,
+                        self.font_size,
                         transform,
                         hinting_options,
                         rasterization_options,
                     )
                     .unwrap();
 
-                let mut metrics: GlyphMetrics = rect.into();
-
-                metrics.x_scale = Some(x_scale);
+                metrics.width = rect.width() as u32;
+                metrics.height = rect.height() as u32;
+                metrics.x_scale = Some(y_scale);
                 metrics.y_scale = Some(y_scale);
-
-                metrics
-            } else {
-                let metrics: GlyphMetrics = rect.into();
-                metrics
             };
 
-            let advance = self.font.advance(glyph_id).unwrap();
+            let mut canvas = Canvas::new(
+                Vector2I::new(
+                    (metrics.width as i32).max(1),
+                    (metrics.height as i32).max(1),
+                ),
+                Format::A8,
+            );
 
+            let advance = self.font.advance(glyph_id).unwrap();
             metrics.h_advance =
                 advance.x() / self.font.metrics().units_per_em as f32 * self.font_size;
             metrics.v_advance =
                 advance.y() / self.font.metrics().units_per_em as f32 * self.font_size;
 
+            transform = transform.translate(-rect.origin().to_f32());
+
             let _ = self.font.rasterize_glyph(
                 &mut canvas,
                 glyph_id,
                 self.font_size,
-                Transform2F::from_translation(-rect.origin().to_f32()),
+                transform,
                 hinting_options,
                 rasterization_options,
             );
 
-            let mut bitmap = vec![0; metrics.width as usize * metrics.height as usize];
-
-            for y in 0..metrics.height {
-                for x in 0..metrics.width {
-                    bitmap[y as usize * metrics.width as usize + x as usize] =
-                        canvas.pixels[y as usize * self.font_size as usize + x as usize];
-                }
-            }
-
-            (bitmap, metrics.into())
+            (canvas.pixels, metrics)
         } else {
             (vec![], GlyphMetrics::default())
         }
