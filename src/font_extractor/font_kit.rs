@@ -66,7 +66,7 @@ impl GlyphExtractorTrait for GlyphExtractor {
         );
         if let Some(glyph_id) = self.font.glyph_for_char(ch) {
             let transform = Transform2F::default();
-            let hinting_options = HintingOptions::Full(self.font_size);
+            let hinting_options = HintingOptions::None;
             let rasterization_options = RasterizationOptions::GrayscaleAa;
 
             let mut rect = self
@@ -138,7 +138,7 @@ impl GlyphExtractorTrait for GlyphExtractor {
                 &mut canvas,
                 glyph_id,
                 self.font_size,
-                Transform2F::from_translation(-rect.origin().to_f32().ceil()),
+                Transform2F::from_translation(-rect.origin().to_f32()),
                 hinting_options,
                 rasterization_options,
             );
