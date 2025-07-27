@@ -36,6 +36,11 @@ pub struct Huozi {
     image_version: u64,
 }
 
+#[cfg(feature = "font_kit")]
+unsafe impl Send for Huozi {}
+#[cfg(feature = "font_kit")]
+unsafe impl Sync for Huozi {}
+
 impl Huozi {
     pub fn new(font_data: Vec<u8>) -> Self {
         let extractor = GlyphExtractor::new(font_data, FONT_SIZE as f32);
