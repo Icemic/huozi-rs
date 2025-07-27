@@ -5,10 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.10.0 (2025-07-28)
+
+### Bug Fixes
+
+ - <csr-id-684038e0fc151c3dc83800ebeefcefd747f6cf2b/> implement Send and Sync traits for Huozi struct when font_kit feature is enabled
+ - <csr-id-37e35c1c9c09efdb0d1f8c85a8f03b7ccdcc6d41/> revert changes on sdf calculation
+ - <csr-id-6f7e92bb82be3d685149d34fc8056862c50be8fe/> optimize glyph rasterization and metrics calculation in font_kit
+ - <csr-id-ffd6f2da732add785f4131b33bda177215d520c1/> update hinting options to None for improved glyph rendering
+ - <csr-id-48936b30fb371ba7283afe0dae5d6906e8a9aae3/> improve SDF alpha handling and prevent interpolation artifacts
+ - <csr-id-8e5a5d2e84c81a0933950d7a08cfe5f30987cc88/> Corrects buffer values for different color spaces
+   Adjusts buffer calculations to account for gamma correction differences between Linear and SRGB color spaces.
+   
+   Uses theoretically precise conversion values (Linear 0.5 = SRGB 0.735357) for fill rendering and maintains original empirically tuned values for stroke and shadow effects.
+   
+   Uncomments gamma calculation to enable proper anti-aliasing support.
+ - <csr-id-375ed182547af5cb1307b2164f229675961c8a52/> Correct glyph scaling and rendering parameters for font-kit backend
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 7 commits contributed to the release.
+ - 17 days passed between releases.
+ - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Implement Send and Sync traits for Huozi struct when font_kit feature is enabled ([`684038e`](https://github.com/Icemic/huozi-rs/commit/684038e0fc151c3dc83800ebeefcefd747f6cf2b))
+    - Revert changes on sdf calculation ([`37e35c1`](https://github.com/Icemic/huozi-rs/commit/37e35c1c9c09efdb0d1f8c85a8f03b7ccdcc6d41))
+    - Optimize glyph rasterization and metrics calculation in font_kit ([`6f7e92b`](https://github.com/Icemic/huozi-rs/commit/6f7e92bb82be3d685149d34fc8056862c50be8fe))
+    - Update hinting options to None for improved glyph rendering ([`ffd6f2d`](https://github.com/Icemic/huozi-rs/commit/ffd6f2da732add785f4131b33bda177215d520c1))
+    - Improve SDF alpha handling and prevent interpolation artifacts ([`48936b3`](https://github.com/Icemic/huozi-rs/commit/48936b30fb371ba7283afe0dae5d6906e8a9aae3))
+    - Corrects buffer values for different color spaces ([`8e5a5d2`](https://github.com/Icemic/huozi-rs/commit/8e5a5d2e84c81a0933950d7a08cfe5f30987cc88))
+    - Correct glyph scaling and rendering parameters for font-kit backend ([`375ed18`](https://github.com/Icemic/huozi-rs/commit/375ed182547af5cb1307b2164f229675961c8a52))
+</details>
+
 ## v0.9.0 (2025-07-10)
 
 <csr-id-30933fff198c564bac4da833839befb450d2758d/>
 <csr-id-9273541ecd536ce9df96609fc47cf7025cbb56e3/>
+<csr-id-b71b1d09d23621da8c62398fd0b293d5b151ef79/>
 
 ### Chore
 
@@ -31,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release.
+ - 6 commits contributed to the release.
  - 203 days passed between releases.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -43,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.9.0 ([`96cfc4d`](https://github.com/Icemic/huozi-rs/commit/96cfc4dff6f9df129925cef30f9142b040bb0794))
     - Add comprehensive changelog documentation ([`b71b1d0`](https://github.com/Icemic/huozi-rs/commit/b71b1d09d23621da8c62398fd0b293d5b151ef79))
     - Add TsangerYuYang font assets with LFS support ([`30933ff`](https://github.com/Icemic/huozi-rs/commit/30933fff198c564bac4da833839befb450d2758d))
     - Remove unused variables and update comment format ([`9273541`](https://github.com/Icemic/huozi-rs/commit/9273541ecd536ce9df96609fc47cf7025cbb56e3))
