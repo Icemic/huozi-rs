@@ -25,8 +25,8 @@ impl Into<GlyphMetrics> for RectI {
             y_min: -self.max_y() as f32,
             x_max: self.max_x() as f32,
             y_max: -self.min_y() as f32,
-            /// scale glyph size once it larger than 1em, it will affect width or height.
-            /// For example, `width / x_scale` should be the actual size if `x_scale` is not None.
+            // scale glyph size once it larger than 1em, it will affect width or height.
+            // For example, `width / x_scale` should be the actual size if `x_scale` is not None.
             x_scale: None,
             y_scale: None,
         }
@@ -44,7 +44,7 @@ impl GlyphExtractorTrait for GlyphExtractor {
     fn set_font_size(&mut self, font_size: f32) {
         self.font_size = font_size;
     }
-    fn get_glyph_metrics(&self, ch: char) -> GlyphMetrics {
+    fn get_glyph_metrics(&self, _ch: char) -> GlyphMetrics {
         todo!()
     }
     fn font_metrics(&self) -> FontHMetrics {
@@ -67,7 +67,7 @@ impl GlyphExtractorTrait for GlyphExtractor {
         if let Some(glyph_id) = self.font.glyph_for_char(ch) {
             let transform = Transform2F::default();
             let hinting_options = HintingOptions::Full(self.font_size);
-            let rasterization_options = RasterizationOptions::SubpixelAa;
+            let rasterization_options = RasterizationOptions::GrayscaleAa;
 
             let mut rect = self
                 .font
@@ -102,7 +102,7 @@ impl GlyphExtractorTrait for GlyphExtractor {
 
                 metrics
             } else if rect.height() as f32 > self.font_size {
-                let y_scale = self.font_size / rect.width() as f32;
+                let y_scale = self.font_size / rect.height() as f32;
                 let x_scale = y_scale;
 
                 rect = self
@@ -148,7 +148,7 @@ impl GlyphExtractorTrait for GlyphExtractor {
             for y in 0..metrics.height {
                 for x in 0..metrics.width {
                     bitmap[y as usize * metrics.width as usize + x as usize] =
-                        canvas.pixels[y as usize * 48 as usize + x as usize];
+                        canvas.pixels[y as usize * self.font_size as usize + x as usize];
                 }
             }
 
