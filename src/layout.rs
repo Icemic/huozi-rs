@@ -188,10 +188,14 @@ impl Huozi {
             let style = &section.style;
             let text = &section.text;
 
-            let buffer = 0.74;
+            // Buffer value depends on color space due to gamma correction
+            // Linear 0.5 corresponds to SRGB 0.735357, using precise theoretical values
+            let buffer = match color_space {
+                ColorSpace::Linear => 0.5, // Industry standard for linear space (Mapbox, etc.)
+                ColorSpace::SRGB => 0.735357, // Precise theoretical conversion of Linear 0.5
+            };
             // 0.6 is a magic number, to enable anti-aliasing
-            // let gamma = GAMMA_COEFFICIENT * 0.6 / 2. / (style.font_size / FONT_SIZE) as f32;
-            let gamma = 0.;
+            let gamma = GAMMA_COEFFICIENT * 0.6 / 2. / (style.font_size / FONT_SIZE) as f32;
             let fill_color = get_color_value(&style.fill_color, &color_space);
 
             let StrokeStyle {
@@ -376,8 +380,13 @@ impl Huozi {
                 // insert vertices for stroke
 
                 if style.stroke.is_some() {
-                    // awesome magic number and algorithm, not sure why...
-                    let buffer = 0.7
+                    // Stroke uses a different base buffer for visual effect
+                    // Original algorithm used 0.7 in SRGB space for better stroke visibility
+                    let base_buffer = match color_space {
+                        ColorSpace::Linear => 0.448, // Precise conversion of SRGB 0.7
+                        ColorSpace::SRGB => 0.7,     // Original empirically tuned value
+                    };
+                    let buffer = base_buffer
                         - GAMMA_COEFFICIENT * stroke_width
                             / 2.
                             / (style.font_size / FONT_SIZE) as f32;
@@ -420,8 +429,13 @@ impl Huozi {
                 // insert vertices for shadow
 
                 if style.shadow.is_some() {
-                    // awesome magic number and algorithm, not sure why...
-                    let buffer = 0.7
+                    // Shadow uses a different base buffer for visual effect
+                    // Original algorithm used 0.7 in SRGB space for better shadow visibility
+                    let base_buffer = match color_space {
+                        ColorSpace::Linear => 0.448, // Precise conversion of SRGB 0.7
+                        ColorSpace::SRGB => 0.7,     // Original empirically tuned value
+                    };
+                    let buffer = base_buffer
                         - GAMMA_COEFFICIENT * shadow_width
                             / 2.
                             / (style.font_size / FONT_SIZE) as f32;
