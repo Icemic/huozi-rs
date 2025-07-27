@@ -60,16 +60,11 @@ impl TinySDF {
 
                 let j = ((y + self.buffer) * width + x + self.buffer) as usize;
 
-                if a == 255 {
-                    // fully drawn pixels
-                    self.grid_outer[j] = 0.;
-                    self.grid_inner[j] = INF;
-                } else {
-                    // aliased pixels
-                    let d = 0.5 - a as f64 / 255.;
-                    self.grid_outer[j] = if d > 0. { d * d } else { 0. };
-                    self.grid_inner[j] = if d < 0. { d * d } else { 0. };
-                }
+                // convert alpha to linear space
+                let alpha_linear = (a as f64 / 255.0).powf(2.2);
+                let d = 0.5 - alpha_linear;
+                self.grid_outer[j] = if d > 0. { d * d } else { 0. };
+                self.grid_inner[j] = if d < 0. { d * d } else { 0. };
             }
         }
 
@@ -95,6 +90,13 @@ impl TinySDF {
             &mut self.v,
             &mut self.z,
         );
+
+        // Prevent INF zone from rupturing in interpolation
+        for val in self.grid_outer.iter_mut() {
+            if *val == INF {
+                *val = self.radius * self.radius;
+            }
+        }
 
         let len = (width * height) as usize;
         let mut data = vec![0; len];
