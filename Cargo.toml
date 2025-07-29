@@ -12,7 +12,7 @@ version = "0.10.0"
 [features]
 ab_glyph = ["dep:ab_glyph"]
 charsets = []
-default = ["fontdue", "wgpu", "charsets", "sdf", "layout", "parser"]
+default = ["ab_glyph", "wgpu", "charsets", "sdf", "layout", "parser"]
 font_kit = ["dep:font-kit", "dep:pathfinder_geometry"]
 fontdue = ["dep:fontdue"]
 layout = []
