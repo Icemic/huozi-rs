@@ -101,19 +101,14 @@ impl GlyphExtractorTrait for GlyphExtractor {
         };
 
         let capacity = (metrics.width * metrics.height) as usize;
+        let mut bitmap = vec![0u8; capacity];
 
-        let bitmap = match self.font.outline_glyph(glyph) {
-            Some(q) => {
-                let mut bitmap = vec![0u8; capacity];
-                q.draw(|x, y, c| {
-                    bitmap[(y * metrics.width + x) as usize] = (c * 255.).round() as u8
-                });
-                bitmap
-            }
-            None => {
-                let bitmap = vec![0u8; capacity];
-                bitmap
-            }
+        if let Some(q) = self.font.outline_glyph(glyph) {
+            let width = metrics.width as usize;
+            q.draw(|x, y: u32, c| {
+                let index = y as usize * width + x as usize;
+                bitmap[index] = (c * 255.0 + 0.5) as u8;
+            });
         };
 
         (bitmap, metrics)
