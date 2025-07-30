@@ -389,7 +389,9 @@ impl Huozi {
                     let buffer = base_buffer
                         - GAMMA_COEFFICIENT * stroke_width
                             / 2.
-                            / (style.font_size / FONT_SIZE) as f32;
+                            / (style.font_size / FONT_SIZE) as f32
+                            * x_scale as f32
+                            / grid_scale_ratio_w as f32;
                     vertices_stroke.extend([
                         Vertex {
                             position: [p0x as f32, p0y as f32, 0.0],
@@ -438,10 +440,14 @@ impl Huozi {
                     let buffer = base_buffer
                         - GAMMA_COEFFICIENT * shadow_width
                             / 2.
-                            / (style.font_size / FONT_SIZE) as f32;
+                            / (style.font_size / FONT_SIZE) as f32
+                            * x_scale as f32
+                            / grid_scale_ratio_w as f32;
                     let gamma = GAMMA_COEFFICIENT * shadow_blur
                         / 2.
-                        / (style.font_size / FONT_SIZE * 2.) as f32;
+                        / (style.font_size / FONT_SIZE * 2.) as f32
+                        * x_scale as f32
+                        / grid_scale_ratio_w as f32;
                     let offset_x = shadow_offset_x / VIEWPORT_WIDTH as f32 * 2.;
                     let offset_y = shadow_offset_y / VIEWPORT_HEIGHT as f32 * 2.;
                     vertices_shadow.extend([
