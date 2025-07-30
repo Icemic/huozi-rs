@@ -90,10 +90,13 @@ impl GlyphExtractorTrait for GlyphExtractor {
                 // it means bitmap is scaled by `x_scale` to fit max width (=font_size).
                 let x_scale = self.font_size / metrics.width as f32;
                 scale.x = scale.x * x_scale;
+                scale.y = scale.y * x_scale;
 
                 let new_metrics = self.get_glyph_metrics_inner(ch, Some(scale));
                 metrics.width = new_metrics.width;
+                metrics.height = new_metrics.height;
                 metrics.x_scale = Some(x_scale);
+                metrics.y_scale = Some(x_scale);
                 self.font.glyph_id(ch).with_scale(scale)
             } else {
                 self.font.glyph_id(ch).with_scale(self.scale)
