@@ -33,11 +33,14 @@
 - [x] [WGPU](https://github.com/gfx-rs/wgpu) 渲染范例
 - [x] 描边、阴影
 - [x] 多种字体格式
+- [ ] 多字体、字体 Fallback
 - [x] 颜色
 - [ ] 下划线、删除线
+- [ ] 着重号、波浪下划线
 - [x] 输出为图片或纹理，提供顶点坐标和纹理坐标
-- [ ] W3C 汉字排版需求
-- [ ] 支持更多文字效果
+- [ ] W3C 汉字排版需求（标点悬挂、标点挤压）
+- [ ] 连字
+- [ ] 仿斜体、仿粗体
 - [x] 支持 Windows、macOS、Linux、Android、iOS、Web (WebAssembly) 平台
 
 尚在早期开发阶段（咕），尤其是排版功能高度缺失，欢迎任何 Issue 和 Pull Request！
