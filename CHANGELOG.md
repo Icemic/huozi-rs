@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.11.0 (2025-09-13)
+
+### Chore
+
+ - <csr-id-fe08e4fecbabe57da06876fbad36aa2526279a08/> update roadmap
+
+### New Features
+
+ - <csr-id-89285ec6723e726a796bd449cffbac4a74c6c903/> add text shaping and font analysis tools
+   Adds rustybuzz and ttf-parser dependencies to enable advanced text shaping and font metrics analysis.
+   
+   Includes two new example programs:
+   - buzz_info: demonstrates text shaping with language support and OpenType features
+   - face_info: provides font glyph metrics and bounding box information
+ - <csr-id-a75e83cf1f9ea836164791d7218c2b25c2de9822/> add FiraCode font files and license
+
+### Bug Fixes
+
+ - <csr-id-1942b9608b424de1b88712e177ecbbe4fa31f34f/> adjust stroke and shadow calculations for consistent scaling
+ - <csr-id-dc9525021521ef5cbb9d9b16bc6d6165b3c6299b/> apply consistent scaling to both x and y axes
+ - <csr-id-aa3595d150e1e3184517e1a034a78f21216d63d1/> update ab_glyph version and adjust default features in Cargo.toml
+
+### Refactor
+
+ - <csr-id-55800ade7b9b1f52d35a90c33d3e739edcd09484/> remove rusttype.rs
+ - <csr-id-ef2edac8d0cbb517d709bdfc706573172dd50950/> optimizes performance
+ - <csr-id-3c77fa16189fd7237c3dc50d684e0c6c76391492/> remove unused code and example function
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 9 commits contributed to the release over the course of 1 calendar day.
+ - 3 days passed between releases.
+ - 9 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Add text shaping and font analysis tools ([`89285ec`](https://github.com/Icemic/huozi-rs/commit/89285ec6723e726a796bd449cffbac4a74c6c903))
+    - Adjust stroke and shadow calculations for consistent scaling ([`1942b96`](https://github.com/Icemic/huozi-rs/commit/1942b9608b424de1b88712e177ecbbe4fa31f34f))
+    - Apply consistent scaling to both x and y axes ([`dc95250`](https://github.com/Icemic/huozi-rs/commit/dc9525021521ef5cbb9d9b16bc6d6165b3c6299b))
+    - Update roadmap ([`fe08e4f`](https://github.com/Icemic/huozi-rs/commit/fe08e4fecbabe57da06876fbad36aa2526279a08))
+    - Add FiraCode font files and license ([`a75e83c`](https://github.com/Icemic/huozi-rs/commit/a75e83cf1f9ea836164791d7218c2b25c2de9822))
+    - Remove rusttype.rs ([`55800ad`](https://github.com/Icemic/huozi-rs/commit/55800ade7b9b1f52d35a90c33d3e739edcd09484))
+    - Optimizes performance ([`ef2edac`](https://github.com/Icemic/huozi-rs/commit/ef2edac8d0cbb517d709bdfc706573172dd50950))
+    - Update ab_glyph version and adjust default features in Cargo.toml ([`aa3595d`](https://github.com/Icemic/huozi-rs/commit/aa3595d150e1e3184517e1a034a78f21216d63d1))
+    - Remove unused code and example function ([`3c77fa1`](https://github.com/Icemic/huozi-rs/commit/3c77fa16189fd7237c3dc50d684e0c6c76391492))
+</details>
+
 ## v0.10.0 (2025-07-28)
 
 ### Bug Fixes
@@ -26,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 7 commits contributed to the release.
+ - 8 commits contributed to the release.
  - 17 days passed between releases.
  - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -38,6 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.10.0 ([`5902e4a`](https://github.com/Icemic/huozi-rs/commit/5902e4ae6e24d0d810009fc80e46b0305d30676b))
     - Implement Send and Sync traits for Huozi struct when font_kit feature is enabled ([`684038e`](https://github.com/Icemic/huozi-rs/commit/684038e0fc151c3dc83800ebeefcefd747f6cf2b))
     - Revert changes on sdf calculation ([`37e35c1`](https://github.com/Icemic/huozi-rs/commit/37e35c1c9c09efdb0d1f8c85a8f03b7ccdcc6d41))
     - Optimize glyph rasterization and metrics calculation in font_kit ([`6f7e92b`](https://github.com/Icemic/huozi-rs/commit/6f7e92bb82be3d685149d34fc8056862c50be8fe))
