@@ -1,5 +1,5 @@
 use anyhow::*;
-use image::{GenericImageView, RgbaImage};
+use image::RgbaImage;
 use wgpu::TextureFormat;
 
 pub struct Texture {
@@ -72,14 +72,14 @@ impl Texture {
             depth_or_array_layers: 1,
         };
         queue.write_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 aspect: wgpu::TextureAspect::All,
                 texture: &self.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
             &img,
-            wgpu::ImageDataLayout {
+            wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * img.width()),
                 rows_per_image: Some(img.height()),
