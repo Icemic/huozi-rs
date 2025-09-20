@@ -5,7 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.12.0 (2025-09-20)
+
+### New Features
+
+ - <csr-id-bfa5c27f5499720d0c6ebbb530b2879223373741/> bump wgpu to ^26.0
+
+### Bug Fixes
+
+ - <csr-id-afee0947cfb41438b3a15b67bd3df97b78c9ca97/> update deps
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 7 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Update deps ([`afee094`](https://github.com/Icemic/huozi-rs/commit/afee0947cfb41438b3a15b67bd3df97b78c9ca97))
+    - Bump wgpu to ^26.0 ([`bfa5c27`](https://github.com/Icemic/huozi-rs/commit/bfa5c27f5499720d0c6ebbb530b2879223373741))
+</details>
+
 ## v0.11.0 (2025-09-13)
+
+<csr-id-fe08e4fecbabe57da06876fbad36aa2526279a08/>
+<csr-id-55800ade7b9b1f52d35a90c33d3e739edcd09484/>
+<csr-id-ef2edac8d0cbb517d709bdfc706573172dd50950/>
+<csr-id-3c77fa16189fd7237c3dc50d684e0c6c76391492/>
 
 ### Chore
 
@@ -13,13 +48,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New Features
 
+<csr-id-a75e83cf1f9ea836164791d7218c2b25c2de9822/>
+
  - <csr-id-89285ec6723e726a796bd449cffbac4a74c6c903/> add text shaping and font analysis tools
    Adds rustybuzz and ttf-parser dependencies to enable advanced text shaping and font metrics analysis.
    
    Includes two new example programs:
    - buzz_info: demonstrates text shaping with language support and OpenType features
-   - face_info: provides font glyph metrics and bounding box information
- - <csr-id-a75e83cf1f9ea836164791d7218c2b25c2de9822/> add FiraCode font files and license
+- face_info: provides font glyph metrics and bounding box information
 
 ### Bug Fixes
 
@@ -37,8 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 9 commits contributed to the release over the course of 1 calendar day.
- - 3 days passed between releases.
+ - 10 commits contributed to the release over the course of 45 calendar days.
+ - 46 days passed between releases.
  - 9 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -49,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.11.0 ([`9e516aa`](https://github.com/Icemic/huozi-rs/commit/9e516aa37ba80022e092a79383038d10f83e7612))
     - Add text shaping and font analysis tools ([`89285ec`](https://github.com/Icemic/huozi-rs/commit/89285ec6723e726a796bd449cffbac4a74c6c903))
     - Adjust stroke and shadow calculations for consistent scaling ([`1942b96`](https://github.com/Icemic/huozi-rs/commit/1942b9608b424de1b88712e177ecbbe4fa31f34f))
     - Apply consistent scaling to both x and y axes ([`dc95250`](https://github.com/Icemic/huozi-rs/commit/dc9525021521ef5cbb9d9b16bc6d6165b3c6299b))
@@ -59,6 +96,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Update ab_glyph version and adjust default features in Cargo.toml ([`aa3595d`](https://github.com/Icemic/huozi-rs/commit/aa3595d150e1e3184517e1a034a78f21216d63d1))
     - Remove unused code and example function ([`3c77fa1`](https://github.com/Icemic/huozi-rs/commit/3c77fa16189fd7237c3dc50d684e0c6c76391492))
 </details>
+
+<csr-unknown>
+ add FiraCode font files and license<csr-unknown/>
 
 ## v0.10.0 (2025-07-28)
 
