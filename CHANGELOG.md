@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.13.0 (2025-10-08)
+
+### New Features
+
+ - <csr-id-c6ca983b2bf1313a56278ec6df409509b1e7cd6a/> update wgpu version to 27.0
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 18 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Update wgpu version to 27.0 ([`c6ca983`](https://github.com/Icemic/huozi-rs/commit/c6ca983b2bf1313a56278ec6df409509b1e7cd6a))
+</details>
+
 ## v0.12.0 (2025-09-20)
 
 ### New Features
@@ -19,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 7 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -31,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.12.0 ([`b531fd9`](https://github.com/Icemic/huozi-rs/commit/b531fd96e2b660800c88f45fe1988438fcdd825c))
     - Update deps ([`afee094`](https://github.com/Icemic/huozi-rs/commit/afee0947cfb41438b3a15b67bd3df97b78c9ca97))
     - Bump wgpu to ^26.0 ([`bfa5c27`](https://github.com/Icemic/huozi-rs/commit/bfa5c27f5499720d0c6ebbb530b2879223373741))
 </details>
@@ -55,7 +81,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    Includes two new example programs:
    - buzz_info: demonstrates text shaping with language support and OpenType features
-- face_info: provides font glyph metrics and bounding box information
 
 ### Bug Fixes
 
@@ -98,7 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 </details>
 
 <csr-unknown>
- add FiraCode font files and license<csr-unknown/>
+face_info: provides font glyph metrics and bounding box information<csr-unknown/>
 
 ## v0.10.0 (2025-07-28)
 
