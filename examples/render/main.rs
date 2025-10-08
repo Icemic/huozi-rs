@@ -63,6 +63,7 @@ impl State {
             backend_options: wgpu::BackendOptions {
                 dx12: wgpu::Dx12BackendOptions {
                     shader_compiler: wgpu::Dx12Compiler::Fxc,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -90,6 +91,7 @@ impl State {
                 } else {
                     wgpu::Limits::default()
                 },
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 memory_hints: wgpu::MemoryHints::Performance,
                 trace: wgpu::Trace::Off,
             })
