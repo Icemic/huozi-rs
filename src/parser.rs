@@ -1,10 +1,10 @@
 use nom::{
     branch::alt,
-    bytes::complete::{escaped_transform, is_not, tag},
+    bytes::complete::{is_not, tag},
     character::complete::{char, multispace0},
     combinator::{cut, eof, map, not, value, verify},
     error::context,
-    multi::{many0, many_till},
+    multi::{fold_many0, many0, many_till},
     sequence::{preceded, separated_pair, terminated},
     IResult, Parser,
 };
@@ -25,34 +25,52 @@ pub struct Block {
 
 pub type ParseResult<'a, T, E = VerboseError<&'a str>> = IResult<&'a str, T, E>;
 
-fn escaped_str(input: &str) -> ParseResult<'_, String> {
-    let chars = r#""\[]/="#;
+/// Parse plain text with support for [[ and ]] escape sequences
+/// [[ -> [
+/// ]] -> ]
+/// Single [ or ] will stop the parser (not consume them)
+fn plain_text_content(input: &str) -> ParseResult<'_, String> {
+    use nom::bytes::complete::take_while1;
 
-    escaped_transform(
-        is_not(chars),
-        '\\',
-        alt((
-            value("\"", tag("\"")),
-            value("\\", tag("\\")),
-            value("\n", tag("n")),
-            value("[", tag("[")),
-            value("]", tag("]")),
-            value("/", tag("/")),
-            value("=", tag("=")),
-        )),
-    )(input)
+    context(
+        "PlainTextContent",
+        fold_many0(
+            alt((
+                // [[ -> [
+                value("[".to_string(), tag("[[")),
+                // ]] -> ]
+                value("]".to_string(), tag("]]")),
+                // Regular text (not starting with [ or ])
+                map(take_while1(|c| c != '[' && c != ']'), |s: &str| {
+                    s.to_string()
+                }),
+            )),
+            String::new,
+            |mut acc, item| {
+                acc.push_str(&item);
+                acc
+            },
+        ),
+    )
+    .parse(input)
 }
 
 fn string_quoted(input: &str) -> ParseResult<'_, String> {
     context(
         "String Quoted",
-        preceded(char('\"'), cut(terminated(escaped_str, char('\"')))),
+        preceded(
+            char('\"'),
+            cut(terminated(
+                map(is_not("\""), |s: &str| s.to_string()),
+                char('\"'),
+            )),
+        ),
     )
     .parse(input)
 }
 
 fn string_without_space(input: &str) -> ParseResult<'_, String> {
-    let chars = "\"\\[]/= \t\n\r";
+    let chars = "\"[]/= \t\n\r";
     context(
         "String without Space",
         map(preceded(multispace0, is_not(chars)), |s: &str| {
@@ -63,7 +81,21 @@ fn string_without_space(input: &str) -> ParseResult<'_, String> {
 }
 
 fn plain_text(input: &str) -> ParseResult<'_, Element> {
-    context("PlainText", map(escaped_str, |s: String| Element::Text(s))).parse(input)
+    context(
+        "PlainText",
+        verify(
+            map(plain_text_content, |s: String| Element::Text(s)),
+            |elem| {
+                // Only succeed if we actually parsed some text
+                if let Element::Text(s) = elem {
+                    !s.is_empty()
+                } else {
+                    false
+                }
+            },
+        ),
+    )
+    .parse(input)
 }
 
 fn tag_head_keypair(input: &str) -> ParseResult<'_, (String, Option<String>)> {
@@ -191,10 +223,80 @@ mod tests {
     }
 
     #[test]
-    fn plain_text_escaped() {
+    fn plain_text_with_backslash() {
         assert_eq!(
-            parse(r" some \n \[text ").unwrap(),
-            vec![Element::Text(" some \n [text ".to_string())]
+            parse(r" some \n [[text").unwrap(),
+            vec![Element::Text(r" some \n [text".to_string())]
+        );
+    }
+
+    #[test]
+    fn double_bracket_escape() {
+        assert_eq!(
+            parse("[[bracket]]").unwrap(),
+            vec![Element::Text("[bracket]".to_string())]
+        );
+    }
+
+    #[test]
+    fn double_bracket_in_text() {
+        assert_eq!(
+            parse("text [[left]] more [[right]]").unwrap(),
+            vec![Element::Text("text [left] more [right]".to_string())]
+        );
+    }
+
+    #[test]
+    fn quad_bracket_escape() {
+        assert_eq!(
+            parse("[[[[double]]]]").unwrap(),
+            vec![Element::Text("[[double]]".to_string())]
+        );
+    }
+
+    #[test]
+    fn mixed_escape_and_tag() {
+        assert_eq!(
+            parse("[[tag]] [real]content[/real]").unwrap(),
+            vec![
+                Element::Text("[tag] ".to_string()),
+                Element::Block(Block {
+                    inner: vec![Element::Text("content".to_string())],
+                    tag: "real".to_string(),
+                    value: None
+                })
+            ]
+        );
+    }
+
+    #[test]
+    fn mixed_escape_and_tag2() {
+        assert_eq!(
+            parse(" [real]content[/real]").unwrap(),
+            vec![
+                Element::Text(" ".to_string()),
+                Element::Block(Block {
+                    inner: vec![Element::Text("content".to_string())],
+                    tag: "real".to_string(),
+                    value: None
+                })
+            ]
+        );
+    }
+
+    #[test]
+    fn complex_escape_tags() {
+        assert_eq!(
+            parse("Show [[bold]]text[[/bold]] as literal, but [bold]this[/bold] is real").unwrap(),
+            vec![
+                Element::Text("Show [bold]text[/bold] as literal, but ".to_string()),
+                Element::Block(Block {
+                    inner: vec![Element::Text("this".to_string())],
+                    tag: "bold".to_string(),
+                    value: None
+                }),
+                Element::Text(" is real".to_string())
+            ]
         );
     }
 
@@ -279,10 +381,11 @@ mod tests {
 
     #[test]
     fn complex_elements() {
+        // Backslash and 'n' are now treated as literal characters, not escape sequence
         assert_eq!(
             parse(r"a\n[foo=bar]q[xx=123][/xx]x[/foo][yy][/yy]").unwrap(),
             vec![
-                Element::Text("a\n".to_string()),
+                Element::Text(r"a\n".to_string()),
                 Element::Block(Block {
                     inner: vec![
                         Element::Text("q".to_string()),
