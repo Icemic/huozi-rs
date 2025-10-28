@@ -55,7 +55,21 @@ fn plain_text_content(input: &str) -> ParseResult<'_, String> {
     .parse(input)
 }
 
-fn string_quoted(input: &str) -> ParseResult<'_, String> {
+fn string_quoted_single(input: &str) -> ParseResult<'_, String> {
+    context(
+        "String Quoted Single",
+        preceded(
+            char('\''),
+            cut(terminated(
+                map(is_not("\'"), |s: &str| s.to_string()),
+                char('\''),
+            )),
+        ),
+    )
+    .parse(input)
+}
+
+fn string_quoted_double(input: &str) -> ParseResult<'_, String> {
     context(
         "String Quoted",
         preceded(
@@ -69,8 +83,16 @@ fn string_quoted(input: &str) -> ParseResult<'_, String> {
     .parse(input)
 }
 
+fn string_quoted(input: &str) -> ParseResult<'_, String> {
+    context(
+        "String Quoted",
+        alt((string_quoted_double, string_quoted_single)),
+    )
+    .parse(input)
+}
+
 fn string_without_space(input: &str) -> ParseResult<'_, String> {
-    let chars = "\"[]/= \t\n\r";
+    let chars = "\"\'[]/= \t\n\r";
     context(
         "String without Space",
         map(preceded(multispace0, is_not(chars)), |s: &str| {
@@ -325,9 +347,21 @@ mod tests {
     }
 
     #[test]
-    fn single_block_with_value_quoted() {
+    fn single_block_with_value_quoted_double() {
         assert_eq!(
             parse(r#"[foo="bar "]text[/foo]"#).unwrap(),
+            vec![Element::Block(Block {
+                inner: vec![Element::Text("text".to_string())],
+                tag: "foo".to_string(),
+                value: Some("bar ".to_string())
+            })]
+        );
+    }
+
+    #[test]
+    fn single_block_with_value_quoted_single() {
+        assert_eq!(
+            parse(r#"[foo='bar ']text[/foo]"#).unwrap(),
             vec![Element::Block(Block {
                 inner: vec![Element::Text("text".to_string())],
                 tag: "foo".to_string(),
