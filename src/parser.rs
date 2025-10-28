@@ -25,7 +25,7 @@ pub struct Block {
 
 pub type ParseResult<'a, T, E = VerboseError<&'a str>> = IResult<&'a str, T, E>;
 
-fn escaped_str(input: &str) -> ParseResult<String> {
+fn escaped_str(input: &str) -> ParseResult<'_, String> {
     let chars = r#""\[]/="#;
 
     escaped_transform(
@@ -43,7 +43,7 @@ fn escaped_str(input: &str) -> ParseResult<String> {
     )(input)
 }
 
-fn string_quoted(input: &str) -> ParseResult<String> {
+fn string_quoted(input: &str) -> ParseResult<'_, String> {
     context(
         "String Quoted",
         preceded(char('\"'), cut(terminated(escaped_str, char('\"')))),
@@ -51,7 +51,7 @@ fn string_quoted(input: &str) -> ParseResult<String> {
     .parse(input)
 }
 
-fn string_without_space(input: &str) -> ParseResult<String> {
+fn string_without_space(input: &str) -> ParseResult<'_, String> {
     let chars = "\"\\[]/= \t\n\r";
     context(
         "String without Space",
@@ -62,11 +62,11 @@ fn string_without_space(input: &str) -> ParseResult<String> {
     .parse(input)
 }
 
-fn plain_text(input: &str) -> ParseResult<Element> {
+fn plain_text(input: &str) -> ParseResult<'_, Element> {
     context("PlainText", map(escaped_str, |s: String| Element::Text(s))).parse(input)
 }
 
-fn tag_head_keypair(input: &str) -> ParseResult<(String, Option<String>)> {
+fn tag_head_keypair(input: &str) -> ParseResult<'_, (String, Option<String>)> {
     context(
         "TagHeadKeyPair",
         alt((
@@ -84,15 +84,15 @@ fn tag_head_keypair(input: &str) -> ParseResult<(String, Option<String>)> {
     .parse(input)
 }
 
-fn tag_key(input: &str) -> ParseResult<String> {
+fn tag_key(input: &str) -> ParseResult<'_, String> {
     context("TagKey", string_without_space).parse(input)
 }
 
-fn tag_value(input: &str) -> ParseResult<String> {
+fn tag_value(input: &str) -> ParseResult<'_, String> {
     context("TagValue", alt((string_without_space, string_quoted))).parse(input)
 }
 
-fn tag_head(input: &str) -> ParseResult<(String, Option<String>)> {
+fn tag_head(input: &str) -> ParseResult<'_, (String, Option<String>)> {
     context(
         "TagHead",
         preceded(
@@ -106,7 +106,7 @@ fn tag_head(input: &str) -> ParseResult<(String, Option<String>)> {
     .parse(input)
 }
 
-fn tag_end(input: &str) -> ParseResult<String> {
+fn tag_end(input: &str) -> ParseResult<'_, String> {
     context(
         "TagEnd",
         preceded(
@@ -117,7 +117,7 @@ fn tag_end(input: &str) -> ParseResult<String> {
     .parse(input)
 }
 
-fn closed_tag(input: &str) -> ParseResult<Element> {
+fn closed_tag(input: &str) -> ParseResult<'_, Element> {
     context(
         "Tag",
         map(
@@ -137,11 +137,11 @@ fn closed_tag(input: &str) -> ParseResult<Element> {
     .parse(input)
 }
 
-fn element(input: &str) -> ParseResult<Element> {
+fn element(input: &str) -> ParseResult<'_, Element> {
     context("Element", alt((plain_text, closed_tag))).parse(input)
 }
 
-fn elements(input: &str) -> ParseResult<Vec<Element>> {
+fn elements(input: &str) -> ParseResult<'_, Vec<Element>> {
     context("Element[]", many0(element)).parse(input)
 }
 
