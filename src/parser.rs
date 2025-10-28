@@ -9,6 +9,39 @@ use nom::{
     IResult, Parser,
 };
 use nom_language::error::{convert_error, VerboseError};
+use std::sync::OnceLock;
+
+// Global caches for tag symbols
+// Note: These are shared across all generic parameter combinations.
+// Convention: Use only ONE symbol combination throughout the program's lifetime.
+static DOUBLE_OPEN: OnceLock<String> = OnceLock::new();
+static DOUBLE_CLOSE: OnceLock<String> = OnceLock::new();
+static END_PREFIX: OnceLock<String> = OnceLock::new();
+static EXCLUDED_CHARS: OnceLock<String> = OnceLock::new();
+
+/// Get the double open tag string (e.g., "[[" for '[')
+/// Initialized on first call and cached for subsequent calls.
+fn get_double_open<const OPEN: char>() -> &'static str {
+    DOUBLE_OPEN.get_or_init(|| format!("{}{}", OPEN, OPEN))
+}
+
+/// Get the double close tag string (e.g., "]]" for ']')
+/// Initialized on first call and cached for subsequent calls.
+fn get_double_close<const CLOSE: char>() -> &'static str {
+    DOUBLE_CLOSE.get_or_init(|| format!("{}{}", CLOSE, CLOSE))
+}
+
+/// Get the end tag prefix string (e.g., "[/" for '[')
+/// Initialized on first call and cached for subsequent calls.
+fn get_end_prefix<const OPEN: char>() -> &'static str {
+    END_PREFIX.get_or_init(|| format!("{}/", OPEN))
+}
+
+/// Get the excluded characters for string parsing
+/// Initialized on first call and cached for subsequent calls.
+fn get_excluded_chars<const OPEN: char, const CLOSE: char>() -> &'static str {
+    EXCLUDED_CHARS.get_or_init(|| format!("\"\'{}{}{}= \t\n\r", OPEN, CLOSE, '/'))
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Element {
@@ -29,19 +62,22 @@ pub type ParseResult<'a, T, E = VerboseError<&'a str>> = IResult<&'a str, T, E>;
 /// [[ -> [
 /// ]] -> ]
 /// Single [ or ] will stop the parser (not consume them)
-fn plain_text_content(input: &str) -> ParseResult<'_, String> {
+fn plain_text_content<const OPEN: char, const CLOSE: char>(input: &str) -> ParseResult<'_, String> {
     use nom::bytes::complete::take_while1;
+
+    let double_open = get_double_open::<OPEN>();
+    let double_close = get_double_close::<CLOSE>();
 
     context(
         "PlainTextContent",
         fold_many0(
             alt((
                 // [[ -> [
-                value("[".to_string(), tag("[[")),
+                value(OPEN.to_string(), tag(double_open)),
                 // ]] -> ]
-                value("]".to_string(), tag("]]")),
+                value(CLOSE.to_string(), tag(double_close)),
                 // Regular text (not starting with [ or ])
-                map(take_while1(|c| c != '[' && c != ']'), |s: &str| {
+                map(take_while1(|c| c != OPEN && c != CLOSE), |s: &str| {
                     s.to_string()
                 }),
             )),
@@ -91,8 +127,10 @@ fn string_quoted(input: &str) -> ParseResult<'_, String> {
     .parse(input)
 }
 
-fn string_without_space(input: &str) -> ParseResult<'_, String> {
-    let chars = "\"\'[]/= \t\n\r";
+fn string_without_space<const OPEN: char, const CLOSE: char>(
+    input: &str,
+) -> ParseResult<'_, String> {
+    let chars = get_excluded_chars::<OPEN, CLOSE>();
     context(
         "String without Space",
         map(preceded(multispace0, is_not(chars)), |s: &str| {
@@ -102,11 +140,13 @@ fn string_without_space(input: &str) -> ParseResult<'_, String> {
     .parse(input)
 }
 
-fn plain_text(input: &str) -> ParseResult<'_, Element> {
+fn plain_text<const OPEN: char, const CLOSE: char>(input: &str) -> ParseResult<'_, Element> {
     context(
         "PlainText",
         verify(
-            map(plain_text_content, |s: String| Element::Text(s)),
+            map(plain_text_content::<OPEN, CLOSE>, |s: String| {
+                Element::Text(s)
+            }),
             |elem| {
                 // Only succeed if we actually parsed some text
                 if let Element::Text(s) = elem {
@@ -120,63 +160,79 @@ fn plain_text(input: &str) -> ParseResult<'_, Element> {
     .parse(input)
 }
 
-fn tag_head_keypair(input: &str) -> ParseResult<'_, (String, Option<String>)> {
+fn tag_head_keypair<const OPEN: char, const CLOSE: char>(
+    input: &str,
+) -> ParseResult<'_, (String, Option<String>)> {
     context(
         "TagHeadKeyPair",
         alt((
             map(
                 separated_pair(
-                    preceded(multispace0, tag_key),
+                    preceded(multispace0, tag_key::<OPEN, CLOSE>),
                     preceded(multispace0, char('=')),
-                    preceded(multispace0, tag_value),
+                    preceded(multispace0, tag_value::<OPEN, CLOSE>),
                 ),
                 |(k, v)| (k, Some(v)),
             ),
-            map(preceded(multispace0, tag_key), |s| (s, None)),
+            map(preceded(multispace0, tag_key::<OPEN, CLOSE>), |s| (s, None)),
         )),
     )
     .parse(input)
 }
 
-fn tag_key(input: &str) -> ParseResult<'_, String> {
-    context("TagKey", string_without_space).parse(input)
+fn tag_key<const OPEN: char, const CLOSE: char>(input: &str) -> ParseResult<'_, String> {
+    context("TagKey", string_without_space::<OPEN, CLOSE>).parse(input)
 }
 
-fn tag_value(input: &str) -> ParseResult<'_, String> {
-    context("TagValue", alt((string_without_space, string_quoted))).parse(input)
+fn tag_value<const OPEN: char, const CLOSE: char>(input: &str) -> ParseResult<'_, String> {
+    context(
+        "TagValue",
+        alt((string_without_space::<OPEN, CLOSE>, string_quoted)),
+    )
+    .parse(input)
 }
 
-fn tag_head(input: &str) -> ParseResult<'_, (String, Option<String>)> {
+fn tag_head<const OPEN: char, const CLOSE: char>(
+    input: &str,
+) -> ParseResult<'_, (String, Option<String>)> {
     context(
         "TagHead",
         preceded(
-            (char('['), not(char('/'))),
+            (char(OPEN), not(char('/'))),
             cut(terminated(
-                tag_head_keypair,
-                preceded(multispace0, char(']')),
+                tag_head_keypair::<OPEN, CLOSE>,
+                preceded(multispace0, char(CLOSE)),
             )),
         ),
     )
     .parse(input)
 }
 
-fn tag_end(input: &str) -> ParseResult<'_, String> {
+fn tag_end<const OPEN: char, const CLOSE: char>(input: &str) -> ParseResult<'_, String> {
+    let end_prefix = get_end_prefix::<OPEN>();
     context(
         "TagEnd",
         preceded(
-            tag("[/"),
-            cut(terminated(tag_value, preceded(multispace0, char(']')))),
+            tag(end_prefix),
+            cut(terminated(
+                tag_value::<OPEN, CLOSE>,
+                preceded(multispace0, char(CLOSE)),
+            )),
         ),
     )
     .parse(input)
 }
 
-fn closed_tag(input: &str) -> ParseResult<'_, Element> {
+fn closed_tag<const OPEN: char, const CLOSE: char>(input: &str) -> ParseResult<'_, Element> {
     context(
         "Tag",
         map(
             verify(
-                (tag_head, elements, tag_end),
+                (
+                    tag_head::<OPEN, CLOSE>,
+                    elements::<OPEN, CLOSE>,
+                    tag_end::<OPEN, CLOSE>,
+                ),
                 |&((ref head_key, _), _, ref end_key)| head_key == end_key,
             ),
             |((key, value), inner, _)| {
@@ -191,22 +247,56 @@ fn closed_tag(input: &str) -> ParseResult<'_, Element> {
     .parse(input)
 }
 
-fn element(input: &str) -> ParseResult<'_, Element> {
-    context("Element", alt((plain_text, closed_tag))).parse(input)
+fn element<const OPEN: char, const CLOSE: char>(input: &str) -> ParseResult<'_, Element> {
+    context(
+        "Element",
+        alt((plain_text::<OPEN, CLOSE>, closed_tag::<OPEN, CLOSE>)),
+    )
+    .parse(input)
 }
 
-fn elements(input: &str) -> ParseResult<'_, Vec<Element>> {
-    context("Element[]", many0(element)).parse(input)
+fn elements<const OPEN: char, const CLOSE: char>(input: &str) -> ParseResult<'_, Vec<Element>> {
+    context("Element[]", many0(element::<OPEN, CLOSE>)).parse(input)
 }
 
-pub fn parse(input: &str) -> Result<Vec<Element>, String> {
-    match context("Root", many_till(element, eof)).parse(input) {
+/// Parse input with custom tag symbols.
+///
+/// # Type Parameters
+/// * `OPEN` - The opening tag character (e.g., '[', '<', '{')
+/// * `CLOSE` - The closing tag character (e.g., ']', '>', '}')
+///
+/// # Convention
+/// Only one symbol combination should be used throughout the program's lifetime.
+/// Mixing different symbol combinations in the same program run may produce incorrect results.
+///
+/// # Examples
+/// ```ignore
+/// // Use square brackets
+/// let result = parse_with::<'[', ']'>("text [bold]content[/bold]");
+///
+/// // Use angle brackets
+/// let result = parse_with::<'<', '>'>("text <bold>content</bold>");
+///
+/// // Use curly braces
+/// let result = parse_with::<'{', '}'>("text {bold}content{/bold}");
+/// ```
+pub fn parse_with<const OPEN: char, const CLOSE: char>(
+    input: &str,
+) -> Result<Vec<Element>, String> {
+    match context("Root", many_till(element::<OPEN, CLOSE>, eof)).parse(input) {
         Ok((_, (r, _))) => Ok(r),
         Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => Err(convert_error(input, e)),
         Err(nom::Err::Incomplete(_)) => {
             unreachable!("it should not reach this branch, may be a bug.");
         }
     }
+}
+
+/// Parse input with default square bracket tags `[]`.
+///
+/// This is equivalent to calling `parse_with::<'[', ']'>(input)`.
+pub fn parse(input: &str) -> Result<Vec<Element>, String> {
+    parse_with::<'[', ']'>(input)
 }
 
 #[cfg(test)]
@@ -216,8 +306,6 @@ mod tests {
     #[test]
     #[ignore]
     fn parse_text() {
-        // let input = "泽材[fillColor=0xff6600]灭[bold]逐[/bold][/fillColor]莫笔[strokeEnable=true]亡[/strokeEnable]鲜，[strokeEnable=true][strokeColor=black][fillColor=red][fontSize=64]如何[/fontSize][fillColor=orange][italic]气[/italic][fillColor=yellow][bold]死[/bold][fillColor=green]你的[fillColor=0xff6600]设[fillColor=blue]计师[fillColor=magenta][fontSize=28]朋[/fontSize]友[/fillColor][/fillColor][/fillColor][/fillColor][/fillColor][/fillColor][/fillColor][/strokeColor][/strokeEnable]";
-
         let input = r#"ssf[xx="123"]aaa[/xx]"#;
 
         match parse(input) {
