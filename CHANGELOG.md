@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.14.0 (2025-10-29)
+
+### Documentation
+
+ - <csr-id-0818a3fae18c1bea95808b7d8397b64422cd4805/> add docs for text tag syntax
+
+### New Features
+
+ - <csr-id-61b24ec98b9b5df50353b58c89e98fc61152cb2c/> add integration tests for custom tag symbols with Unicode support
+ - <csr-id-97aebc3f2a868a70f447900578515b51f3552809/> implement customizable tag symbols for parsing
+ - <csr-id-1fde2ecdb8da69f334a45fb1f6e3f122941c6d83/> add support for single-quoted strings in parser
+ - <csr-id-fe9acdeac3799a0368d5ac77c7bfe9b76e78af59/> remove escaped transform while support [] escape as an exception
+
+### Bug Fixes
+
+ - <csr-id-e3a6fba0c4f4e229a9912cf6c2c92086861fd7be/> update ParseResult type annotations
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release over the course of 1 calendar day.
+ - 21 days passed between releases.
+ - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Add docs for text tag syntax ([`0818a3f`](https://github.com/Icemic/huozi-rs/commit/0818a3fae18c1bea95808b7d8397b64422cd4805))
+    - Add integration tests for custom tag symbols with Unicode support ([`61b24ec`](https://github.com/Icemic/huozi-rs/commit/61b24ec98b9b5df50353b58c89e98fc61152cb2c))
+    - Implement customizable tag symbols for parsing ([`97aebc3`](https://github.com/Icemic/huozi-rs/commit/97aebc3f2a868a70f447900578515b51f3552809))
+    - Add support for single-quoted strings in parser ([`1fde2ec`](https://github.com/Icemic/huozi-rs/commit/1fde2ecdb8da69f334a45fb1f6e3f122941c6d83))
+    - Remove escaped transform while support [] escape as an exception ([`fe9acde`](https://github.com/Icemic/huozi-rs/commit/fe9acdeac3799a0368d5ac77c7bfe9b76e78af59))
+    - Update ParseResult type annotations ([`e3a6fba`](https://github.com/Icemic/huozi-rs/commit/e3a6fba0c4f4e229a9912cf6c2c92086861fd7be))
+</details>
+
 ## v0.13.0 (2025-10-08)
 
 ### New Features
@@ -15,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 18 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -27,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.13.0 ([`944ff2d`](https://github.com/Icemic/huozi-rs/commit/944ff2d2594490bd86fe32cad437d2da6a9b4dee))
     - Update wgpu version to 27.0 ([`c6ca983`](https://github.com/Icemic/huozi-rs/commit/c6ca983b2bf1313a56278ec6df409509b1e7cd6a))
 </details>
 
@@ -121,9 +163,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Update ab_glyph version and adjust default features in Cargo.toml ([`aa3595d`](https://github.com/Icemic/huozi-rs/commit/aa3595d150e1e3184517e1a034a78f21216d63d1))
     - Remove unused code and example function ([`3c77fa1`](https://github.com/Icemic/huozi-rs/commit/3c77fa16189fd7237c3dc50d684e0c6c76391492))
 </details>
-
-<csr-unknown>
-face_info: provides font glyph metrics and bounding box information<csr-unknown/>
 
 ## v0.10.0 (2025-07-28)
 
