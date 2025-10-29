@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.14.1 (2025-10-29)
+
+### New Features
+
+ - <csr-id-87af5bdc34a9ac11daf4cdf0fba0b21838743d11/> add support for custom parsing with parse_with function
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Add support for custom parsing with parse_with function ([`87af5bd`](https://github.com/Icemic/huozi-rs/commit/87af5bdc34a9ac11daf4cdf0fba0b21838743d11))
+</details>
+
 ## v0.14.0 (2025-10-29)
 
 ### Documentation
@@ -26,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release over the course of 1 calendar day.
+ - 7 commits contributed to the release over the course of 1 calendar day.
  - 21 days passed between releases.
  - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -38,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.14.0 ([`1df9b03`](https://github.com/Icemic/huozi-rs/commit/1df9b037f5b9d97560878a7b0cb0b6c79e6cedea))
     - Add docs for text tag syntax ([`0818a3f`](https://github.com/Icemic/huozi-rs/commit/0818a3fae18c1bea95808b7d8397b64422cd4805))
     - Add integration tests for custom tag symbols with Unicode support ([`61b24ec`](https://github.com/Icemic/huozi-rs/commit/61b24ec98b9b5df50353b58c89e98fc61152cb2c))
     - Implement customizable tag symbols for parsing ([`97aebc3`](https://github.com/Icemic/huozi-rs/commit/97aebc3f2a868a70f447900578515b51f3552809))
