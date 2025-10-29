@@ -16,7 +16,7 @@ pub use vertex::*;
 use crate::{
     constant::{ASCENT, FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE, VIEWPORT_HEIGHT, VIEWPORT_WIDTH},
     glyph_vertices::GlyphVertices,
-    parser::{parse, Element},
+    parser::{parse, parse_with, Element},
     Huozi,
 };
 
@@ -135,6 +135,8 @@ impl Huozi {
 
         Ok(sections)
     }
+
+    #[cfg(feature = "parser")]
     pub fn parse_text(
         &self,
         text: &str,
@@ -144,6 +146,18 @@ impl Huozi {
         let elements = parse(text)?;
         self.parse_text_recursive(elements, initial_text_style, style_prefabs)
     }
+
+    #[cfg(feature = "parser")]
+    pub fn parse_text_with<const OPEN: char, const CLOSE: char>(
+        &self,
+        text: &str,
+        initial_text_style: &TextStyle,
+        style_prefabs: Option<&HashMap<String, TextStyle>>,
+    ) -> Result<Vec<TextSection>, String> {
+        let elements = parse_with::<OPEN, CLOSE>(text)?;
+        self.parse_text_recursive(elements, initial_text_style, style_prefabs)
+    }
+
     #[cfg(feature = "parser")]
     pub fn layout_parse(
         &mut self,
@@ -154,6 +168,20 @@ impl Huozi {
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
         let text_sections = self.parse_text(text, initial_text_style, style_prefabs)?;
+        Ok(self.layout(&layout_style, &text_sections, color_space))
+    }
+
+    #[cfg(feature = "parser")]
+    pub fn layout_parse_with<const OPEN: char, const CLOSE: char>(
+        &mut self,
+        text: &str,
+        layout_style: &LayoutStyle,
+        initial_text_style: &TextStyle,
+        color_space: ColorSpace,
+        style_prefabs: Option<&HashMap<String, TextStyle>>,
+    ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
+        let text_sections =
+            self.parse_text_with::<OPEN, CLOSE>(text, initial_text_style, style_prefabs)?;
         Ok(self.layout(&layout_style, &text_sections, color_space))
     }
 
