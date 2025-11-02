@@ -7,7 +7,7 @@ exclude = [
 license = "Apache-2.0"
 name = "huozi"
 repository = "https://github.com/Icemic/huozi-rs"
-version = "0.14.1"
+version = "0.14.2"
 
 [features]
 ab_glyph = ["dep:ab_glyph"]

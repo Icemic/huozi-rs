@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.14.2 (2025-11-02)
+
+### New Features
+
+ - <csr-id-a6079bebedb291c9973f9e509a5698d332bec0bd/> add scale_ratio field to GlyphVertices struct
+ - <csr-id-803341a534f4b6b38f9d32265aa75289ff6cc756/> add PartialEq and Eq traits to LayoutDirection enum
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 3 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Add scale_ratio field to GlyphVertices struct ([`a6079be`](https://github.com/Icemic/huozi-rs/commit/a6079bebedb291c9973f9e509a5698d332bec0bd))
+    - Add PartialEq and Eq traits to LayoutDirection enum ([`803341a`](https://github.com/Icemic/huozi-rs/commit/803341a534f4b6b38f9d32265aa75289ff6cc756))
+</details>
+
 ## v0.14.1 (2025-10-29)
 
 ### New Features
@@ -15,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -26,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.14.1 ([`854a719`](https://github.com/Icemic/huozi-rs/commit/854a719135737932a7b9141c26daff2b0b392769))
     - Add support for custom parsing with parse_with function ([`87af5bd`](https://github.com/Icemic/huozi-rs/commit/87af5bdc34a9ac11daf4cdf0fba0b21838743d11))
 </details>
 
