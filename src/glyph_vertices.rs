@@ -24,4 +24,6 @@ pub struct GlyphVertices {
     pub width: u32,
     /// the height of the bounding box
     pub height: u32,
+    /// the scale ratio of the glyph
+    pub scale_ratio: f32,
 }

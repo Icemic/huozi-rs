@@ -525,6 +525,7 @@ impl Huozi {
                     y: current_y.round() as u32,
                     width: h_advance.round() as u32,
                     height: (FONT_SIZE * style.line_height).round() as u32,
+                    scale_ratio: actual_scale_ratio as f32,
                 };
 
                 glyph_vertices_vec.push(glyph_vertices);
