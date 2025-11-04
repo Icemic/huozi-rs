@@ -15,11 +15,12 @@ use std::{
 };
 use wgpu::{util::DeviceExt, BlendState};
 use winit::{
+    application::ApplicationHandler,
     dpi::LogicalSize,
     event::*,
-    event_loop::EventLoop,
+    event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowBuilder},
+    window::Window,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -492,105 +493,111 @@ impl State {
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
-pub fn run(event_loop: EventLoop<()>) {
-    let mut window = None;
-    let mut state = None;
+struct App {
+    window: Option<Arc<Window>>,
+    state: Option<State>,
+}
 
-    let _ = event_loop.run(move |event, target| {
+impl App {
+    fn new() -> Self {
+        Self {
+            window: None,
+            state: None,
+        }
+    }
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.window.is_none() {
+            let window_attributes = Window::default_attributes()
+                .with_title("Huozi Render Example")
+                .with_inner_size(LogicalSize::new(1280, 720))
+                .with_max_inner_size(LogicalSize::new(1280, 720))
+                .with_min_inner_size(LogicalSize::new(1280, 720));
+
+            let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+
+            #[cfg(target_arch = "wasm32")]
+            {
+                use winit::platform::web::WindowExtWebSys;
+                web_sys::window()
+                    .and_then(|win| win.document())
+                    .and_then(|doc| {
+                        let dst = doc.get_element_by_id("wasm-example")?;
+                        let canvas = web_sys::Element::from(window.canvas()?);
+                        dst.append_child(&canvas).ok()?;
+                        Some(())
+                    })
+                    .expect("Couldn't append canvas to document body.");
+            }
+
+            let state = pollster::block_on(State::new(&window));
+
+            self.window = Some(window);
+            self.state = Some(state);
+        }
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: winit::window::WindowId,
+        event: WindowEvent,
+    ) {
         match event {
-            Event::Resumed => {
-                let _window = WindowBuilder::new().build(&target).unwrap();
-                let _window = Arc::new(_window);
-                _window.set_max_inner_size(Some(LogicalSize::new(1280, 720)));
-                _window.set_min_inner_size(Some(LogicalSize::new(1280, 720)));
-
-                let _ = _window.request_inner_size(LogicalSize::new(1280, 720));
-
-                #[cfg(target_arch = "wasm32")]
-                {
-                    // Winit prevents sizing with CSS, so we have to set
-                    // the size manually when on web.
-                    use winit::dpi::PhysicalSize;
-                    window.set_inner_size(PhysicalSize::new(450, 400));
-
-                    use winit::platform::web::WindowExtWebSys;
-                    web_sys::window()
-                        .and_then(|win| win.document())
-                        .and_then(|doc| {
-                            let dst = doc.get_element_by_id("wasm-example")?;
-                            let canvas = web_sys::Element::from(window.canvas());
-                            dst.append_child(&canvas).ok()?;
-                            Some(())
-                        })
-                        .expect("Couldn't append canvas to document body.");
-                }
-
-                // State::new uses async code, so we're going to wait for it to finish
-                let _state = pollster::block_on(State::new(&_window));
-
-                window = Some(_window);
-                state = Some(_state);
-            }
-            Event::WindowEvent {
-                ref event,
-                window_id,
-            } if window.is_some() && window_id == window.as_ref().unwrap().id() => {
-                match event {
-                    WindowEvent::RedrawRequested => {
-                        if let Some(state) = state.as_mut() {
-                            let time = SystemTime::now()
-                                .duration_since(UNIX_EPOCH)
-                                .unwrap()
-                                .as_millis();
-                            state.update(time);
-                            match state.render() {
-                                Ok(_) => {}
-                                // Reconfigure the surface if it's lost or outdated
-                                Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                                    state.resize(state.size)
-                                }
-                                // The system is out of memory, we should probably quit
-                                Err(wgpu::SurfaceError::OutOfMemory) => {
-                                    target.exit();
-                                }
-                                // We're ignoring timeouts
-                                Err(wgpu::SurfaceError::Timeout) => log::warn!("Surface timeout"),
-                                Err(wgpu::SurfaceError::Other) => {
-                                    log::warn!("Surface other error")
-                                }
-                            }
+            WindowEvent::RedrawRequested => {
+                if let Some(state) = self.state.as_mut() {
+                    let time = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis();
+                    state.update(time);
+                    match state.render() {
+                        Ok(_) => {}
+                        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                            state.resize(state.size)
+                        }
+                        Err(wgpu::SurfaceError::OutOfMemory) => {
+                            event_loop.exit();
+                        }
+                        Err(wgpu::SurfaceError::Timeout) => log::warn!("Surface timeout"),
+                        Err(wgpu::SurfaceError::Other) => {
+                            log::warn!("Surface other error")
                         }
                     }
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        event:
-                            KeyEvent {
-                                state: ElementState::Pressed,
-                                physical_key: PhysicalKey::Code(KeyCode::Escape),
-                                ..
-                            },
+                }
+            }
+            WindowEvent::CloseRequested
+            | WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        state: ElementState::Pressed,
+                        physical_key: PhysicalKey::Code(KeyCode::Escape),
                         ..
-                    } => target.exit(),
-                    WindowEvent::Resized(physical_size) => {
-                        if let Some(state) = state.as_mut() {
-                            state.resize(*physical_size);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            Event::AboutToWait => {
-                // RedrawRequested will only trigger once, unless we manually
-                // request it.
-                if let Some(window) = window.as_ref() {
-                    window.request_redraw();
+                    },
+                ..
+            } => event_loop.exit(),
+            WindowEvent::Resized(physical_size) => {
+                if let Some(state) = self.state.as_mut() {
+                    state.resize(physical_size);
                 }
             }
             _ => {}
         }
-    });
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Some(window) = self.window.as_ref() {
+            window.request_redraw();
+        }
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
+pub fn run(event_loop: EventLoop<()>) {
+    let mut app = App::new();
+    let _ = event_loop.run_app(&mut app);
 }
 
 fn main() {
