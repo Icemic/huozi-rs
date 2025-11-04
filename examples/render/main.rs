@@ -62,6 +62,14 @@ struct State {
     input_text: String,
     last_rendered_text: String,
 
+    // Layout and style configuration
+    background_color: wgpu::Color,
+    layout_config: LayoutStyle,
+    text_config: TextStyle,
+    stroke_enabled: bool,
+    shadow_enabled: bool,
+    config_changed: bool,
+
     // Store egui render data
     egui_paint_jobs: Vec<egui::ClippedPrimitive>,
     egui_textures_delta: egui::TexturesDelta,
@@ -274,11 +282,11 @@ impl State {
 
         // initialize huozi instance
         let t = SystemTime::now();
-        // let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
+        let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
         // let font_data = include_bytes!("../assets/SourceHanSansSC-Regular.otf").to_vec();
         // let font_data = std::fs::read("examples/assets/Zhudou Sans Regular.ttf").unwrap();
         // let font_data = std::fs::read("examples/assets/SourceHanSerifSC-Regular.otf").unwrap();
-        let font_data = std::fs::read("examples/assets/LXGWWenKaiLite-Regular.ttf").unwrap();
+        // let font_data = std::fs::read("examples/assets/LXGWWenKaiLite-Regular.ttf").unwrap();
         // let font_data = std::fs::read("examples/assets/SweiGothicCJKsc-Regular.ttf").unwrap();
 
         info!(
@@ -302,7 +310,7 @@ impl State {
         // Initialize egui
         let egui_context = egui::Context::default();
         egui_context.add_font(FontInsert::new(
-            "font",
+            "custom_font",
             egui::FontData::from_owned(font_data),
             vec![
                 InsertFontFamily {
@@ -317,8 +325,12 @@ impl State {
         ));
         egui_context.style_mut(|style| {
             style.text_styles.insert(
+                egui::TextStyle::Name("custom_font".into()),
+                egui::FontId::new(16.0, egui::FontFamily::Proportional),
+            );
+            style.text_styles.insert(
                 egui::TextStyle::Body,
-                egui::FontId::new(16.0, egui::FontFamily::Monospace),
+                egui::FontId::new(14.0, egui::FontFamily::Proportional),
             );
         });
         let egui_state = egui_winit::State::new(
@@ -358,6 +370,27 @@ impl State {
             egui_renderer,
             input_text: DEFAULT_TEXT.to_string(),
             last_rendered_text: String::new(),
+            background_color: wgpu::Color {
+                r: 0.737,
+                g: 0.737,
+                b: 0.737,
+                a: 1.0,
+            },
+            layout_config: LayoutStyle {
+                direction: LayoutDirection::Horizontal,
+                box_width: 1200.,
+                box_height: 600.,
+                glyph_grid_size: 32.,
+            },
+            text_config: TextStyle {
+                fill_color: Color::new(0.0, 0.0, 0.0, 1.0),
+                stroke: Some(StrokeStyle::default()),
+                shadow: Some(ShadowStyle::default()),
+                ..TextStyle::default()
+            },
+            stroke_enabled: true,
+            shadow_enabled: true,
+            config_changed: false,
             egui_paint_jobs: Vec::new(),
             egui_textures_delta: Default::default(),
         }
@@ -373,23 +406,352 @@ impl State {
     }
 
     fn update(&mut self, window: &Window) {
+        // Reset config changed flag
+        self.config_changed = false;
+
         // Build egui UI
         let raw_input = self.egui_state.take_egui_input(window);
         let full_output = self.egui_context.run(raw_input, |ctx| {
-            // Bottom panel for text input
+            // Bottom panel for text input and configuration
             egui::TopBottomPanel::bottom("text_input_panel")
-                .resizable(true)
-                .default_height(200.0)
+                .resizable(false)
+                .default_height(350.0)
                 .show(ctx, |ui| {
-                    ui.heading("Text Input");
-                    ui.add(
-                        egui::TextEdit::multiline(&mut self.input_text)
-                            .desired_width(600.)
-                            .desired_rows(16)
-                            .font(egui::TextStyle::Body),
-                    );
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([false; 2])
+                        .show(ui, |ui| {
+                            // Text input section
+                            // ui.heading("Playground");
+
+                            ui.horizontal(|ui| {
+                                ui.vertical(|ui| {
+                                    ui.heading("Text");
+                                    ui.add(
+                                        egui::TextEdit::multiline(&mut self.input_text)
+                                            .desired_width(400.)
+                                            .desired_rows(16)
+                                            .font(egui::TextStyle::Name("custom_font".into())),
+                                    );
+                                });
+                                // ui.add_space(10.0);
+                                ui.separator();
+                                // Layout configuration
+                                ui.vertical(|ui| {
+                                    ui.set_width(300.);
+                                    ui.heading("🎨 Basic");
+                                    ui.horizontal(|ui| {
+                                        ui.label("Background Color:");
+                                        let mut color = [
+                                            self.background_color.r as f32,
+                                            self.background_color.g as f32,
+                                            self.background_color.b as f32,
+                                        ];
+                                        if ui.color_edit_button_rgb(&mut color).changed() {
+                                            self.background_color.r = color[0] as f64;
+                                            self.background_color.g = color[1] as f64;
+                                            self.background_color.b = color[2] as f64;
+                                            self.config_changed = true;
+                                        }
+                                    });
+
+                                    ui.heading("⚙ Layout Configuration");
+                                    if ui
+                                        .horizontal(|ui| {
+                                            ui.label("Direction:");
+                                            ui.radio_value(
+                                                &mut self.layout_config.direction,
+                                                LayoutDirection::Horizontal,
+                                                "Horizontal",
+                                            ) | ui.radio_value(
+                                                &mut self.layout_config.direction,
+                                                LayoutDirection::Vertical,
+                                                "Vertical",
+                                            )
+                                        })
+                                        .inner
+                                        .changed()
+                                    {
+                                        self.config_changed = true;
+                                    }
+
+                                    if ui
+                                        .horizontal(|ui| {
+                                            ui.label("Box Width:");
+                                            ui.add(
+                                                egui::DragValue::new(
+                                                    &mut self.layout_config.box_width,
+                                                )
+                                                .speed(10.0)
+                                                .range(100.0..=2000.0),
+                                            )
+                                        })
+                                        .inner
+                                        .changed()
+                                    {
+                                        self.config_changed = true;
+                                    }
+
+                                    if ui
+                                        .horizontal(|ui| {
+                                            ui.label("Box Height:");
+                                            ui.add(
+                                                egui::DragValue::new(
+                                                    &mut self.layout_config.box_height,
+                                                )
+                                                .speed(10.0)
+                                                .range(100.0..=1000.0),
+                                            )
+                                        })
+                                        .inner
+                                        .changed()
+                                    {
+                                        self.config_changed = true;
+                                    }
+
+                                    if ui
+                                        .horizontal(|ui| {
+                                            ui.label("Glyph Grid Size:");
+                                            ui.add(
+                                                egui::DragValue::new(
+                                                    &mut self.layout_config.glyph_grid_size,
+                                                )
+                                                .speed(1.0)
+                                                .range(8.0..=128.0),
+                                            )
+                                        })
+                                        .inner
+                                        .changed()
+                                    {
+                                        self.config_changed = true;
+                                    }
+                                });
+
+                                ui.separator();
+
+                                // Text style configuration
+                                ui.vertical(|ui| {
+                                    ui.heading("🎨 Text Style Configuration");
+                                    ui.horizontal(|ui| {
+                                        ui.label("Font Size:");
+                                        ui.add(
+                                            egui::DragValue::new(&mut self.text_config.font_size)
+                                                .speed(1.0)
+                                                .range(8.0..=128.0),
+                                        );
+                                    });
+
+                                    ui.horizontal(|ui| {
+                                        ui.label("Line Height:");
+                                        ui.add(
+                                            egui::DragValue::new(&mut self.text_config.line_height)
+                                                .speed(0.1)
+                                                .range(0.5..=3.0),
+                                        );
+                                    });
+
+                                    ui.horizontal(|ui| {
+                                        ui.label("Indent:");
+                                        ui.add(
+                                            egui::DragValue::new(&mut self.text_config.indent)
+                                                .speed(1.0)
+                                                .range(0.0..=200.0),
+                                        );
+                                    });
+
+                                    ui.horizontal(|ui| {
+                                        ui.label("Fill Color:");
+                                        let mut color = [
+                                            self.text_config.fill_color.r,
+                                            self.text_config.fill_color.g,
+                                            self.text_config.fill_color.b,
+                                        ];
+                                        if ui.color_edit_button_rgb(&mut color).changed() {
+                                            self.text_config.fill_color.r = color[0];
+                                            self.text_config.fill_color.g = color[1];
+                                            self.text_config.fill_color.b = color[2];
+                                            self.config_changed = true;
+                                        }
+                                        ui.label(format!(
+                                            "Alpha: {:.2}",
+                                            self.text_config.fill_color.a
+                                        ));
+                                        let mut alpha = self.text_config.fill_color.a;
+                                        if ui
+                                            .add(egui::Slider::new(&mut alpha, 0.0..=1.0))
+                                            .changed()
+                                        {
+                                            self.text_config.fill_color.a = alpha;
+                                            self.config_changed = true;
+                                        }
+                                    });
+
+                                    ui.add_space(5.0);
+
+                                    // Stroke configuration
+                                    ui.checkbox(&mut self.stroke_enabled, "Enable Stroke");
+                                    if self.stroke_enabled {
+                                        ui.indent("stroke", |ui| {
+                                            if self.text_config.stroke.is_none() {
+                                                self.text_config.stroke =
+                                                    Some(StrokeStyle::default());
+                                            }
+
+                                            if let Some(stroke) = &mut self.text_config.stroke {
+                                                ui.horizontal(|ui| {
+                                                    ui.label("Stroke Width:");
+                                                    ui.add(
+                                                        egui::DragValue::new(
+                                                            &mut stroke.stroke_width,
+                                                        )
+                                                        .speed(0.1)
+                                                        .range(0.0..=20.0),
+                                                    );
+                                                });
+
+                                                ui.horizontal(|ui| {
+                                                    ui.label("Stroke Color:");
+                                                    let mut color = [
+                                                        stroke.stroke_color.r,
+                                                        stroke.stroke_color.g,
+                                                        stroke.stroke_color.b,
+                                                    ];
+                                                    if ui
+                                                        .color_edit_button_rgb(&mut color)
+                                                        .changed()
+                                                    {
+                                                        stroke.stroke_color.r = color[0];
+                                                        stroke.stroke_color.g = color[1];
+                                                        stroke.stroke_color.b = color[2];
+                                                        self.config_changed = true;
+                                                    }
+                                                    ui.label(format!(
+                                                        "Alpha: {:.2}",
+                                                        stroke.stroke_color.a
+                                                    ));
+                                                    let mut alpha = stroke.stroke_color.a;
+                                                    if ui
+                                                        .add(egui::Slider::new(
+                                                            &mut alpha,
+                                                            0.0..=1.0,
+                                                        ))
+                                                        .changed()
+                                                    {
+                                                        stroke.stroke_color.a = alpha;
+                                                        self.config_changed = true;
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    } else {
+                                        self.text_config.stroke = None;
+                                    }
+
+                                    ui.add_space(5.0);
+
+                                    // Shadow configuration
+                                    ui.checkbox(&mut self.shadow_enabled, "Enable Shadow");
+                                    if self.shadow_enabled {
+                                        ui.indent("shadow", |ui| {
+                                            if self.text_config.shadow.is_none() {
+                                                self.text_config.shadow =
+                                                    Some(ShadowStyle::default());
+                                            }
+
+                                            if let Some(shadow) = &mut self.text_config.shadow {
+                                                ui.horizontal(|ui| {
+                                                    ui.label("Shadow Offset X:");
+                                                    ui.add(
+                                                        egui::DragValue::new(
+                                                            &mut shadow.shadow_offset_x,
+                                                        )
+                                                        .speed(0.5)
+                                                        .range(-50.0..=50.0),
+                                                    );
+                                                });
+
+                                                ui.horizontal(|ui| {
+                                                    ui.label("Shadow Offset Y:");
+                                                    ui.add(
+                                                        egui::DragValue::new(
+                                                            &mut shadow.shadow_offset_y,
+                                                        )
+                                                        .speed(0.5)
+                                                        .range(-50.0..=50.0),
+                                                    );
+                                                });
+
+                                                ui.horizontal(|ui| {
+                                                    ui.label("Shadow Blur:");
+                                                    ui.add(
+                                                        egui::DragValue::new(
+                                                            &mut shadow.shadow_blur,
+                                                        )
+                                                        .speed(0.5)
+                                                        .range(0.0..=50.0),
+                                                    );
+                                                });
+
+                                                ui.horizontal(|ui| {
+                                                    ui.label("Shadow Width:");
+                                                    ui.add(
+                                                        egui::DragValue::new(
+                                                            &mut shadow.shadow_width,
+                                                        )
+                                                        .speed(0.1)
+                                                        .range(0.0..=20.0),
+                                                    );
+                                                });
+
+                                                ui.horizontal(|ui| {
+                                                    ui.label("Shadow Color:");
+                                                    let mut color = [
+                                                        shadow.shadow_color.r,
+                                                        shadow.shadow_color.g,
+                                                        shadow.shadow_color.b,
+                                                    ];
+                                                    if ui
+                                                        .color_edit_button_rgb(&mut color)
+                                                        .changed()
+                                                    {
+                                                        shadow.shadow_color = Color::new(
+                                                            color[0],
+                                                            color[1],
+                                                            color[2],
+                                                            shadow.shadow_color.a,
+                                                        );
+                                                        self.config_changed = true;
+                                                    }
+                                                    ui.label(format!(
+                                                        "Alpha: {:.2}",
+                                                        shadow.shadow_color.a
+                                                    ));
+                                                    let mut alpha = shadow.shadow_color.a;
+                                                    if ui
+                                                        .add(egui::Slider::new(
+                                                            &mut alpha,
+                                                            0.0..=1.0,
+                                                        ))
+                                                        .changed()
+                                                    {
+                                                        shadow.shadow_color.a = alpha;
+                                                        self.config_changed = true;
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    } else {
+                                        self.text_config.shadow = None;
+                                    }
+                                });
+                            });
+                        });
                 });
         });
+
+        // Mark config as changed if there was any UI interaction in config panels
+        if full_output.platform_output.events.iter().any(|_| true) {
+            self.config_changed = true;
+        }
 
         self.egui_state
             .handle_platform_output(window, full_output.platform_output);
@@ -400,8 +762,8 @@ impl State {
             .egui_context
             .tessellate(full_output.shapes, full_output.pixels_per_point);
 
-        // Check if text changed and re-render
-        if self.input_text != self.last_rendered_text {
+        // Check if text or config changed and re-render
+        if self.input_text != self.last_rendered_text || self.config_changed {
             self.render_huozi_text(&self.input_text.clone());
             self.last_rendered_text = self.input_text.clone();
         }
@@ -410,24 +772,13 @@ impl State {
     fn render_huozi_text(&mut self, text: &str) {
         let t = SystemTime::now();
 
-        let layout_style = LayoutStyle {
-            direction: LayoutDirection::Horizontal,
-            box_width: 1200.,
-            box_height: 600.,
-            glyph_grid_size: 32.,
-        };
-
-        let style = TextStyle {
-            fill_color: Color::new(0.0, 0.0, 0.0, 1.0),
-            stroke: Some(StrokeStyle::default()),
-            shadow: Some(ShadowStyle::default()),
-            ..TextStyle::default()
-        };
-
-        match self
-            .huozi
-            .layout_parse(text, &layout_style, &style, ColorSpace::SRGB, None)
-        {
+        match self.huozi.layout_parse(
+            text,
+            &self.layout_config,
+            &self.text_config,
+            ColorSpace::SRGB,
+            None,
+        ) {
             Ok((glyphs, total_width, total_height)) => {
                 info!(
                     "text layouting finished, {}ms",
@@ -444,7 +795,7 @@ impl State {
 
                 let mut index_offset = 0;
 
-                if style.shadow.is_some() {
+                if self.text_config.shadow.is_some() {
                     for glyph in glyphs.iter() {
                         vertices.extend(&glyph.shadow);
                         indices.extend(glyph.indices.iter().map(|i| i + index_offset));
@@ -453,7 +804,7 @@ impl State {
                     }
                 }
 
-                if style.stroke.is_some() {
+                if self.text_config.stroke.is_some() {
                     for glyph in glyphs.iter() {
                         vertices.extend(&glyph.stroke);
                         indices.extend(glyph.indices.iter().map(|i| i + index_offset));
@@ -522,12 +873,7 @@ impl State {
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.737,
-                            g: 0.737,
-                            b: 0.737,
-                            a: 1.0,
-                        }),
+                        load: wgpu::LoadOp::Clear(self.background_color),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
