@@ -43,6 +43,9 @@ rustybuzz = "0.20"
 ttf-parser = "0.25"
 wgpu = "27.0"
 winit = "0.30.12"
+egui = "0.33"
+egui-wgpu = "0.33"
+egui-winit = "0.33"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 console_error_panic_hook = "0.1"

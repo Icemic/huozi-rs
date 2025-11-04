@@ -1,4 +1,5 @@
 use csscolorparser::Color;
+use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
     charsets::{ASCII, CHS, CJK_SYMBOL},
     constant::TEXTURE_SIZE,
@@ -8,11 +9,7 @@ use huozi::{
     Huozi,
 };
 use log::{error, info};
-use std::{
-    iter,
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{iter, sync::Arc, time::SystemTime};
 use wgpu::{util::DeviceExt, BlendState};
 use winit::{
     application::ApplicationHandler,
@@ -30,6 +27,11 @@ use crate::mvp::MVPUniform;
 
 mod mvp;
 mod texture;
+
+const DEFAULT_TEXT: &str = "Innovation in China 中国智造，惠及全球。
+Innovation in China ——⸺全球。
+This is a sample text. gM 123.!\\\"\\\"?;:<>
+人人生而自由，在尊严和权利上一律平等。他们赋有理性和良心，并应以兄弟关系的精神相对待。";
 
 struct State {
     surface: wgpu::Surface<'static>,
@@ -50,7 +52,19 @@ struct State {
     texture_bind_group: wgpu::BindGroup,
 
     huozi: Huozi,
-    text_rendered: bool,
+
+    // egui integration
+    egui_context: egui::Context,
+    egui_state: egui_winit::State,
+    egui_renderer: egui_wgpu::Renderer,
+
+    // Text input
+    input_text: String,
+    last_rendered_text: String,
+
+    // Store egui render data
+    egui_paint_jobs: Vec<egui::ClippedPrimitive>,
+    egui_textures_delta: egui::TexturesDelta,
 }
 
 impl State {
@@ -261,10 +275,10 @@ impl State {
         // initialize huozi instance
         let t = SystemTime::now();
         // let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
-        let font_data = include_bytes!("../assets/SourceHanSansSC-Regular.otf").to_vec();
+        // let font_data = include_bytes!("../assets/SourceHanSansSC-Regular.otf").to_vec();
         // let font_data = std::fs::read("examples/assets/Zhudou Sans Regular.ttf").unwrap();
         // let font_data = std::fs::read("examples/assets/SourceHanSerifSC-Regular.otf").unwrap();
-        // let font_data = std::fs::read("examples/assets/LXGWWenKaiLite-Regular.ttf").unwrap();
+        let font_data = std::fs::read("examples/assets/LXGWWenKaiLite-Regular.ttf").unwrap();
         // let font_data = std::fs::read("examples/assets/SweiGothicCJKsc-Regular.ttf").unwrap();
 
         info!(
@@ -272,7 +286,7 @@ impl State {
             SystemTime::now().duration_since(t).unwrap().as_millis()
         );
 
-        let mut huozi = huozi::Huozi::new(font_data);
+        let mut huozi = huozi::Huozi::new(font_data.clone());
 
         let t = SystemTime::now();
 
@@ -283,6 +297,45 @@ impl State {
         info!(
             "SDF texture preloaded, {}ms",
             SystemTime::now().duration_since(t).unwrap().as_millis()
+        );
+
+        // Initialize egui
+        let egui_context = egui::Context::default();
+        egui_context.add_font(FontInsert::new(
+            "font",
+            egui::FontData::from_owned(font_data),
+            vec![
+                InsertFontFamily {
+                    family: egui::FontFamily::Proportional,
+                    priority: egui::epaint::text::FontPriority::Highest,
+                },
+                InsertFontFamily {
+                    family: egui::FontFamily::Monospace,
+                    priority: egui::epaint::text::FontPriority::Lowest,
+                },
+            ],
+        ));
+        egui_context.style_mut(|style| {
+            style.text_styles.insert(
+                egui::TextStyle::Body,
+                egui::FontId::new(16.0, egui::FontFamily::Monospace),
+            );
+        });
+        let egui_state = egui_winit::State::new(
+            egui_context.clone(),
+            egui::ViewportId::ROOT,
+            &window,
+            Some(window.scale_factor() as f32),
+            None,
+            None,
+        );
+        let egui_renderer = egui_wgpu::Renderer::new(
+            &device,
+            config.format,
+            egui_wgpu::RendererOptions {
+                msaa_samples: 1,
+                ..Default::default()
+            },
         );
 
         Self {
@@ -300,7 +353,13 @@ impl State {
             texture,
             texture_bind_group,
             huozi,
-            text_rendered: false,
+            egui_context,
+            egui_state,
+            egui_renderer,
+            input_text: DEFAULT_TEXT.to_string(),
+            last_rendered_text: String::new(),
+            egui_paint_jobs: Vec::new(),
+            egui_textures_delta: Default::default(),
         }
     }
 
@@ -313,126 +372,128 @@ impl State {
         }
     }
 
-    fn update(&mut self, _: u128) {
-        // self.uniforms.color[0] = (time % 2000) as f32 / 2000. * 1.0;
-        // self.queue.write_buffer(
-        //     &self.uniform_buffer,
-        //     0,
-        //     bytemuck::cast_slice(&[self.uniforms]),
-        // );
-
-        if !self.text_rendered {
-            self.text_rendered = true;
-
-            // render text
-            //                         let sample_text = "中国智造，惠及全球。
-            // ——全球
-            // ⸺全球。
-            // ――全球。
-            // ––––全球。
-            // ⸻全球。
-            // 　　全球。
-            // 全  球 。";
-            let sample_text = "Innovation in China 中国智造，惠及全球。\n\
-            Innovation in China ——⸺全球。\n\
-            This is a sample text. gM 123.!\\\"\\\"?;:<>\n\
-            人人生而自由，在尊严和权利上一律平等。他们赋有理性和良心，并应以兄弟关系的精神相对待。\n\
-            人人有资格享有本宣言所载的一切权利和自由，不分种族、肤色、性别、语言、宗教、政治或其他见解、国籍或社会出身、财产、出生或其他身分等任\
-            何区别。并且不得因一人所属的国家或领土的政治的、行政的或者国际的地位之不同而有所区别，无论该领土是独立领土、托管领土、非自治领土或者\
-            处于其他任何主权受限制的情况之下。";
-
-            // let sample_text = "在游戏或其他多媒体内容中，文字被放置于通常称作“文本框”的版心内。与报刊杂志等紧凑的设计不同，游戏画面中的文本框四周时常留有足够多的空白以保证用户界面的美观，这使得后者在文字的布局调整方面具有更多先天的余地。以《W3C 中文排版需求》草案为参考，面向游戏或其他多媒体内容中文字使用的一般场景，开发了本工具。";
-
-            let t = SystemTime::now();
-
-            let layout_style = LayoutStyle {
-                direction: LayoutDirection::Horizontal,
-                box_width: 1200.,
-                box_height: 600.,
-                glyph_grid_size: 32.,
-            };
-
-            let style = TextStyle {
-                fill_color: Color::new(0.0, 0.0, 0.0, 1.0),
-                stroke: Some(StrokeStyle::default()),
-                shadow: Some(ShadowStyle::default()),
-                ..TextStyle::default()
-            };
-
-            match self.huozi.layout_parse(
-                sample_text,
-                &layout_style,
-                &style,
-                ColorSpace::SRGB,
-                None,
-            ) {
-                Ok((glyphs, total_width, total_height)) => {
-                    info!(
-                        "text layouting finished, {}ms",
-                        SystemTime::now().duration_since(t).unwrap().as_millis()
+    fn update(&mut self, window: &Window) {
+        // Build egui UI
+        let raw_input = self.egui_state.take_egui_input(window);
+        let full_output = self.egui_context.run(raw_input, |ctx| {
+            // Bottom panel for text input
+            egui::TopBottomPanel::bottom("text_input_panel")
+                .resizable(true)
+                .default_height(200.0)
+                .show(ctx, |ui| {
+                    ui.heading("Text Input");
+                    ui.add(
+                        egui::TextEdit::multiline(&mut self.input_text)
+                            .desired_width(600.)
+                            .desired_rows(16)
+                            .font(egui::TextStyle::Body),
                     );
+                });
+        });
 
-                    info!(
-                        "total_width: {}, total_height: {}",
-                        total_width, total_height
-                    );
+        self.egui_state
+            .handle_platform_output(window, full_output.platform_output);
 
-                    let mut vertices: Vec<Vertex> = Vec::with_capacity(glyphs.len() * 4 * 3);
-                    let mut indices: Vec<u16> = Vec::with_capacity(glyphs.len() * 6);
+        // Store textures delta and paint jobs for rendering
+        self.egui_textures_delta = full_output.textures_delta;
+        self.egui_paint_jobs = self
+            .egui_context
+            .tessellate(full_output.shapes, full_output.pixels_per_point);
 
-                    let mut index_offset = 0;
+        // Check if text changed and re-render
+        if self.input_text != self.last_rendered_text {
+            self.render_huozi_text(&self.input_text.clone());
+            self.last_rendered_text = self.input_text.clone();
+        }
+    }
 
-                    if style.shadow.is_some() {
-                        for glyph in glyphs.iter() {
-                            vertices.extend(&glyph.shadow);
-                            indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+    fn render_huozi_text(&mut self, text: &str) {
+        let t = SystemTime::now();
 
-                            index_offset += glyph.shadow.len() as u16;
-                        }
-                    }
+        let layout_style = LayoutStyle {
+            direction: LayoutDirection::Horizontal,
+            box_width: 1200.,
+            box_height: 600.,
+            glyph_grid_size: 32.,
+        };
 
-                    if style.stroke.is_some() {
-                        for glyph in glyphs.iter() {
-                            vertices.extend(&glyph.stroke);
-                            indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+        let style = TextStyle {
+            fill_color: Color::new(0.0, 0.0, 0.0, 1.0),
+            stroke: Some(StrokeStyle::default()),
+            shadow: Some(ShadowStyle::default()),
+            ..TextStyle::default()
+        };
 
-                            index_offset += glyph.stroke.len() as u16;
-                        }
-                    }
+        match self
+            .huozi
+            .layout_parse(text, &layout_style, &style, ColorSpace::SRGB, None)
+        {
+            Ok((glyphs, total_width, total_height)) => {
+                info!(
+                    "text layouting finished, {}ms",
+                    SystemTime::now().duration_since(t).unwrap().as_millis()
+                );
 
+                info!(
+                    "total_width: {}, total_height: {}",
+                    total_width, total_height
+                );
+
+                let mut vertices: Vec<Vertex> = Vec::with_capacity(glyphs.len() * 4 * 3);
+                let mut indices: Vec<u16> = Vec::with_capacity(glyphs.len() * 6);
+
+                let mut index_offset = 0;
+
+                if style.shadow.is_some() {
                     for glyph in glyphs.iter() {
-                        vertices.extend(&glyph.fill);
+                        vertices.extend(&glyph.shadow);
                         indices.extend(glyph.indices.iter().map(|i| i + index_offset));
 
-                        index_offset += glyph.fill.len() as u16;
+                        index_offset += glyph.shadow.len() as u16;
                     }
-
-                    let vertex_buffer =
-                        self.device
-                            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                                label: Some("Vertex Buffer"),
-                                contents: bytemuck::cast_slice(&vertices),
-                                usage: wgpu::BufferUsages::VERTEX,
-                            });
-                    let index_buffer =
-                        self.device
-                            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                                label: Some("Index Buffer"),
-                                contents: bytemuck::cast_slice(&indices),
-                                usage: wgpu::BufferUsages::INDEX,
-                            });
-                    let num_indices = indices.len() as u32;
-
-                    self.vertex_buffer = Some(vertex_buffer);
-                    self.index_buffer = Some(index_buffer);
-                    self.num_indices = Some(num_indices);
-
-                    self.texture
-                        .write_bitmap(&self.queue, self.huozi.texture_image());
                 }
-                Err(err_msg) => {
-                    error!("{}", err_msg);
+
+                if style.stroke.is_some() {
+                    for glyph in glyphs.iter() {
+                        vertices.extend(&glyph.stroke);
+                        indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+
+                        index_offset += glyph.stroke.len() as u16;
+                    }
                 }
+
+                for glyph in glyphs.iter() {
+                    vertices.extend(&glyph.fill);
+                    indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+
+                    index_offset += glyph.fill.len() as u16;
+                }
+
+                let vertex_buffer =
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Vertex Buffer"),
+                            contents: bytemuck::cast_slice(&vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        });
+                let index_buffer =
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Index Buffer"),
+                            contents: bytemuck::cast_slice(&indices),
+                            usage: wgpu::BufferUsages::INDEX,
+                        });
+                let num_indices = indices.len() as u32;
+
+                self.vertex_buffer = Some(vertex_buffer);
+                self.index_buffer = Some(index_buffer);
+                self.num_indices = Some(num_indices);
+
+                self.texture
+                    .write_bitmap(&self.queue, self.huozi.texture_image());
+            }
+            Err(err_msg) => {
+                error!("{}", err_msg);
             }
         }
     }
@@ -484,6 +545,55 @@ impl State {
             render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..num_indices, 0, 0..1);
+        }
+
+        // Render egui (only if there are paint jobs to render)
+        if !self.egui_paint_jobs.is_empty() {
+            // Update textures
+            for (id, image_delta) in &self.egui_textures_delta.set {
+                self.egui_renderer
+                    .update_texture(&self.device, &self.queue, *id, image_delta);
+            }
+
+            let screen_descriptor = egui_wgpu::ScreenDescriptor {
+                size_in_pixels: [self.config.width, self.config.height],
+                pixels_per_point: self.egui_context.pixels_per_point(),
+            };
+
+            // Update buffers - this is required before rendering!
+            self.egui_renderer.update_buffers(
+                &self.device,
+                &self.queue,
+                &mut encoder,
+                &self.egui_paint_jobs,
+                &screen_descriptor,
+            );
+
+            let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("egui Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                ..Default::default()
+            });
+
+            self.egui_renderer.render(
+                &mut render_pass.forget_lifetime(),
+                &self.egui_paint_jobs,
+                &screen_descriptor,
+            );
+        }
+
+        // Free egui textures
+        for id in &self.egui_textures_delta.free {
+            self.egui_renderer.free_texture(id);
         }
 
         self.queue.submit(iter::once(encoder.finish()));
@@ -545,14 +655,18 @@ impl ApplicationHandler for App {
         _window_id: winit::window::WindowId,
         event: WindowEvent,
     ) {
+        // Let egui handle the event first
+        if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref()) {
+            let response = state.egui_state.on_window_event(window, &event);
+            if response.consumed {
+                return; // Event was consumed by egui, don't process it further
+            }
+        }
+
         match event {
             WindowEvent::RedrawRequested => {
-                if let Some(state) = self.state.as_mut() {
-                    let time = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap()
-                        .as_millis();
-                    state.update(time);
+                if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref()) {
+                    state.update(window);
                     match state.render() {
                         Ok(_) => {}
                         Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
