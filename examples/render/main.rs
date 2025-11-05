@@ -61,7 +61,6 @@ struct State {
 
     // Text input
     input_text: String,
-    last_rendered_text: String,
 
     // Layout and style configuration
     background_color: wgpu::Color,
@@ -348,7 +347,6 @@ impl State {
             egui_state,
             egui_renderer,
             input_text: DEFAULT_TEXT.to_string(),
-            last_rendered_text: String::new(),
             background_color: wgpu::Color {
                 r: 0.737,
                 g: 0.737,
@@ -402,15 +400,21 @@ impl State {
                             // Text input section
                             // ui.heading("Playground");
 
+                            ui.add_space(10.);
+
                             ui.horizontal(|ui| {
                                 ui.vertical(|ui| {
                                     ui.heading("Text");
-                                    ui.add(
-                                        egui::TextEdit::multiline(&mut self.input_text)
-                                            .desired_width(400.)
-                                            .desired_rows(16)
-                                            .font(egui::TextStyle::Name("custom_font".into())),
-                                    );
+                                    if egui::TextEdit::multiline(&mut self.input_text)
+                                        .desired_width(400.)
+                                        .desired_rows(16)
+                                        .font(egui::TextStyle::Name("custom_font".into()))
+                                        .show(ui)
+                                        .response
+                                        .changed()
+                                    {
+                                        self.config_changed = true;
+                                    }
                                 });
                                 // ui.add_space(10.0);
                                 ui.separator();
@@ -711,13 +715,12 @@ impl State {
             .tessellate(full_output.shapes, full_output.pixels_per_point);
 
         // Check if text or config changed and re-render
-        if self.input_text != self.last_rendered_text || self.config_changed {
-            self.render_huozi_text(&self.input_text.clone());
-            self.last_rendered_text = self.input_text.clone();
+        if self.config_changed {
+            self.render_huozi_text();
         }
     }
 
-    fn render_huozi_text(&mut self, text: &str) {
+    fn render_huozi_text(&mut self) {
         let t = SystemTime::now();
 
         if self.huozi.is_none() {
@@ -762,7 +765,7 @@ impl State {
         };
 
         match huozi.layout_parse(
-            text,
+            &self.input_text,
             &self.layout_config,
             &self.text_config,
             ColorSpace::SRGB,
@@ -839,10 +842,6 @@ impl State {
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        if self.vertex_buffer.is_none() {
-            return Ok(());
-        }
-
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
@@ -854,7 +853,7 @@ impl State {
                 label: Some("Render Encoder"),
             });
 
-        {
+        if self.vertex_buffer.is_some() {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -981,6 +980,9 @@ impl ApplicationHandler for App {
 
             self.window = Some(window);
             self.state = Some(state);
+
+            // Initial render text
+            self.state.as_mut().unwrap().render_huozi_text();
         }
     }
 
