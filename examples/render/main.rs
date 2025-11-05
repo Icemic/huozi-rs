@@ -1,7 +1,6 @@
 use csscolorparser::Color;
 use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
-    charsets::{ASCII, CHS, CJK_SYMBOL},
     constant::TEXTURE_SIZE,
     layout::{
         ColorSpace, LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle, Vertex,
@@ -23,8 +22,9 @@ use winit::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use crate::mvp::MVPUniform;
+use crate::{fonts::get_builtin_fonts, mvp::MVPUniform};
 
+mod fonts;
 mod mvp;
 mod texture;
 
@@ -51,7 +51,8 @@ struct State {
     texture: texture::Texture,
     texture_bind_group: wgpu::BindGroup,
 
-    huozi: Huozi,
+    current_font: String,
+    huozi: Option<Huozi>,
 
     // egui integration
     egui_context: egui::Context,
@@ -280,38 +281,11 @@ impl State {
             cache: None,
         });
 
-        // initialize huozi instance
-        let t = SystemTime::now();
-        let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
-        // let font_data = include_bytes!("../assets/SourceHanSansSC-Regular.otf").to_vec();
-        // let font_data = std::fs::read("examples/assets/Zhudou Sans Regular.ttf").unwrap();
-        // let font_data = std::fs::read("examples/assets/SourceHanSerifSC-Regular.otf").unwrap();
-        // let font_data = std::fs::read("examples/assets/LXGWWenKaiLite-Regular.ttf").unwrap();
-        // let font_data = std::fs::read("examples/assets/SweiGothicCJKsc-Regular.ttf").unwrap();
-
-        info!(
-            "font file loaded, {}ms",
-            SystemTime::now().duration_since(t).unwrap().as_millis()
-        );
-
-        let mut huozi = huozi::Huozi::new(font_data.clone());
-
-        let t = SystemTime::now();
-
-        huozi.preload(ASCII);
-        huozi.preload(CJK_SYMBOL);
-        huozi.preload(CHS);
-
-        info!(
-            "SDF texture preloaded, {}ms",
-            SystemTime::now().duration_since(t).unwrap().as_millis()
-        );
-
         // Initialize egui
         let egui_context = egui::Context::default();
         egui_context.add_font(FontInsert::new(
             "custom_font",
-            egui::FontData::from_owned(font_data),
+            egui::FontData::from_owned(get_builtin_fonts()[0].1.to_vec()),
             vec![
                 InsertFontFamily {
                     family: egui::FontFamily::Proportional,
@@ -364,7 +338,8 @@ impl State {
             num_indices: None,
             texture,
             texture_bind_group,
-            huozi,
+            current_font: get_builtin_fonts().get(0).unwrap().0.to_string(),
+            huozi: None,
             egui_context,
             egui_state,
             egui_renderer,
@@ -454,10 +429,35 @@ impl State {
                                         }
                                     });
 
+                                    ui.horizontal(|ui| {
+                                        ui.label("Font:");
+                                        egui::ComboBox::from_label("")
+                                            .selected_text(self.current_font.clone())
+                                            .show_ui(ui, |ui| {
+                                                for (font_name, _) in get_builtin_fonts().iter() {
+                                                    if ui
+                                                        .selectable_value(
+                                                            &mut self.current_font,
+                                                            font_name.to_string(),
+                                                            font_name.to_string(),
+                                                        )
+                                                        .clicked()
+                                                    {
+                                                        let _ = self.huozi.take();
+                                                        self.config_changed = true;
+                                                    }
+                                                }
+                                            });
+                                    });
+
+                                    ui.add_space(10.);
+
                                     ui.heading("⚙ Layout Configuration");
                                     if ui
                                         .horizontal(|ui| {
-                                            ui.label("Direction:");
+                                            ui.disable();
+                                            ui.label("Direction:")
+                                                .on_disabled_hover_text("Not supported by now");
                                             ui.radio_value(
                                                 &mut self.layout_config.direction,
                                                 LayoutDirection::Horizontal,
@@ -772,7 +772,48 @@ impl State {
     fn render_huozi_text(&mut self, text: &str) {
         let t = SystemTime::now();
 
-        match self.huozi.layout_parse(
+        if self.huozi.is_none() {
+            info!("load font: {}", self.current_font);
+            // initialize huozi instance
+            let t = SystemTime::now();
+
+            let font_data = get_builtin_fonts()
+                .iter()
+                .find(|(name, _)| *name == &self.current_font)
+                .map(|(_, data)| *data)
+                .expect("Failed to find font data for the current font");
+
+            info!(
+                "font file loaded, {}ms",
+                SystemTime::now().duration_since(t).unwrap().as_millis()
+            );
+
+            let huozi = huozi::Huozi::new(font_data.to_vec());
+
+            // {
+            //     use huozi::charsets::{ASCII, CHS, CJK_SYMBOL};
+
+            //     let t = SystemTime::now();
+
+            //     huozi.preload(ASCII);
+            //     huozi.preload(CJK_SYMBOL);
+            //     huozi.preload(CHS);
+
+            //     info!(
+            //         "SDF texture preloaded, {}ms",
+            //         SystemTime::now().duration_since(t).unwrap().as_millis()
+            //     );
+            // }
+
+            self.huozi = Some(huozi);
+        }
+
+        let Some(huozi) = self.huozi.as_mut() else {
+            error!("Huozi instance is not initialized");
+            return;
+        };
+
+        match huozi.layout_parse(
             text,
             &self.layout_config,
             &self.text_config,
@@ -841,7 +882,7 @@ impl State {
                 self.num_indices = Some(num_indices);
 
                 self.texture
-                    .write_bitmap(&self.queue, self.huozi.texture_image());
+                    .write_bitmap(&self.queue, huozi.texture_image());
             }
             Err(err_msg) => {
                 error!("{}", err_msg);
