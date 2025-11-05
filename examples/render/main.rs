@@ -564,27 +564,12 @@ impl State {
 
                                     ui.horizontal(|ui| {
                                         ui.label("Fill Color:");
-                                        let mut color = [
-                                            self.text_config.fill_color.r,
-                                            self.text_config.fill_color.g,
-                                            self.text_config.fill_color.b,
-                                        ];
-                                        if ui.color_edit_button_rgb(&mut color).changed() {
-                                            self.text_config.fill_color.r = color[0];
-                                            self.text_config.fill_color.g = color[1];
-                                            self.text_config.fill_color.b = color[2];
-                                            self.config_changed = true;
-                                        }
-                                        ui.label(format!(
-                                            "Alpha: {:.2}",
-                                            self.text_config.fill_color.a
-                                        ));
-                                        let mut alpha = self.text_config.fill_color.a;
+                                        let mut color = self.text_config.fill_color.to_rgba8();
                                         if ui
-                                            .add(egui::Slider::new(&mut alpha, 0.0..=1.0))
+                                            .color_edit_button_srgba_premultiplied(&mut color)
                                             .changed()
                                         {
-                                            self.text_config.fill_color.a = alpha;
+                                            self.text_config.fill_color = color.into();
                                             self.config_changed = true;
                                         }
                                     });
@@ -614,33 +599,14 @@ impl State {
 
                                                 ui.horizontal(|ui| {
                                                     ui.label("Stroke Color:");
-                                                    let mut color = [
-                                                        stroke.stroke_color.r,
-                                                        stroke.stroke_color.g,
-                                                        stroke.stroke_color.b,
-                                                    ];
+                                                    let mut color = stroke.stroke_color.to_rgba8();
                                                     if ui
-                                                        .color_edit_button_rgb(&mut color)
+                                                        .color_edit_button_srgba_premultiplied(
+                                                            &mut color,
+                                                        )
                                                         .changed()
                                                     {
-                                                        stroke.stroke_color.r = color[0];
-                                                        stroke.stroke_color.g = color[1];
-                                                        stroke.stroke_color.b = color[2];
-                                                        self.config_changed = true;
-                                                    }
-                                                    ui.label(format!(
-                                                        "Alpha: {:.2}",
-                                                        stroke.stroke_color.a
-                                                    ));
-                                                    let mut alpha = stroke.stroke_color.a;
-                                                    if ui
-                                                        .add(egui::Slider::new(
-                                                            &mut alpha,
-                                                            0.0..=1.0,
-                                                        ))
-                                                        .changed()
-                                                    {
-                                                        stroke.stroke_color.a = alpha;
+                                                        stroke.stroke_color = color.into();
                                                         self.config_changed = true;
                                                     }
                                                 });
@@ -708,36 +674,14 @@ impl State {
 
                                                 ui.horizontal(|ui| {
                                                     ui.label("Shadow Color:");
-                                                    let mut color = [
-                                                        shadow.shadow_color.r,
-                                                        shadow.shadow_color.g,
-                                                        shadow.shadow_color.b,
-                                                    ];
+                                                    let mut color = shadow.shadow_color.to_rgba8();
                                                     if ui
-                                                        .color_edit_button_rgb(&mut color)
+                                                        .color_edit_button_srgba_premultiplied(
+                                                            &mut color,
+                                                        )
                                                         .changed()
                                                     {
-                                                        shadow.shadow_color = Color::new(
-                                                            color[0],
-                                                            color[1],
-                                                            color[2],
-                                                            shadow.shadow_color.a,
-                                                        );
-                                                        self.config_changed = true;
-                                                    }
-                                                    ui.label(format!(
-                                                        "Alpha: {:.2}",
-                                                        shadow.shadow_color.a
-                                                    ));
-                                                    let mut alpha = shadow.shadow_color.a;
-                                                    if ui
-                                                        .add(egui::Slider::new(
-                                                            &mut alpha,
-                                                            0.0..=1.0,
-                                                        ))
-                                                        .changed()
-                                                    {
-                                                        shadow.shadow_color.a = alpha;
+                                                        shadow.shadow_color = color.into();
                                                         self.config_changed = true;
                                                     }
                                                 });
