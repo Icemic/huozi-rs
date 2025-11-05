@@ -286,16 +286,20 @@ impl State {
         egui_context.add_font(FontInsert::new(
             "custom_font",
             egui::FontData::from_owned(get_builtin_fonts()[0].1.to_vec()),
-            vec![
-                InsertFontFamily {
-                    family: egui::FontFamily::Proportional,
-                    priority: egui::epaint::text::FontPriority::Highest,
-                },
-                InsertFontFamily {
-                    family: egui::FontFamily::Monospace,
-                    priority: egui::epaint::text::FontPriority::Lowest,
-                },
-            ],
+            vec![InsertFontFamily {
+                family: egui::FontFamily::Proportional,
+                // use lowest priority to avoid overriding other fonts
+                priority: egui::epaint::text::FontPriority::Lowest,
+            }],
+        ));
+        egui_context.add_font(FontInsert::new(
+            "firacode",
+            egui::FontData::from_owned(get_builtin_fonts().last().unwrap().1.to_vec()),
+            vec![InsertFontFamily {
+                family: egui::FontFamily::Monospace,
+                // use highest priority to ensure monospace texts use Fira Code
+                priority: egui::epaint::text::FontPriority::Highest,
+            }],
         ));
         egui_context.style_mut(|style| {
             style.text_styles.insert(

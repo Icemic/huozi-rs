@@ -10,8 +10,9 @@ static FONT_SWEIGOTHICCJKSC_REGULAR: &[u8] =
     include_bytes!("../assets/SweiGothicCJKsc-Regular.ttf");
 static FONT_TSANGER_YU_YANG_T_W02: &[u8] = include_bytes!("../assets/TsangerYuYangT-W02.ttf");
 static FONT_TSANGER_YU_YANG_T_W03: &[u8] = include_bytes!("../assets/TsangerYuYangT-W03.ttf");
+static FONT_FIRA_CODE_VF: &[u8] = include_bytes!("../assets/FiraCode-VF.ttf");
 
-pub const fn get_builtin_fonts() -> [(&'static str, &'static [u8]); 7] {
+pub const fn get_builtin_fonts() -> [(&'static str, &'static [u8]); 8] {
     [
         (
             "Source Han Sans SC Regular",
@@ -26,5 +27,6 @@ pub const fn get_builtin_fonts() -> [(&'static str, &'static [u8]); 7] {
         ("SweiGothicCJKsc Regular", FONT_SWEIGOTHICCJKSC_REGULAR),
         ("TsangerYuYangT-W02", FONT_TSANGER_YU_YANG_T_W02),
         ("TsangerYuYangT-W03", FONT_TSANGER_YU_YANG_T_W03),
+        ("Fira Code VF", FONT_FIRA_CODE_VF),
     ]
 }
