@@ -1,10 +1,7 @@
-use csscolorparser::Color;
 use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
     constant::TEXTURE_SIZE,
-    layout::{
-        ColorSpace, LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle, Vertex,
-    },
+    layout::{ColorSpace, LayoutDirection, LayoutStyle, TextStyle, Vertex},
     Huozi,
 };
 use log::{error, info};
@@ -22,8 +19,12 @@ use winit::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use crate::{fonts::get_builtin_fonts, mvp::MVPUniform, ui::render_control_panel_ui};
+use crate::{
+    defaults::text_style_default, fonts::get_builtin_fonts, mvp::MVPUniform,
+    ui::render_control_panel_ui,
+};
 
+mod defaults;
 mod fonts;
 mod mvp;
 mod texture;
@@ -359,21 +360,7 @@ impl State {
                 box_height: 600.,
                 glyph_grid_size: 32.,
             },
-            text_config: TextStyle {
-                fill_color: Color::new(1.0, 1.0, 1.0, 1.0),
-                stroke: Some(StrokeStyle {
-                    stroke_width: 1.0,
-                    stroke_color: Color::new(0.0, 0.0, 0.0, 1.0),
-                }),
-                shadow: Some(ShadowStyle {
-                    shadow_offset_x: 1.0,
-                    shadow_offset_y: 1.0,
-                    shadow_blur: 0.0,
-                    shadow_width: 0.4,
-                    shadow_color: Color::new(1.0, 0.25, 0.6, 1.0),
-                }),
-                ..TextStyle::default()
-            },
+            text_config: text_style_default(),
             stroke_enabled: true,
             shadow_enabled: true,
             config_changed: false,

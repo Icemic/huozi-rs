@@ -2,6 +2,7 @@ use egui::FullOutput;
 use huozi::layout::{LayoutDirection, ShadowStyle, StrokeStyle};
 use winit::window::Window;
 
+use crate::defaults::{shadow_default, stroke_default};
 use crate::fonts::get_builtin_fonts;
 use crate::State;
 
@@ -106,13 +107,10 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                 if ui
                                     .horizontal(|ui| {
                                         ui.label("Box Width:");
-                                        ui.add(
-                                            egui::DragValue::new(
-                                                &mut state.layout_config.box_width,
-                                            )
-                                            .speed(10.0)
-                                            .range(100.0..=2000.0),
-                                        )
+                                        ui.add(egui::Slider::new(
+                                            &mut state.layout_config.box_width,
+                                            0.0..=1280.0,
+                                        ))
                                     })
                                     .inner
                                     .changed()
@@ -123,13 +121,10 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                 if ui
                                     .horizontal(|ui| {
                                         ui.label("Box Height:");
-                                        ui.add(
-                                            egui::DragValue::new(
-                                                &mut state.layout_config.box_height,
-                                            )
-                                            .speed(10.0)
-                                            .range(100.0..=1000.0),
-                                        )
+                                        ui.add(egui::Slider::new(
+                                            &mut state.layout_config.box_height,
+                                            0.0..=360.0,
+                                        ))
                                     })
                                     .inner
                                     .changed()
@@ -206,7 +201,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                 if state.stroke_enabled {
                                     ui.indent("stroke", |ui| {
                                         if state.text_config.stroke.is_none() {
-                                            state.text_config.stroke = Some(StrokeStyle::default());
+                                            state.text_config.stroke = Some(stroke_default());
                                         }
 
                                         if let Some(stroke) = &mut state.text_config.stroke {
@@ -243,7 +238,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                 if state.shadow_enabled {
                                     ui.indent("shadow", |ui| {
                                         if state.text_config.shadow.is_none() {
-                                            state.text_config.shadow = Some(ShadowStyle::default());
+                                            state.text_config.shadow = Some(shadow_default());
                                         }
 
                                         if let Some(shadow) = &mut state.text_config.shadow {
