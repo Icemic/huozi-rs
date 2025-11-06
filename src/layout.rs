@@ -485,7 +485,13 @@ impl Huozi {
                         ColorSpace::Linear => 0.448, // Precise conversion of SRGB 0.7
                         ColorSpace::SRGB => 0.7,     // Original empirically tuned value
                     };
-                    let fill_buffer = buffer;
+                    // For shadow, if fill alpha is 0, which means no fill, so we do not draw shadow either,
+                    // or else there should be shadow.
+                    let fill_buffer = if fill_color[3] > 0.0 {
+                        fill_buffer
+                    } else {
+                        buffer
+                    };
                     let buffer = base_buffer
                         - GAMMA_COEFFICIENT * shadow_width
                             / 2.
