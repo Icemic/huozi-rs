@@ -269,7 +269,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                                 ui.add(
                                                     egui::DragValue::new(&mut shadow.shadow_blur)
                                                         .speed(0.5)
-                                                        .range(0.0..=50.0),
+                                                        .range(0.0..=100.0),
                                                 );
                                             });
 
