@@ -1,9 +1,13 @@
+use std::time::SystemTime;
+
 use huozi::charsets::{ASCII, CHS, CJK_SYMBOL};
 
 fn main() {
     let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
     let mut huozi = huozi::Huozi::new(font_data);
     // for this demo, just load the first 1024 characters, it will completely fill the red channel.
+    let t = SystemTime::now();
+
     huozi.preload(
         &ASCII
             .chars()
@@ -12,6 +16,11 @@ fn main() {
             .chain(CHS.chars().into_iter())
             .take(1024)
             .collect::<String>(),
+    );
+
+    println!(
+        "SDF texture preloaded 1024 characters in {}ms",
+        SystemTime::now().duration_since(t).unwrap().as_millis()
     );
 
     // copy red channel to green and blue channel, then fill alpha channel with 255 for easier viewing

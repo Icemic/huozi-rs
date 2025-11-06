@@ -425,22 +425,6 @@ impl State {
             );
 
             let huozi = huozi::Huozi::new(font_data.to_vec());
-
-            // {
-            //     use huozi::charsets::{ASCII, CHS, CJK_SYMBOL};
-
-            //     let t = SystemTime::now();
-
-            //     huozi.preload(ASCII);
-            //     huozi.preload(CJK_SYMBOL);
-            //     huozi.preload(CHS);
-
-            //     info!(
-            //         "SDF texture preloaded, {}ms",
-            //         SystemTime::now().duration_since(t).unwrap().as_millis()
-            //     );
-            // }
-
             self.huozi = Some(huozi);
         }
 
