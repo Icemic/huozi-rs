@@ -5,6 +5,7 @@ pub struct Vertex {
     pub tex_coords: [f32; 2],
     pub page: i32,
     pub buffer: f32,
+    pub fill_buffer: f32,
     pub gamma: f32,
     pub color: [f32; 4],
 }
@@ -45,6 +46,11 @@ impl Vertex {
                 wgpu::VertexAttribute {
                     offset: 4 * 8,
                     shader_location: 5,
+                    format: wgpu::VertexFormat::Float32,
+                },
+                wgpu::VertexAttribute {
+                    offset: 4 * 9,
+                    shader_location: 6,
                     format: wgpu::VertexFormat::Float32x4,
                 },
             ],

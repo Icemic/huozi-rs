@@ -222,6 +222,10 @@ impl Huozi {
                 ColorSpace::Linear => 0.5, // Industry standard for linear space (Mapbox, etc.)
                 ColorSpace::SRGB => 0.735357, // Precise theoretical conversion of Linear 0.5
             };
+            // set a value larger than 1. means do not remove inner part
+            // we need a value slightly larger than 1.0 to avoid the effect of anti-aliasing
+            // 2.0 should be enough
+            let fill_buffer = 2.;
             // 0.6 is a magic number, to enable anti-aliasing
             let gamma = GAMMA_COEFFICIENT * 0.6 / 2. / (style.font_size / FONT_SIZE) as f32;
             let fill_color = get_color_value(&style.fill_color, &color_space);
@@ -377,6 +381,7 @@ impl Huozi {
                         tex_coords: [glyph.u_min, glyph.v_min],
                         page: glyph.page,
                         buffer,
+                        fill_buffer,
                         gamma,
                         color: fill_color,
                     },
@@ -385,6 +390,7 @@ impl Huozi {
                         tex_coords: [glyph.u_min, glyph.v_max],
                         page: glyph.page,
                         buffer,
+                        fill_buffer,
                         gamma,
                         color: fill_color,
                     },
@@ -393,6 +399,7 @@ impl Huozi {
                         tex_coords: [glyph.u_max, glyph.v_max],
                         page: glyph.page,
                         buffer,
+                        fill_buffer,
                         gamma,
                         color: fill_color,
                     },
@@ -401,6 +408,7 @@ impl Huozi {
                         tex_coords: [glyph.u_max, glyph.v_min],
                         page: glyph.page,
                         buffer,
+                        fill_buffer,
                         gamma,
                         color: fill_color,
                     },
@@ -417,6 +425,7 @@ impl Huozi {
                         ColorSpace::Linear => 0.448, // Precise conversion of SRGB 0.7
                         ColorSpace::SRGB => 0.7,     // Original empirically tuned value
                     };
+                    let fill_buffer = buffer;
                     let buffer = base_buffer
                         - GAMMA_COEFFICIENT * stroke_width
                             / 2.
@@ -433,6 +442,7 @@ impl Huozi {
                             tex_coords: [glyph.u_min, glyph.v_min],
                             page: glyph.page,
                             buffer,
+                            fill_buffer,
                             gamma,
                             color: stroke_color,
                         },
@@ -441,6 +451,7 @@ impl Huozi {
                             tex_coords: [glyph.u_min, glyph.v_max],
                             page: glyph.page,
                             buffer,
+                            fill_buffer,
                             gamma,
                             color: stroke_color,
                         },
@@ -449,6 +460,7 @@ impl Huozi {
                             tex_coords: [glyph.u_max, glyph.v_max],
                             page: glyph.page,
                             buffer,
+                            fill_buffer,
                             gamma,
                             color: stroke_color,
                         },
@@ -457,6 +469,7 @@ impl Huozi {
                             tex_coords: [glyph.u_max, glyph.v_min],
                             page: glyph.page,
                             buffer,
+                            fill_buffer,
                             gamma,
                             color: stroke_color,
                         },
@@ -472,6 +485,7 @@ impl Huozi {
                         ColorSpace::Linear => 0.448, // Precise conversion of SRGB 0.7
                         ColorSpace::SRGB => 0.7,     // Original empirically tuned value
                     };
+                    let fill_buffer = buffer;
                     let buffer = base_buffer
                         - GAMMA_COEFFICIENT * shadow_width
                             / 2.
@@ -495,6 +509,7 @@ impl Huozi {
                             tex_coords: [glyph.u_min, glyph.v_min],
                             page: glyph.page,
                             buffer,
+                            fill_buffer,
                             gamma,
                             color: shadow_color,
                         },
@@ -503,6 +518,7 @@ impl Huozi {
                             tex_coords: [glyph.u_min, glyph.v_max],
                             page: glyph.page,
                             buffer,
+                            fill_buffer,
                             gamma,
                             color: shadow_color,
                         },
@@ -511,6 +527,7 @@ impl Huozi {
                             tex_coords: [glyph.u_max, glyph.v_max],
                             page: glyph.page,
                             buffer,
+                            fill_buffer,
                             gamma,
                             color: shadow_color,
                         },
@@ -519,6 +536,7 @@ impl Huozi {
                             tex_coords: [glyph.u_max, glyph.v_min],
                             page: glyph.page,
                             buffer,
+                            fill_buffer,
                             gamma,
                             color: shadow_color,
                         },
