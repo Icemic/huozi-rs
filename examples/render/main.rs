@@ -22,16 +22,18 @@ use winit::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use crate::{fonts::get_builtin_fonts, mvp::MVPUniform};
+use crate::{fonts::get_builtin_fonts, mvp::MVPUniform, ui::color_picker};
 
 mod fonts;
 mod mvp;
 mod texture;
+mod ui;
 
-const DEFAULT_TEXT: &str = "Innovation in China 中国智造，惠及全球。
-Innovation in China ——⸺全球。
-This is a sample text. gM 123.!\\\"\\\"?;:<>
-人人生而自由，在尊严和权利上一律平等。他们赋有理性和良心，并应以兄弟关系的精神相对待。";
+const DEFAULT_TEXT: &str = r#"一个简单的中日韩文字排印引擎，为游戏富文本特别设计。
+A simple typography engine for CJK languages, especially designed for game rich-text.
+huózì 活字 gM 123.!""?;:-_/+=<>==
+CJK 标点——⸺，。：；“”？、《》「」【】
+"#;
 
 struct State {
     surface: wgpu::Surface<'static>,
@@ -348,9 +350,9 @@ impl State {
             egui_renderer,
             input_text: DEFAULT_TEXT.to_string(),
             background_color: wgpu::Color {
-                r: 0.737,
-                g: 0.737,
-                b: 0.737,
+                r: 0.160,
+                g: 0.160,
+                b: 0.160,
                 a: 1.0,
             },
             layout_config: LayoutStyle {
@@ -360,9 +362,18 @@ impl State {
                 glyph_grid_size: 32.,
             },
             text_config: TextStyle {
-                fill_color: Color::new(0.0, 0.0, 0.0, 1.0),
-                stroke: Some(StrokeStyle::default()),
-                shadow: Some(ShadowStyle::default()),
+                fill_color: Color::new(1.0, 1.0, 1.0, 1.0),
+                stroke: Some(StrokeStyle {
+                    stroke_width: 1.0,
+                    stroke_color: Color::new(0.0, 0.0, 0.0, 1.0),
+                }),
+                shadow: Some(ShadowStyle {
+                    shadow_offset_x: 1.0,
+                    shadow_offset_y: 1.0,
+                    shadow_blur: 0.0,
+                    shadow_width: 0.4,
+                    shadow_color: Color::new(1.0, 0.25, 0.6, 1.0),
+                }),
                 ..TextStyle::default()
             },
             stroke_enabled: true,
@@ -425,14 +436,14 @@ impl State {
                                     ui.horizontal(|ui| {
                                         ui.label("Background Color:");
                                         let mut color = [
-                                            self.background_color.r as f32,
-                                            self.background_color.g as f32,
-                                            self.background_color.b as f32,
+                                            (self.background_color.r * 255.0 + 0.5) as u8,
+                                            (self.background_color.g * 255.0 + 0.5) as u8,
+                                            (self.background_color.b * 255.0 + 0.5) as u8,
                                         ];
-                                        if ui.color_edit_button_rgb(&mut color).changed() {
-                                            self.background_color.r = color[0] as f64;
-                                            self.background_color.g = color[1] as f64;
-                                            self.background_color.b = color[2] as f64;
+                                        if ui.color_edit_button_srgb(&mut color).changed() {
+                                            self.background_color.r = color[0] as f64 / 255.;
+                                            self.background_color.g = color[1] as f64 / 255.;
+                                            self.background_color.b = color[2] as f64 / 255.;
                                             self.config_changed = true;
                                         }
                                     });
@@ -568,12 +579,12 @@ impl State {
 
                                     ui.horizontal(|ui| {
                                         ui.label("Fill Color:");
-                                        let mut color = self.text_config.fill_color.to_rgba8();
-                                        if ui
-                                            .color_edit_button_srgba_premultiplied(&mut color)
-                                            .changed()
+                                        if color_picker::color_picker_srgba(
+                                            ui,
+                                            &mut self.text_config.fill_color,
+                                        )
+                                        .changed()
                                         {
-                                            self.text_config.fill_color = color.into();
                                             self.config_changed = true;
                                         }
                                     });
@@ -597,20 +608,18 @@ impl State {
                                                             &mut stroke.stroke_width,
                                                         )
                                                         .speed(0.1)
-                                                        .range(0.0..=20.0),
+                                                        .range(0.0..=30.0),
                                                     );
                                                 });
 
                                                 ui.horizontal(|ui| {
                                                     ui.label("Stroke Color:");
-                                                    let mut color = stroke.stroke_color.to_rgba8();
-                                                    if ui
-                                                        .color_edit_button_srgba_premultiplied(
-                                                            &mut color,
-                                                        )
-                                                        .changed()
+                                                    if color_picker::color_picker_srgba(
+                                                        ui,
+                                                        &mut stroke.stroke_color,
+                                                    )
+                                                    .changed()
                                                     {
-                                                        stroke.stroke_color = color.into();
                                                         self.config_changed = true;
                                                     }
                                                 });
@@ -678,14 +687,12 @@ impl State {
 
                                                 ui.horizontal(|ui| {
                                                     ui.label("Shadow Color:");
-                                                    let mut color = shadow.shadow_color.to_rgba8();
-                                                    if ui
-                                                        .color_edit_button_srgba_premultiplied(
-                                                            &mut color,
-                                                        )
-                                                        .changed()
+                                                    if color_picker::color_picker_srgba(
+                                                        ui,
+                                                        &mut shadow.shadow_color,
+                                                    )
+                                                    .changed()
                                                     {
-                                                        shadow.shadow_color = color.into();
                                                         self.config_changed = true;
                                                     }
                                                 });
