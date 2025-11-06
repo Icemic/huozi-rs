@@ -22,9 +22,11 @@ impl TinySDF {
     pub fn new(grid_size: u32, buffer: u32, radius: f64, cutoff: f64) -> Self {
         let grid_outer = vec![0.; (grid_size * grid_size) as usize];
         let grid_inner = vec![0.; (grid_size * grid_size) as usize];
-        let f = vec![0.; grid_size as usize];
-        let z = vec![0.; grid_size as usize + 1];
-        let v = vec![0; grid_size as usize];
+        // multiply by 3 for glyph that larger than 1 grid
+        // 3 is just a magic number here, should be enough for most cases
+        let f = vec![0.; grid_size as usize * 3];
+        let z = vec![0.; grid_size as usize * 3 + 1];
+        let v = vec![0; grid_size as usize * 3];
         Self {
             grid_outer,
             grid_inner,
@@ -47,7 +49,7 @@ impl TinySDF {
         self.grid_outer.fill(INF);
         self.grid_inner.fill(0.);
 
-        let width = (glyph_width + 2 * self.buffer).min(self.grid_size);
+        let width = glyph_width + 2 * self.buffer;
         let height = (glyph_height + 2 * self.buffer).min(self.grid_size);
 
         for y in 0..glyph_height {

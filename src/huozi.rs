@@ -18,6 +18,7 @@ pub struct Glyph {
     pub metrics: GlyphMetrics,
     pub page: i32,
     pub index: u32,
+    pub grid_count: u32,
     pub u_min: f32,
     pub u_max: f32,
     pub v_min: f32,
@@ -91,6 +92,7 @@ impl Huozi {
                 metrics,
                 page: 0,
                 index: 0,
+                grid_count: 0,
                 u_min: 0.,
                 u_max: 0.,
                 v_min: 0.,
@@ -101,6 +103,16 @@ impl Huozi {
 
             let line_count = self.image.width() as i32 / grid_size;
 
+            // Determine how many grids are needed for this glyph
+            //
+            // Currently we only support horizontal expansion,
+            // so the grid_count is always 1.
+            let grid_count = if width as f64 > GRID_SIZE {
+                ((width as f64 + 2. * BUFFER) / GRID_SIZE + 0.5) as u32
+            } else {
+                1
+            };
+
             let (page, index_in_page, overwrite) =
                 if let Some((_, expired_glyph)) = self.cache.push(ch, glyph) {
                     (expired_glyph.page, expired_glyph.index, true)
@@ -108,7 +120,8 @@ impl Huozi {
                     let page = self.next_grid_index as i32 / (line_count * line_count);
                     let index_in_page = self.next_grid_index as i32 % (line_count * line_count);
 
-                    self.next_grid_index += 1;
+                    // advance the next grid index by grid_count
+                    self.next_grid_index += grid_count;
 
                     (page, index_in_page as u32, false)
                 };
@@ -127,7 +140,8 @@ impl Huozi {
                 }
             }
 
-            let offset_x = grid_x + (GRID_SIZE / 2. - width as f64 / 2.).ceil() as i32;
+            let offset_x =
+                grid_x + ((GRID_SIZE * grid_count as f64) / 2. - width as f64 / 2.).ceil() as i32;
             let offset_y = grid_y + (GRID_SIZE / 2. - height as f64 / 2.).ceil() as i32;
 
             let len = bitmap.len() as i32;
@@ -136,7 +150,12 @@ impl Huozi {
                 let x = i % (width as i32) + offset_x;
                 let y = i / (width as i32) + offset_y;
 
-                if x < grid_x || x >= grid_x + grid_size || y <= grid_y || y >= grid_y + grid_size {
+                // Bypass the pixels out of the grid block in case of overflow, though it is unlikely to happen
+                if x < grid_x
+                    || x >= grid_x + grid_size * grid_count as i32
+                    || y <= grid_y
+                    || y >= grid_y + grid_size
+                {
                     continue;
                 }
 
@@ -150,9 +169,10 @@ impl Huozi {
             let glyph = self.cache.get_mut(&ch).unwrap();
             glyph.page = page;
             glyph.index = index_in_page;
+            glyph.grid_count = grid_count;
             glyph.u_min = grid_x as f32 / texture_width;
             glyph.v_min = grid_y as f32 / texture_width;
-            glyph.u_max = (grid_x + grid_size) as f32 / texture_width;
+            glyph.u_max = (grid_x + grid_size * grid_count as i32) as f32 / texture_width;
             glyph.v_max = (grid_y + grid_size) as f32 / texture_width;
 
             self.image_version += 1;

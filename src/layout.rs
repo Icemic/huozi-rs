@@ -323,7 +323,9 @@ impl Huozi {
 
                 // scale by font size, 48 is the texture font size when the grid size is 64.
                 let offset_x = current_x * actual_scale_ratio
-                    - (GRID_SIZE / 2. / x_scale - actual_width / 2. - metrics.x_min as f64)
+                    - (GRID_SIZE * glyph.grid_count as f64 / 2. / x_scale
+                        - actual_width / 2.
+                        - metrics.x_min as f64)
                         * actual_scale_ratio
                         * grid_scale_ratio_w;
                 let offset_y = (current_y) * actual_scale_ratio
@@ -333,7 +335,8 @@ impl Huozi {
                         * grid_scale_ratio_h;
 
                 let actual_grid_size_w =
-                    GRID_SIZE * actual_scale_ratio * grid_scale_ratio_w / x_scale;
+                    GRID_SIZE * glyph.grid_count as f64 * actual_scale_ratio * grid_scale_ratio_w
+                        / x_scale;
                 let actual_grid_size_h =
                     GRID_SIZE * actual_scale_ratio * grid_scale_ratio_h / y_scale;
 
