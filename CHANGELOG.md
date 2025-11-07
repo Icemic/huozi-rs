@@ -5,7 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.15.0 (2025-11-07)
+
+### New Features
+
+ - <csr-id-3226fe6180edbbad7d9db4e9980af8139bf0cdf4/> add fill_buffer to Vertex struct to support hollow text
+ - <csr-id-c9d90b78d84afb43b152dcc1f41217b2c60a2a09/> move measuring and logging time taken to preload SDF texture characters to `texture` example
+ - <csr-id-46f830c9c688e72ccd71fc2c9a14eff9b955b680/> add default text style, stroke, and shadow styles
+ - <csr-id-b25bdc54f759db061e6d5640a7f442914eaa712f/> move egui ui to separate mod
+ - <csr-id-ce41c680f598d908779cc5817e294ef645f4f608/> change default text and use custom color picker
+ - <csr-id-178e6354952970fd2aedd34d178ad75809179e84/> Add custom color picker
+ - <csr-id-c3a870ff25255aa4700206397f9106eec9038d98/> Simplify color editing for fill, stroke, and shadow colors in UI
+ - <csr-id-d765518fc6ba3dd2ddb0af2660750e694e38c532/> Add Fira Code font support and adjust font priority settings
+ - <csr-id-be9ca26d0ece4973e82a2957b77eb70a3635a89b/> Refactor font handling and integrate font selection in UI
+ - <csr-id-36644158de40c5166f4a632425cddcd26b789e7a/> Add built-in font support with multiple font files
+ - <csr-id-8cc2c04bc9e7698ccb1c6e3ea34e314fd2da25f3/> Enhance layout and text style configuration in egui integration
+ - <csr-id-72ef1ebf29e8c24be353e5b2ae192b4edc6b8e0c/> Integrate egui for text input and rendering
+   - Added egui and related dependencies to Cargo.toml.
+   - Implemented egui context, state, and renderer in the main rendering loop.
+   - Created a bottom panel for text input using egui, allowing users to enter and edit text.
+   - Updated the rendering logic to re-render text when the input changes.
+   - Enhanced text rendering by integrating egui's texture management and paint jobs.
+   - Refactored the update method to handle egui events and rendering.
+ - <csr-id-989391b96f1a3ded60e7f62a3c44b67344b1fe85/> upgrade to winit 0.30.x
+
+### Bug Fixes
+
+ - <csr-id-fd33c5e54e2ceee6bb4c3e1b2dafe5f2484c2c98/> remove debug print
+ - <csr-id-de807c61dce04d7b64b668b183b90bf54359e062/> potential panic on SDF calculation
+ - <csr-id-542f83e0ebaee8fe73cc58e94e10aaa081e79176/> prevent drawing with empty vertex buffer
+ - <csr-id-62601dc8a54a3eb06426e9f9a79fafe39da5305a/> adjust fill_buffer logic to enable shadow drawing when fill alpha is not 0
+ - <csr-id-c48c24221437747ecbef3cc962a977040577aba0/> increase shadow blur range from 50 to 100
+ - <csr-id-aa81d3855edcf080f0f6c28e145541a18b9f5991/> ensure buffer value is non-negative before passing to shader
+ - <csr-id-6c5499ae1bc75eb54ba1237476ed01c137422eb1/> update RADIUS constant from 16 to 24 for better stroke and shadow
+
+### Refactor
+
+ - <csr-id-9965186256147e10fc87dca5d6e7413d8dc09fda/> update egui ui
+ - <csr-id-3840a9f0e3688793f43efbc9a5799c6de7b8696e/> add grid_count to Glyph struct and adjust layout calculations for glyph rendering
+ - <csr-id-86852f5d2544aa149c4deff3ead411471b9f1aa1/> Remove last_rendered_text field and simplify text rendering logic
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 25 commits contributed to the release over the course of 2 calendar days.
+ - 3 days passed between releases.
+ - 23 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Remove debug print ([`fd33c5e`](https://github.com/Icemic/huozi-rs/commit/fd33c5e54e2ceee6bb4c3e1b2dafe5f2484c2c98))
+    - Add source han serif cn semibold ([`359d121`](https://github.com/Icemic/huozi-rs/commit/359d121a8c89eebe5a755fa6e7c04d5b4b771da9))
+    - Potential panic on SDF calculation ([`de807c6`](https://github.com/Icemic/huozi-rs/commit/de807c61dce04d7b64b668b183b90bf54359e062))
+    - Prevent drawing with empty vertex buffer ([`542f83e`](https://github.com/Icemic/huozi-rs/commit/542f83e0ebaee8fe73cc58e94e10aaa081e79176))
+    - Update egui ui ([`9965186`](https://github.com/Icemic/huozi-rs/commit/9965186256147e10fc87dca5d6e7413d8dc09fda))
+    - Adjust fill_buffer logic to enable shadow drawing when fill alpha is not 0 ([`62601dc`](https://github.com/Icemic/huozi-rs/commit/62601dc8a54a3eb06426e9f9a79fafe39da5305a))
+    - Update LXGW WenKai Lite ([`200dc88`](https://github.com/Icemic/huozi-rs/commit/200dc88fe20c927d5dbcf0ac8c82e02b31d9ee2b))
+    - Increase shadow blur range from 50 to 100 ([`c48c242`](https://github.com/Icemic/huozi-rs/commit/c48c24221437747ecbef3cc962a977040577aba0))
+    - Add fill_buffer to Vertex struct to support hollow text ([`3226fe6`](https://github.com/Icemic/huozi-rs/commit/3226fe6180edbbad7d9db4e9980af8139bf0cdf4))
+    - Move measuring and logging time taken to preload SDF texture characters to `texture` example ([`c9d90b7`](https://github.com/Icemic/huozi-rs/commit/c9d90b78d84afb43b152dcc1f41217b2c60a2a09))
+    - Add grid_count to Glyph struct and adjust layout calculations for glyph rendering ([`3840a9f`](https://github.com/Icemic/huozi-rs/commit/3840a9f0e3688793f43efbc9a5799c6de7b8696e))
+    - Ensure buffer value is non-negative before passing to shader ([`aa81d38`](https://github.com/Icemic/huozi-rs/commit/aa81d3855edcf080f0f6c28e145541a18b9f5991))
+    - Update RADIUS constant from 16 to 24 for better stroke and shadow ([`6c5499a`](https://github.com/Icemic/huozi-rs/commit/6c5499ae1bc75eb54ba1237476ed01c137422eb1))
+    - Add default text style, stroke, and shadow styles ([`46f830c`](https://github.com/Icemic/huozi-rs/commit/46f830c9c688e72ccd71fc2c9a14eff9b955b680))
+    - Move egui ui to separate mod ([`b25bdc5`](https://github.com/Icemic/huozi-rs/commit/b25bdc54f759db061e6d5640a7f442914eaa712f))
+    - Change default text and use custom color picker ([`ce41c68`](https://github.com/Icemic/huozi-rs/commit/ce41c680f598d908779cc5817e294ef645f4f608))
+    - Add custom color picker ([`178e635`](https://github.com/Icemic/huozi-rs/commit/178e6354952970fd2aedd34d178ad75809179e84))
+    - Remove last_rendered_text field and simplify text rendering logic ([`86852f5`](https://github.com/Icemic/huozi-rs/commit/86852f5d2544aa149c4deff3ead411471b9f1aa1))
+    - Simplify color editing for fill, stroke, and shadow colors in UI ([`c3a870f`](https://github.com/Icemic/huozi-rs/commit/c3a870ff25255aa4700206397f9106eec9038d98))
+    - Add Fira Code font support and adjust font priority settings ([`d765518`](https://github.com/Icemic/huozi-rs/commit/d765518fc6ba3dd2ddb0af2660750e694e38c532))
+    - Refactor font handling and integrate font selection in UI ([`be9ca26`](https://github.com/Icemic/huozi-rs/commit/be9ca26d0ece4973e82a2957b77eb70a3635a89b))
+    - Add built-in font support with multiple font files ([`3664415`](https://github.com/Icemic/huozi-rs/commit/36644158de40c5166f4a632425cddcd26b789e7a))
+    - Enhance layout and text style configuration in egui integration ([`8cc2c04`](https://github.com/Icemic/huozi-rs/commit/8cc2c04bc9e7698ccb1c6e3ea34e314fd2da25f3))
+    - Integrate egui for text input and rendering ([`72ef1eb`](https://github.com/Icemic/huozi-rs/commit/72ef1ebf29e8c24be353e5b2ae192b4edc6b8e0c))
+    - Upgrade to winit 0.30.x ([`989391b`](https://github.com/Icemic/huozi-rs/commit/989391b96f1a3ded60e7f62a3c44b67344b1fe85))
+</details>
+
 ## v0.14.3 (2025-11-03)
+
+<csr-id-1ee6e7dc00a8edb67031b8d464219bf4bba2dfb7/>
 
 ### Chore
 
@@ -15,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -26,6 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.14.3 ([`3c16ca5`](https://github.com/Icemic/huozi-rs/commit/3c16ca5c5bf86645f01dc2794cd9465698a4e917))
     - Remove png feature of `image` crate in deps ([`1ee6e7d`](https://github.com/Icemic/huozi-rs/commit/1ee6e7dc00a8edb67031b8d464219bf4bba2dfb7))
 </details>
 
