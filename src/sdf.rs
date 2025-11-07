@@ -44,12 +44,13 @@ impl TinySDF {
         bitmap: &Vec<u8>,
         glyph_width: u32,
         glyph_height: u32,
+        grid_count: u32,
     ) -> (Vec<u8>, u32, u32) {
         // Initialize grids outside the glyph range to alpha 0
         self.grid_outer.fill(INF);
         self.grid_inner.fill(0.);
 
-        let width = glyph_width + 2 * self.buffer;
+        let width = (glyph_width + 2 * self.buffer).min(self.grid_size * grid_count);
         let height = (glyph_height + 2 * self.buffer).min(self.grid_size);
 
         for y in 0..glyph_height {
@@ -106,6 +107,7 @@ impl TinySDF {
         }
 
         let len = (width * height) as usize;
+        println!("len: {}, width: {}, height: {}", len, width, height);
         let mut data = vec![0; len];
 
         for i in 0..len {

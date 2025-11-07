@@ -82,9 +82,19 @@ impl Huozi {
 
             let (bitmap, metrics) = self.extractor.get_bitmap_and_metrics(ch);
 
+            // Determine how many grids are needed for this glyph
+            //
+            // Currently we only support horizontal expansion,
+            // so the grid_count is always 1.
+            let grid_count = if metrics.width as f64 > FONT_SIZE {
+                ((metrics.width as f64) / FONT_SIZE + 0.5) as u32
+            } else {
+                1
+            };
+
             let (bitmap, width, height) =
                 self.tiny_sdf
-                    .calculate(&bitmap, metrics.width, metrics.height);
+                    .calculate(&bitmap, metrics.width, metrics.height, grid_count);
 
             // get a zero-valued Glyph and push to cache, which may expire a exising glyph
             let glyph = Glyph {
@@ -102,16 +112,6 @@ impl Huozi {
             let grid_size = GRID_SIZE as i32;
 
             let line_count = self.image.width() as i32 / grid_size;
-
-            // Determine how many grids are needed for this glyph
-            //
-            // Currently we only support horizontal expansion,
-            // so the grid_count is always 1.
-            let grid_count = if width as f64 > GRID_SIZE {
-                ((width as f64 + 2. * BUFFER) / GRID_SIZE + 0.5) as u32
-            } else {
-                1
-            };
 
             let (page, index_in_page, overwrite) =
                 if let Some((_, expired_glyph)) = self.cache.push(ch, glyph) {
