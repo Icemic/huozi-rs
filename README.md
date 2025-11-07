@@ -4,7 +4,7 @@
 <h3 align="center" style="font-family: 'PingFang SC', 'Microsoft Yahei', sans-serif; font-style: normal; margin-top: 0; font-weight: 400;">
   <ruby>一个简单的中日韩文字排印引擎，为游戏富文本特别设计。<rt>A simple typography engine for CJK languages, especially designed for game rich-text.</rt></ruby>
 </h3>
-<h5 align="center">（功能尚在开发中）</h5>
+<h5 align="center">（功能尚在开发中）<a href="README_EN.md">[View English Version]</a></h5>
 
 <hr>
 
@@ -25,13 +25,13 @@
 - 支持多种字体格式，包括 TTF、OTF
 - 支持多种文字效果，包括下划线、删除线、颜色等（开发中）
 - 输出为图片或者纹理，并提供顶点坐标和纹理坐标，方便与任意渲染引擎集成
-- 支持[W3C 汉字排版需求](https://www.w3.org/TR/clreq/)，包括行内标点压缩、行内引号位置修正等（开发中）
+- 实现[W3C 汉字排版需求](https://www.w3.org/TR/clreq/)，包括行内标点压缩、行内引号位置修正等（开发中）
 
 ## GUI 调试
 
 运行 `cargo run --example render --release`，如下的 GUI 窗口：
 
-<img width="960" height="540" alt="huozi gui debugger" src="https://github.com/user-attachments/assets/ca12d2e7-817c-4b0c-beb3-3f0db03b0ec0" />
+![huozi gui debugger](snapshots/render.png)
 
 ## Roadmap
 
