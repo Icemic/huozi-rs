@@ -542,12 +542,14 @@ impl State {
             let index_buffer = self.index_buffer.as_ref().unwrap();
             let num_indices = self.num_indices.unwrap();
 
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..num_indices, 0, 0..1);
+            if self.vertex_buffer.as_ref().unwrap().size() > 0 {
+                render_pass.set_pipeline(&self.render_pipeline);
+                render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
+                render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
+                render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                render_pass.draw_indexed(0..num_indices, 0, 0..1);
+            }
         }
 
         // Render egui (only if there are paint jobs to render)
