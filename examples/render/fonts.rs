@@ -5,6 +5,8 @@ static FONT_SOURCE_HAN_SANS_SC_REGULAR: &[u8] =
 static FONT_ZHUDOU_SANS_REGULAR: &[u8] = include_bytes!("../assets/Zhudou Sans Regular.ttf");
 static FONT_SOURCE_HAN_SERIF_SC_REGULAR: &[u8] =
     include_bytes!("../assets/SourceHanSerifSC-Regular.otf");
+static FONT_SOURCE_HAN_SERIF_CN_SEMIBOLD: &[u8] =
+    include_bytes!("../assets/SourceHanSerifCN-SemiBold.otf");
 static FONT_LXGWENKAILITE_REGULAR: &[u8] = include_bytes!("../assets/LXGWWenKaiLite-Regular.ttf");
 static FONT_SWEIGOTHICCJKSC_REGULAR: &[u8] =
     include_bytes!("../assets/SweiGothicCJKsc-Regular.ttf");
@@ -12,7 +14,7 @@ static FONT_TSANGER_YU_YANG_T_W02: &[u8] = include_bytes!("../assets/TsangerYuYa
 static FONT_TSANGER_YU_YANG_T_W03: &[u8] = include_bytes!("../assets/TsangerYuYangT-W03.ttf");
 static FONT_FIRA_CODE_VF: &[u8] = include_bytes!("../assets/FiraCode-VF.ttf");
 
-pub const fn get_builtin_fonts() -> [(&'static str, &'static [u8]); 8] {
+pub const fn get_builtin_fonts() -> [(&'static str, &'static [u8]); 9] {
     [
         (
             "Source Han Sans SC Regular",
@@ -22,6 +24,10 @@ pub const fn get_builtin_fonts() -> [(&'static str, &'static [u8]); 8] {
         (
             "Source Han Serif SC Regular",
             FONT_SOURCE_HAN_SERIF_SC_REGULAR,
+        ),
+        (
+            "Source Han Serif CN SemiBold",
+            FONT_SOURCE_HAN_SERIF_CN_SEMIBOLD,
         ),
         ("LXGWWenKaiLite Regular", FONT_LXGWENKAILITE_REGULAR),
         ("SweiGothicCJKsc Regular", FONT_SWEIGOTHICCJKSC_REGULAR),
