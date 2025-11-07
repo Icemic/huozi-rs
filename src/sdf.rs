@@ -107,7 +107,7 @@ impl TinySDF {
         }
 
         let len = (width * height) as usize;
-        println!("len: {}, width: {}, height: {}", len, width, height);
+
         let mut data = vec![0; len];
 
         for i in 0..len {
