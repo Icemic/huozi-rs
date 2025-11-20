@@ -1,5 +1,5 @@
 mod layout_style;
-mod text_section;
+mod text_run;
 mod text_style;
 mod vertex;
 
@@ -9,7 +9,7 @@ use anyhow::Result;
 use csscolorparser::Color;
 pub use layout_style::*;
 use log::warn;
-pub use text_section::*;
+pub use text_run::*;
 pub use text_style::*;
 pub use vertex::*;
 
@@ -31,12 +31,12 @@ impl Huozi {
         elements: Vec<Element>,
         current_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<Vec<TextSection>, String> {
-        let mut sections = vec![];
+    ) -> Result<Vec<TextRun>, String> {
+        let mut runs = vec![];
         for element in elements {
             match element {
                 Element::Text(text) => {
-                    sections.push(TextSection {
+                    runs.push(TextRun {
                         text: text.to_string(),
                         style: current_style.clone(),
                     });
@@ -126,14 +126,14 @@ impl Huozi {
                             warn!("unrecognized tag `{}`, ignored.", block.tag)
                         }
                     }
-                    let inner_sections =
+                    let inner_runs =
                         self.parse_text_recursive(block.inner, &style, style_prefabs)?;
-                    sections.extend(inner_sections);
+                    runs.extend(inner_runs);
                 }
             }
         }
 
-        Ok(sections)
+        Ok(runs)
     }
 
     #[cfg(feature = "parser")]
@@ -142,7 +142,7 @@ impl Huozi {
         text: &str,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<Vec<TextSection>, String> {
+    ) -> Result<Vec<TextRun>, String> {
         let elements = parse(text)?;
         self.parse_text_recursive(elements, initial_text_style, style_prefabs)
     }
@@ -153,7 +153,7 @@ impl Huozi {
         text: &str,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<Vec<TextSection>, String> {
+    ) -> Result<Vec<TextRun>, String> {
         let elements = parse_with::<OPEN, CLOSE>(text)?;
         self.parse_text_recursive(elements, initial_text_style, style_prefabs)
     }
@@ -167,8 +167,8 @@ impl Huozi {
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
-        let text_sections = self.parse_text(text, initial_text_style, style_prefabs)?;
-        Ok(self.layout(&layout_style, &text_sections, color_space))
+        let text_runs = self.parse_text(text, initial_text_style, style_prefabs)?;
+        Ok(self.layout(&layout_style, &text_runs, color_space))
     }
 
     #[cfg(feature = "parser")]
@@ -180,23 +180,23 @@ impl Huozi {
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
-        let text_sections =
+        let text_runs =
             self.parse_text_with::<OPEN, CLOSE>(text, initial_text_style, style_prefabs)?;
-        Ok(self.layout(&layout_style, &text_sections, color_space))
+        Ok(self.layout(&layout_style, &text_runs, color_space))
     }
 
-    pub fn layout<'a, T: AsRef<Vec<TextSection>>>(
+    pub fn layout<'a, T: AsRef<Vec<TextRun>>>(
         &mut self,
         layout_style: &LayoutStyle,
-        text_sections: T,
+        text_runs: T,
         color_space: ColorSpace,
     ) -> (Vec<GlyphVertices>, u32, u32) {
         let mut total_width: f64 = 0.;
         let mut total_height: f64 = 0.;
 
-        let text_sections = text_sections.as_ref();
+        let text_runs = text_runs.as_ref();
 
-        let mut current_x = text_sections
+        let mut current_x = text_runs
             .first()
             .and_then(|f| Some(f.style.indent * FONT_SIZE))
             .unwrap_or(0.);
@@ -210,11 +210,11 @@ impl Huozi {
 
         // preallocate memory for  vertices and indices
         let mut glyph_vertices_vec =
-            Vec::with_capacity(text_sections.iter().map(|s| s.text.len()).sum());
+            Vec::with_capacity(text_runs.iter().map(|s| s.text.len()).sum());
 
-        'out: for section in text_sections {
-            let style = &section.style;
-            let text = &section.text;
+        'out: for run in text_runs {
+            let style = &run.style;
+            let text = &run.text;
 
             // Buffer value depends on color space due to gamma correction
             // Linear 0.5 corresponds to SRGB 0.735357, using precise theoretical values
@@ -245,9 +245,9 @@ impl Huozi {
             } = style.shadow.clone().unwrap_or_default();
             let shadow_color = get_color_value(&shadow_color, &color_space);
 
-            // total size of this section in FONT_SIZE, so it must be scaled to font size later.
-            let mut total_width_of_section: f64 = 0.;
-            let mut _total_height_of_section: f64 = 0.;
+            // total size of this run in FONT_SIZE, so it must be scaled to font size later.
+            let mut total_width_of_run: f64 = 0.;
+            let mut _total_height_of_run: f64 = 0.;
 
             for ch in text.chars() {
                 let glyph = self.get_glyph(ch);
@@ -256,7 +256,7 @@ impl Huozi {
                 // handles line break
                 if glyph.ch == '\n' || glyph.ch == '\r' {
                     // update actual width
-                    total_width_of_section = total_width_of_section.max(current_x);
+                    total_width_of_run = total_width_of_run.max(current_x);
                     // reset x
                     current_x = style.indent * FONT_SIZE;
                     // use original font size (when grid size is 64), it will be scaled in offset_y later.
@@ -271,7 +271,7 @@ impl Huozi {
                     }
 
                     // update actual height to current_y with additional a line
-                    _total_height_of_section = current_y + FONT_SIZE * style.line_height;
+                    _total_height_of_run = current_y + FONT_SIZE * style.line_height;
 
                     continue;
                 }
@@ -281,7 +281,7 @@ impl Huozi {
                 // check text overflow
                 if (current_x + h_advance) / FONT_SIZE * style.font_size >= max_width {
                     // update actual width to max width
-                    total_width_of_section = max_width * FONT_SIZE / style.font_size;
+                    total_width_of_run = max_width * FONT_SIZE / style.font_size;
                     // reset x
                     current_x = 0.;
                     // use original font size (when grid size is 64), it will be scaled in offset_y later.
@@ -296,7 +296,7 @@ impl Huozi {
                     }
 
                     // update actual height to current_y with additional a line
-                    _total_height_of_section = current_y + FONT_SIZE * style.line_height;
+                    _total_height_of_run = current_y + FONT_SIZE * style.line_height;
                 }
 
                 let x_scale = metrics.x_scale.unwrap_or(1.) as f64;
@@ -570,12 +570,12 @@ impl Huozi {
             }
 
             // in case of the last line without line break
-            total_width_of_section = total_width_of_section.max(current_x);
-            _total_height_of_section = current_y + FONT_SIZE * style.line_height;
+            total_width_of_run = total_width_of_run.max(current_x);
+            _total_height_of_run = current_y + FONT_SIZE * style.line_height;
 
             // update total size
-            total_width = total_width.max(total_width_of_section / FONT_SIZE * style.font_size);
-            total_height += _total_height_of_section / FONT_SIZE * style.font_size;
+            total_width = total_width.max(total_width_of_run / FONT_SIZE * style.font_size);
+            total_height += _total_height_of_run / FONT_SIZE * style.font_size;
         }
 
         (

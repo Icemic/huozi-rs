@@ -4,29 +4,29 @@ use super::TextStyle;
 /// For example, a plain text shall be presented as
 ///
 /// ```rust
-///     use huozi::layout::TextSection;
-///     let section = TextSection {
+///     use huozi::layout::Textrun;
+///     let run = Textrun {
 ///         text: "This is plain text.".to_string(),
 ///         ..Default::default()
 ///     };
 /// ```
 ///
-/// or a rich text can be presented as a vector of TextSection, such as
+/// or a rich text can be presented as a vector of Textrun, such as
 ///
 /// ```rust
-///     use huozi::layout::TextSection;
+///     use huozi::layout::Textrun;
 ///     // for text "This is <color=#f00>rich</color> text."
-///     let sections = vec![
-///         TextSection {
+///     let runs = vec![
+///         Textrun {
 ///             text: "This is ".to_string(),
 ///             ..Default::default()
 ///         },
-///         TextSection {
+///         Textrun {
 ///             text: "rich".to_string(),
 ///             // the style should be set to red color
 ///             ..Default::default()
 ///         },
-///         TextSection {
+///         Textrun {
 ///             text: " text.".to_string(),
 ///             ..Default::default()
 ///         },
@@ -34,7 +34,7 @@ use super::TextStyle;
 /// ```
 ///
 #[derive(Debug, Clone, Default)]
-pub struct TextSection {
+pub struct TextRun {
     pub text: String,
     pub style: TextStyle,
 }
