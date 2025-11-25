@@ -1,3 +1,5 @@
+use crate::layout::source_range::SourceRange;
+
 use super::TextStyle;
 
 /// An item in a sequence of text which is divided to groups by its' same style.
@@ -37,4 +39,5 @@ use super::TextStyle;
 pub struct TextRun {
     pub text: String,
     pub style: TextStyle,
+    pub source_range: Option<SourceRange>,
 }

@@ -1,9 +1,11 @@
 mod layout_style;
+mod source_range;
 mod text_run;
+mod text_span;
 mod text_style;
 mod vertex;
 
-use std::{collections::HashMap, str::FromStr};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, str::FromStr};
 
 use anyhow::Result;
 use csscolorparser::Color;
@@ -16,6 +18,10 @@ pub use vertex::*;
 use crate::{
     constant::{ASCENT, FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE, VIEWPORT_HEIGHT, VIEWPORT_WIDTH},
     glyph_vertices::GlyphVertices,
+    layout::{
+        source_range::{SegmentId, SourceRange},
+        text_span::{SpanId, TextSpan},
+    },
     parser::{parse, parse_with, Element},
     Huozi,
 };
@@ -25,179 +31,256 @@ pub enum ColorSpace {
     SRGB,
 }
 
-impl Huozi {
-    pub(self) fn parse_text_recursive(
-        &self,
-        elements: Vec<Element>,
-        current_style: &TextStyle,
-        style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<Vec<TextRun>, String> {
-        let mut runs = vec![];
-        for element in elements {
-            match element {
-                Element::Text(text) => {
-                    runs.push(TextRun {
-                        text: text.to_string(),
-                        style: current_style.clone(),
-                    });
+pub fn parse_text_recursive(
+    elements: Vec<Element>,
+    current_style: &TextStyle,
+    style_prefabs: Option<&HashMap<String, TextStyle>>,
+) -> Result<Vec<TextSpan>, String> {
+    let mut spans = vec![];
+    let mut current_runs = vec![];
+
+    let mut stack: Vec<(Rc<RefCell<std::vec::IntoIter<Element>>>, TextStyle)> = vec![];
+    let mut current_style = current_style.clone();
+    let mut elements = Rc::new(RefCell::new(elements.into_iter()));
+
+    loop {
+        let elements_remaining = elements.borrow_mut().len();
+        if elements_remaining == 0 {
+            if !stack.is_empty() {
+                if !current_runs.is_empty() {
+                    let runs = current_runs.drain(..).collect();
+                    let span = TextSpan {
+                        runs,
+                        span_id: Some(SpanId::Lite(0)),
+                    };
+                    spans.push(span);
                 }
-                Element::Block(block) => {
-                    let mut style = current_style.clone();
-                    if block.value.is_some() {
-                        let value = &block.value.unwrap();
-                        match block.tag.as_str() {
-                            "size" => {
-                                style.font_size = parse_str(value, style.font_size);
-                            }
-                            "color" | "fillColor" => {
-                                style.fill_color = parse_str(value, style.fill_color);
-                            }
-                            "lineHeight" => {
-                                style.line_height = parse_str(value, style.line_height);
-                            }
-                            "indent" => {
-                                style.indent = parse_str(value, style.indent);
-                            }
-                            "stroke" => {
-                                style.stroke = parse_str_optional(value, style.stroke);
-                            }
-                            "strokeColor" => {
-                                if style.stroke.is_none() {
-                                    style.stroke = Some(StrokeStyle::default());
-                                }
-                                let stroke = style.stroke.as_mut().unwrap();
-                                stroke.stroke_color = parse_str(value, stroke.stroke_color.clone());
-                            }
-                            "strokeWidth" => {
-                                if style.stroke.is_none() {
-                                    style.stroke = Some(StrokeStyle::default());
-                                }
-                                let stroke = style.stroke.as_mut().unwrap();
-                                stroke.stroke_width = parse_str(value, stroke.stroke_width);
-                            }
-                            "shadow" => {
-                                style.shadow = parse_str_optional(value, style.shadow);
-                            }
-                            "shadowOffsetX" => {
-                                if style.shadow.is_none() {
-                                    style.shadow = Some(ShadowStyle::default());
-                                }
-                                let shadow = style.shadow.as_mut().unwrap();
-                                shadow.shadow_offset_x = parse_str(value, shadow.shadow_offset_x);
-                            }
-                            "shadowOffsetY" => {
-                                if style.shadow.is_none() {
-                                    style.shadow = Some(ShadowStyle::default());
-                                }
-                                let shadow = style.shadow.as_mut().unwrap();
-                                shadow.shadow_offset_y = parse_str(value, shadow.shadow_offset_y);
-                            }
-                            "shadowWidth" => {
-                                if style.shadow.is_none() {
-                                    style.shadow = Some(ShadowStyle::default());
-                                }
-                                let shadow = style.shadow.as_mut().unwrap();
-                                shadow.shadow_width = parse_str(value, shadow.shadow_width);
-                            }
-                            "shadowBlur" => {
-                                if style.shadow.is_none() {
-                                    style.shadow = Some(ShadowStyle::default());
-                                }
-                                let shadow = style.shadow.as_mut().unwrap();
-                                shadow.shadow_blur = parse_str(value, shadow.shadow_blur);
-                            }
-                            "shadowColor" => {
-                                if style.shadow.is_none() {
-                                    style.shadow = Some(ShadowStyle::default());
-                                }
-                                let shadow = style.shadow.as_mut().unwrap();
-                                shadow.shadow_color = parse_str(value, shadow.shadow_color.clone());
-                            }
-                            _ => {
-                                warn!("unrecognized tag `{}`, ignored.", block.tag);
-                            }
-                        };
-                    } else {
-                        if let Some(style_prefabs) = style_prefabs {
-                            if let Some(style_prefab) = style_prefabs.get(&block.tag) {
-                                style = style_prefab.clone();
-                            }
-                        } else {
-                            warn!("unrecognized tag `{}`, ignored.", block.tag)
-                        }
-                    }
-                    let inner_runs =
-                        self.parse_text_recursive(block.inner, &style, style_prefabs)?;
-                    runs.extend(inner_runs);
-                }
+
+                let (next_elements, next_style) = stack.pop().unwrap();
+                elements = next_elements;
+                current_style = next_style;
+                continue;
+            } else {
+                break;
             }
         }
 
-        Ok(runs)
+        let element = elements.borrow_mut().next().unwrap();
+
+        match element {
+            Element::Text {
+                start,
+                end,
+                content,
+            } => {
+                current_runs.push(TextRun {
+                    text: content,
+                    style: current_style.clone(),
+                    source_range: Some(SourceRange {
+                        segment_id: SegmentId::Lite(0),
+                        start,
+                        end,
+                    }),
+                });
+            }
+            Element::Block {
+                start: _,
+                end: _,
+                inner,
+                tag,
+                value,
+            } => {
+                if tag.as_str() != "span" && value.is_some() {
+                    let value = value.as_ref().unwrap();
+                    match tag.as_str() {
+                        "size" => {
+                            current_style.font_size = parse_str(value, &current_style.font_size);
+                        }
+                        "color" | "fillColor" => {
+                            current_style.fill_color = parse_str(value, &current_style.fill_color);
+                        }
+                        "lineHeight" => {
+                            current_style.line_height =
+                                parse_str(value, &current_style.line_height);
+                        }
+                        "indent" => {
+                            current_style.indent = parse_str(value, &current_style.indent);
+                        }
+                        "stroke" => {
+                            current_style.stroke =
+                                parse_str_optional(value, current_style.stroke.as_ref());
+                        }
+                        "strokeColor" => {
+                            if current_style.stroke.is_none() {
+                                current_style.stroke = Some(StrokeStyle::default());
+                            }
+                            let stroke = current_style.stroke.as_mut().unwrap();
+                            stroke.stroke_color = parse_str(value, &stroke.stroke_color);
+                        }
+                        "strokeWidth" => {
+                            if current_style.stroke.is_none() {
+                                current_style.stroke = Some(StrokeStyle::default());
+                            }
+                            let stroke = current_style.stroke.as_mut().unwrap();
+                            stroke.stroke_width = parse_str(value, &stroke.stroke_width);
+                        }
+                        "shadow" => {
+                            current_style.shadow =
+                                parse_str_optional(value, current_style.shadow.as_ref());
+                        }
+                        "shadowOffsetX" => {
+                            if current_style.shadow.is_none() {
+                                current_style.shadow = Some(ShadowStyle::default());
+                            }
+                            let shadow = current_style.shadow.as_mut().unwrap();
+                            shadow.shadow_offset_x = parse_str(value, &shadow.shadow_offset_x);
+                        }
+                        "shadowOffsetY" => {
+                            if current_style.shadow.is_none() {
+                                current_style.shadow = Some(ShadowStyle::default());
+                            }
+                            let shadow = current_style.shadow.as_mut().unwrap();
+                            shadow.shadow_offset_y = parse_str(value, &shadow.shadow_offset_y);
+                        }
+                        "shadowWidth" => {
+                            if current_style.shadow.is_none() {
+                                current_style.shadow = Some(ShadowStyle::default());
+                            }
+                            let shadow = current_style.shadow.as_mut().unwrap();
+                            shadow.shadow_width = parse_str(value, &shadow.shadow_width);
+                        }
+                        "shadowBlur" => {
+                            if current_style.shadow.is_none() {
+                                current_style.shadow = Some(ShadowStyle::default());
+                            }
+                            let shadow = current_style.shadow.as_mut().unwrap();
+                            shadow.shadow_blur = parse_str(value, &shadow.shadow_blur);
+                        }
+                        "shadowColor" => {
+                            if current_style.shadow.is_none() {
+                                current_style.shadow = Some(ShadowStyle::default());
+                            }
+                            let shadow = current_style.shadow.as_mut().unwrap();
+                            shadow.shadow_color = parse_str(value, &shadow.shadow_color);
+                        }
+                        _ => {
+                            warn!("unrecognized style tag `{}`, ignored.", tag);
+                        }
+                    };
+                } else {
+                    stack.push((elements.clone(), current_style.clone()));
+                    elements = Rc::new(RefCell::new(inner.into_iter()));
+
+                    if let Some(style_prefabs) = style_prefabs {
+                        if let Some(style_prefab) = style_prefabs.get(&tag) {
+                            current_style = style_prefab.clone();
+                        }
+                    } else {
+                        if tag.as_str() != "span" && !tag.is_empty() {
+                            warn!("unrecognized prefab tag `{}`, treated as normal span", tag);
+                        }
+
+                        if !current_runs.is_empty() {
+                            let runs = current_runs.drain(..).collect();
+                            let span = TextSpan {
+                                runs,
+                                span_id: Some(SpanId::Lite(0)),
+                            };
+                            spans.push(span);
+                        }
+                    }
+                }
+            }
+        }
     }
 
+    if !current_runs.is_empty() {
+        let runs = current_runs.drain(..).collect();
+        let span = TextSpan {
+            runs,
+            span_id: Some(SpanId::Lite(0)),
+        };
+        spans.push(span);
+    }
+
+    Ok(spans)
+}
+
+impl Huozi {
     #[cfg(feature = "parser")]
     pub fn parse_text(
         &self,
-        text: &str,
+        text: &Vec<String>,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<Vec<TextRun>, String> {
-        let elements = parse(text)?;
-        self.parse_text_recursive(elements, initial_text_style, style_prefabs)
+    ) -> Result<Vec<TextSpan>, String> {
+        let input = text
+            .iter()
+            .map(|seg| format!("<span>{}</span>", seg))
+            .collect::<String>();
+
+        let elements = parse(&input)?;
+        parse_text_recursive(elements, initial_text_style, style_prefabs)
     }
 
     #[cfg(feature = "parser")]
     pub fn parse_text_with<const OPEN: char, const CLOSE: char>(
         &self,
-        text: &str,
+        text: &Vec<String>,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<Vec<TextRun>, String> {
-        let elements = parse_with::<OPEN, CLOSE>(text)?;
-        self.parse_text_recursive(elements, initial_text_style, style_prefabs)
+    ) -> Result<Vec<TextSpan>, String> {
+        let input = text
+            .iter()
+            .map(|seg| format!("<span>{}</span>", seg))
+            .collect::<String>();
+
+        let elements = parse_with::<OPEN, CLOSE>(&input)?;
+        parse_text_recursive(elements, initial_text_style, style_prefabs)
     }
 
     #[cfg(feature = "parser")]
     pub fn layout_parse(
         &mut self,
-        text: &str,
+        text: &Vec<String>,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
-        let text_runs = self.parse_text(text, initial_text_style, style_prefabs)?;
-        Ok(self.layout(&layout_style, &text_runs, color_space))
+        let text_spans = self.parse_text(text, initial_text_style, style_prefabs)?;
+        Ok(self.layout(&layout_style, &text_spans, color_space))
     }
 
     #[cfg(feature = "parser")]
     pub fn layout_parse_with<const OPEN: char, const CLOSE: char>(
         &mut self,
-        text: &str,
+        text: &Vec<String>,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
-        let text_runs =
+        let text_spans =
             self.parse_text_with::<OPEN, CLOSE>(text, initial_text_style, style_prefabs)?;
-        Ok(self.layout(&layout_style, &text_runs, color_space))
+        Ok(self.layout(&layout_style, &text_spans, color_space))
     }
 
-    pub fn layout<'a, T: AsRef<Vec<TextRun>>>(
+    pub fn layout<'a, T: AsRef<Vec<TextSpan>>>(
         &mut self,
         layout_style: &LayoutStyle,
-        text_runs: T,
+        text_spans: T,
         color_space: ColorSpace,
     ) -> (Vec<GlyphVertices>, u32, u32) {
         let mut total_width: f64 = 0.;
         let mut total_height: f64 = 0.;
 
-        let text_runs = text_runs.as_ref();
-
-        let mut current_x = text_runs
+        let first_run = text_spans
+            .as_ref()
             .first()
+            .and_then(|span| span.runs.first());
+
+        let mut current_x = first_run
             .and_then(|f| Some(f.style.indent * FONT_SIZE))
             .unwrap_or(0.);
         let mut current_y = 0.;
@@ -209,234 +292,180 @@ impl Huozi {
         let max_height = layout_style.box_height;
 
         // preallocate memory for  vertices and indices
-        let mut glyph_vertices_vec =
-            Vec::with_capacity(text_runs.iter().map(|s| s.text.len()).sum());
+        let mut glyph_vertices_vec = vec![];
 
-        'out: for run in text_runs {
-            let style = &run.style;
-            let text = &run.text;
+        for span in text_spans.as_ref() {
+            let text_runs = &span.runs;
 
-            // Buffer value depends on color space due to gamma correction
-            // Linear 0.5 corresponds to SRGB 0.735357, using precise theoretical values
-            let buffer = match color_space {
-                ColorSpace::Linear => 0.5, // Industry standard for linear space (Mapbox, etc.)
-                ColorSpace::SRGB => 0.735357, // Precise theoretical conversion of Linear 0.5
-            };
-            // set a value larger than 1. means do not remove inner part
-            // we need a value slightly larger than 1.0 to avoid the effect of anti-aliasing
-            // 2.0 should be enough
-            let fill_buffer = 2.;
-            // 0.6 is a magic number, to enable anti-aliasing
-            let gamma = GAMMA_COEFFICIENT * 0.6 / 2. / (style.font_size / FONT_SIZE) as f32;
-            let fill_color = get_color_value(&style.fill_color, &color_space);
+            // preallocate memory for  vertices and indices
+            glyph_vertices_vec.reserve(text_runs.iter().map(|s| s.text.len()).sum());
 
-            let StrokeStyle {
-                stroke_color,
-                stroke_width,
-            } = style.stroke.clone().unwrap_or_default();
-            let stroke_color = get_color_value(&stroke_color, &color_space);
+            'out: for run in text_runs {
+                let style = &run.style;
+                let text = &run.text;
 
-            let ShadowStyle {
-                shadow_color,
-                shadow_offset_x,
-                shadow_offset_y,
-                shadow_blur,
-                shadow_width,
-            } = style.shadow.clone().unwrap_or_default();
-            let shadow_color = get_color_value(&shadow_color, &color_space);
+                // Buffer value depends on color space due to gamma correction
+                // Linear 0.5 corresponds to SRGB 0.735357, using precise theoretical values
+                let buffer = match color_space {
+                    ColorSpace::Linear => 0.5, // Industry standard for linear space (Mapbox, etc.)
+                    ColorSpace::SRGB => 0.735357, // Precise theoretical conversion of Linear 0.5
+                };
+                // set a value larger than 1. means do not remove inner part
+                // we need a value slightly larger than 1.0 to avoid the effect of anti-aliasing
+                // 2.0 should be enough
+                let fill_buffer = 2.;
+                // 0.6 is a magic number, to enable anti-aliasing
+                let gamma = GAMMA_COEFFICIENT * 0.6 / 2. / (style.font_size / FONT_SIZE) as f32;
+                let fill_color = get_color_value(&style.fill_color, &color_space);
 
-            // total size of this run in FONT_SIZE, so it must be scaled to font size later.
-            let mut total_width_of_run: f64 = 0.;
-            let mut _total_height_of_run: f64 = 0.;
+                let StrokeStyle {
+                    stroke_color,
+                    stroke_width,
+                } = style.stroke.clone().unwrap_or_default();
+                let stroke_color = get_color_value(&stroke_color, &color_space);
 
-            for ch in text.chars() {
-                let glyph = self.get_glyph(ch);
-                let metrics = &glyph.metrics;
+                let ShadowStyle {
+                    shadow_color,
+                    shadow_offset_x,
+                    shadow_offset_y,
+                    shadow_blur,
+                    shadow_width,
+                } = style.shadow.clone().unwrap_or_default();
+                let shadow_color = get_color_value(&shadow_color, &color_space);
 
-                // handles line break
-                if glyph.ch == '\n' || glyph.ch == '\r' {
-                    // update actual width
-                    total_width_of_run = total_width_of_run.max(current_x);
-                    // reset x
-                    current_x = style.indent * FONT_SIZE;
-                    // use original font size (when grid size is 64), it will be scaled in offset_y later.
-                    current_y += FONT_SIZE * style.line_height;
+                // total size of this run in FONT_SIZE, so it must be scaled to font size later.
+                let mut total_width_of_run: f64 = 0.;
+                let mut _total_height_of_run: f64 = 0.;
 
-                    current_col = 0;
-                    current_row += 1;
+                for ch in text.chars() {
+                    let glyph = self.get_glyph(ch);
+                    let metrics = &glyph.metrics;
 
-                    // if text overflows the box, ignore the rest characters
-                    if current_y / FONT_SIZE * style.font_size >= max_height {
-                        break 'out;
+                    // handles line break
+                    if glyph.ch == '\n' || glyph.ch == '\r' {
+                        // update actual width
+                        total_width_of_run = total_width_of_run.max(current_x);
+                        // reset x
+                        current_x = style.indent * FONT_SIZE;
+                        // use original font size (when grid size is 64), it will be scaled in offset_y later.
+                        current_y += FONT_SIZE * style.line_height;
+
+                        current_col = 0;
+                        current_row += 1;
+
+                        // if text overflows the box, ignore the rest characters
+                        if current_y / FONT_SIZE * style.font_size >= max_height {
+                            break 'out;
+                        }
+
+                        // update actual height to current_y with additional a line
+                        _total_height_of_run = current_y + FONT_SIZE * style.line_height;
+
+                        continue;
                     }
 
-                    // update actual height to current_y with additional a line
-                    _total_height_of_run = current_y + FONT_SIZE * style.line_height;
+                    let mut h_advance = metrics.h_advance as f64;
 
-                    continue;
-                }
+                    // check text overflow
+                    if (current_x + h_advance) / FONT_SIZE * style.font_size >= max_width {
+                        // update actual width to max width
+                        total_width_of_run = max_width * FONT_SIZE / style.font_size;
+                        // reset x
+                        current_x = 0.;
+                        // use original font size (when grid size is 64), it will be scaled in offset_y later.
+                        current_y += FONT_SIZE * style.line_height;
 
-                let mut h_advance = metrics.h_advance as f64;
+                        current_col = 0;
+                        current_row += 1;
 
-                // check text overflow
-                if (current_x + h_advance) / FONT_SIZE * style.font_size >= max_width {
-                    // update actual width to max width
-                    total_width_of_run = max_width * FONT_SIZE / style.font_size;
-                    // reset x
-                    current_x = 0.;
-                    // use original font size (when grid size is 64), it will be scaled in offset_y later.
-                    current_y += FONT_SIZE * style.line_height;
+                        // if text overflows the box, ignore the rest characters
+                        if current_y / FONT_SIZE * style.font_size >= max_height {
+                            break 'out;
+                        }
 
-                    current_col = 0;
-                    current_row += 1;
-
-                    // if text overflows the box, ignore the rest characters
-                    if current_y / FONT_SIZE * style.font_size >= max_height {
-                        break 'out;
+                        // update actual height to current_y with additional a line
+                        _total_height_of_run = current_y + FONT_SIZE * style.line_height;
                     }
 
-                    // update actual height to current_y with additional a line
-                    _total_height_of_run = current_y + FONT_SIZE * style.line_height;
-                }
+                    let x_scale = metrics.x_scale.unwrap_or(1.) as f64;
+                    let y_scale = metrics.y_scale.unwrap_or(1.) as f64;
 
-                let x_scale = metrics.x_scale.unwrap_or(1.) as f64;
-                let y_scale = metrics.y_scale.unwrap_or(1.) as f64;
+                    let actual_width = metrics.width as f64 / x_scale;
+                    let actual_height = metrics.height as f64 / y_scale;
 
-                let actual_width = metrics.width as f64 / x_scale;
-                let actual_height = metrics.height as f64 / y_scale;
+                    let mut grid_scale_ratio_w = 1.;
+                    let grid_scale_ratio_h = 1.;
+                    let actual_scale_ratio = style.font_size / FONT_SIZE;
 
-                let mut grid_scale_ratio_w = 1.;
-                let grid_scale_ratio_h = 1.;
-                let actual_scale_ratio = style.font_size / FONT_SIZE;
+                    // scale character letting width fulfills font size.
+                    // don't know why em/two-em dash have to do so.
+                    if glyph.ch == '—' || glyph.ch == '―' {
+                        grid_scale_ratio_w = FONT_SIZE / actual_width as f64;
+                        h_advance = FONT_SIZE;
+                    } else if glyph.ch == '⸺' {
+                        grid_scale_ratio_w = FONT_SIZE * 2. / actual_width as f64;
+                        h_advance = FONT_SIZE * 2.;
+                    } else if glyph.ch == '–' {
+                        grid_scale_ratio_w = FONT_SIZE / 2. / actual_width as f64;
+                        h_advance = FONT_SIZE / 2.;
+                    } else if glyph.ch == '⸻' {
+                        grid_scale_ratio_w = FONT_SIZE * 3. / actual_width as f64;
+                        h_advance = FONT_SIZE * 3.;
+                    }
 
-                // scale character letting width fulfills font size.
-                // don't know why em/two-em dash have to do so.
-                if glyph.ch == '—' || glyph.ch == '―' {
-                    grid_scale_ratio_w = FONT_SIZE / actual_width as f64;
-                    h_advance = FONT_SIZE;
-                } else if glyph.ch == '⸺' {
-                    grid_scale_ratio_w = FONT_SIZE * 2. / actual_width as f64;
-                    h_advance = FONT_SIZE * 2.;
-                } else if glyph.ch == '–' {
-                    grid_scale_ratio_w = FONT_SIZE / 2. / actual_width as f64;
-                    h_advance = FONT_SIZE / 2.;
-                } else if glyph.ch == '⸻' {
-                    grid_scale_ratio_w = FONT_SIZE * 3. / actual_width as f64;
-                    h_advance = FONT_SIZE * 3.;
-                }
+                    // scale by font size, 48 is the texture font size when the grid size is 64.
+                    let offset_x = current_x * actual_scale_ratio
+                        - (GRID_SIZE * glyph.grid_count as f64 / 2. / x_scale
+                            - actual_width / 2.
+                            - metrics.x_min as f64)
+                            * actual_scale_ratio
+                            * grid_scale_ratio_w;
+                    let offset_y = (current_y) * actual_scale_ratio
+                        - (GRID_SIZE / 2. / y_scale - actual_height / 2. - ASCENT
+                            + metrics.y_max as f64)
+                            * actual_scale_ratio
+                            * grid_scale_ratio_h;
 
-                // scale by font size, 48 is the texture font size when the grid size is 64.
-                let offset_x = current_x * actual_scale_ratio
-                    - (GRID_SIZE * glyph.grid_count as f64 / 2. / x_scale
-                        - actual_width / 2.
-                        - metrics.x_min as f64)
+                    let actual_grid_size_w = GRID_SIZE
+                        * glyph.grid_count as f64
                         * actual_scale_ratio
-                        * grid_scale_ratio_w;
-                let offset_y = (current_y) * actual_scale_ratio
-                    - (GRID_SIZE / 2. / y_scale - actual_height / 2. - ASCENT
-                        + metrics.y_max as f64)
-                        * actual_scale_ratio
-                        * grid_scale_ratio_h;
-
-                let actual_grid_size_w =
-                    GRID_SIZE * glyph.grid_count as f64 * actual_scale_ratio * grid_scale_ratio_w
+                        * grid_scale_ratio_w
                         / x_scale;
-                let actual_grid_size_h =
-                    GRID_SIZE * actual_scale_ratio * grid_scale_ratio_h / y_scale;
+                    let actual_grid_size_h =
+                        GRID_SIZE * actual_scale_ratio * grid_scale_ratio_h / y_scale;
 
-                // calculate four vertices without multiplying with transform matrix
+                    // calculate four vertices without multiplying with transform matrix
 
-                let tx = offset_x / VIEWPORT_WIDTH;
-                let ty = offset_y / VIEWPORT_HEIGHT;
+                    let tx = offset_x / VIEWPORT_WIDTH;
+                    let ty = offset_y / VIEWPORT_HEIGHT;
 
-                let w1 = 0.;
-                let w0 = actual_grid_size_w / VIEWPORT_WIDTH;
-                let h1 = 0.;
-                let h0 = actual_grid_size_h / VIEWPORT_HEIGHT;
+                    let w1 = 0.;
+                    let w0 = actual_grid_size_w / VIEWPORT_WIDTH;
+                    let h1 = 0.;
+                    let h0 = actual_grid_size_h / VIEWPORT_HEIGHT;
 
-                // left top
-                let p0x = w1 + tx;
-                let p0y = h1 + ty;
+                    // left top
+                    let p0x = w1 + tx;
+                    let p0y = h1 + ty;
 
-                // left bottom
-                let p1x = w1 + tx;
-                let p1y = h0 + ty;
+                    // left bottom
+                    let p1x = w1 + tx;
+                    let p1y = h0 + ty;
 
-                // right top
-                let p2x = w0 + tx;
-                let p2y = h0 + ty;
+                    // right top
+                    let p2x = w0 + tx;
+                    let p2y = h0 + ty;
 
-                // right bottom
-                let p3x = w0 + tx;
-                let p3y = h1 + ty;
+                    // right bottom
+                    let p3x = w0 + tx;
+                    let p3y = h1 + ty;
 
-                let mut vertices_fill = Vec::with_capacity(4);
-                let mut vertices_stroke = Vec::with_capacity(4);
-                let mut vertices_shadow = Vec::with_capacity(4);
-                let mut indices = Vec::with_capacity(4);
+                    let mut vertices_fill = Vec::with_capacity(4);
+                    let mut vertices_stroke = Vec::with_capacity(4);
+                    let mut vertices_shadow = Vec::with_capacity(4);
+                    let mut indices = Vec::with_capacity(4);
 
-                vertices_fill.extend([
-                    Vertex {
-                        position: [p0x as f32, p0y as f32, 0.0],
-                        tex_coords: [glyph.u_min, glyph.v_min],
-                        page: glyph.page,
-                        buffer,
-                        fill_buffer,
-                        gamma,
-                        color: fill_color,
-                    },
-                    Vertex {
-                        position: [p1x as f32, p1y as f32, 0.0],
-                        tex_coords: [glyph.u_min, glyph.v_max],
-                        page: glyph.page,
-                        buffer,
-                        fill_buffer,
-                        gamma,
-                        color: fill_color,
-                    },
-                    Vertex {
-                        position: [p2x as f32, p2y as f32, 0.0],
-                        tex_coords: [glyph.u_max, glyph.v_max],
-                        page: glyph.page,
-                        buffer,
-                        fill_buffer,
-                        gamma,
-                        color: fill_color,
-                    },
-                    Vertex {
-                        position: [p3x as f32, p3y as f32, 0.0],
-                        tex_coords: [glyph.u_max, glyph.v_min],
-                        page: glyph.page,
-                        buffer,
-                        fill_buffer,
-                        gamma,
-                        color: fill_color,
-                    },
-                ]);
-
-                indices.extend([0, 1, 2, 0, 2, 3]);
-
-                // insert vertices for stroke
-
-                if style.stroke.is_some() {
-                    // Stroke uses a different base buffer for visual effect
-                    // Original algorithm used 0.7 in SRGB space for better stroke visibility
-                    let base_buffer = match color_space {
-                        ColorSpace::Linear => 0.448, // Precise conversion of SRGB 0.7
-                        ColorSpace::SRGB => 0.7,     // Original empirically tuned value
-                    };
-                    let fill_buffer = buffer;
-                    let buffer = base_buffer
-                        - GAMMA_COEFFICIENT * stroke_width
-                            / 2.
-                            / (style.font_size / FONT_SIZE) as f32
-                            * x_scale as f32
-                            / grid_scale_ratio_w as f32;
-
-                    // avoid minus (buffer - gamma) value passed to shader
-                    let buffer = buffer.max(gamma);
-
-                    vertices_stroke.extend([
+                    vertices_fill.extend([
                         Vertex {
                             position: [p0x as f32, p0y as f32, 0.0],
                             tex_coords: [glyph.u_min, glyph.v_min],
@@ -444,7 +473,7 @@ impl Huozi {
                             buffer,
                             fill_buffer,
                             gamma,
-                            color: stroke_color,
+                            color: fill_color,
                         },
                         Vertex {
                             position: [p1x as f32, p1y as f32, 0.0],
@@ -453,7 +482,7 @@ impl Huozi {
                             buffer,
                             fill_buffer,
                             gamma,
-                            color: stroke_color,
+                            color: fill_color,
                         },
                         Vertex {
                             position: [p2x as f32, p2y as f32, 0.0],
@@ -462,7 +491,7 @@ impl Huozi {
                             buffer,
                             fill_buffer,
                             gamma,
-                            color: stroke_color,
+                            color: fill_color,
                         },
                         Vertex {
                             position: [p3x as f32, p3y as f32, 0.0],
@@ -471,111 +500,173 @@ impl Huozi {
                             buffer,
                             fill_buffer,
                             gamma,
-                            color: stroke_color,
+                            color: fill_color,
                         },
                     ]);
-                }
 
-                // insert vertices for shadow
+                    indices.extend([0, 1, 2, 0, 2, 3]);
 
-                if style.shadow.is_some() {
-                    // Shadow uses a different base buffer for visual effect
-                    // Original algorithm used 0.7 in SRGB space for better shadow visibility
-                    let base_buffer = match color_space {
-                        ColorSpace::Linear => 0.448, // Precise conversion of SRGB 0.7
-                        ColorSpace::SRGB => 0.7,     // Original empirically tuned value
-                    };
-                    // For shadow, if fill alpha is 0, which means no fill, so we do not draw shadow either,
-                    // or else there should be shadow.
-                    let fill_buffer = if fill_color[3] > 0.0 {
-                        fill_buffer
-                    } else {
-                        buffer
-                    };
-                    let buffer = base_buffer
-                        - GAMMA_COEFFICIENT * shadow_width
+                    // insert vertices for stroke
+
+                    if style.stroke.is_some() {
+                        // Stroke uses a different base buffer for visual effect
+                        // Original algorithm used 0.7 in SRGB space for better stroke visibility
+                        let base_buffer = match color_space {
+                            ColorSpace::Linear => 0.448, // Precise conversion of SRGB 0.7
+                            ColorSpace::SRGB => 0.7,     // Original empirically tuned value
+                        };
+                        let fill_buffer = buffer;
+                        let buffer = base_buffer
+                            - GAMMA_COEFFICIENT * stroke_width
+                                / 2.
+                                / (style.font_size / FONT_SIZE) as f32
+                                * x_scale as f32
+                                / grid_scale_ratio_w as f32;
+
+                        // avoid minus (buffer - gamma) value passed to shader
+                        let buffer = buffer.max(gamma);
+
+                        vertices_stroke.extend([
+                            Vertex {
+                                position: [p0x as f32, p0y as f32, 0.0],
+                                tex_coords: [glyph.u_min, glyph.v_min],
+                                page: glyph.page,
+                                buffer,
+                                fill_buffer,
+                                gamma,
+                                color: stroke_color,
+                            },
+                            Vertex {
+                                position: [p1x as f32, p1y as f32, 0.0],
+                                tex_coords: [glyph.u_min, glyph.v_max],
+                                page: glyph.page,
+                                buffer,
+                                fill_buffer,
+                                gamma,
+                                color: stroke_color,
+                            },
+                            Vertex {
+                                position: [p2x as f32, p2y as f32, 0.0],
+                                tex_coords: [glyph.u_max, glyph.v_max],
+                                page: glyph.page,
+                                buffer,
+                                fill_buffer,
+                                gamma,
+                                color: stroke_color,
+                            },
+                            Vertex {
+                                position: [p3x as f32, p3y as f32, 0.0],
+                                tex_coords: [glyph.u_max, glyph.v_min],
+                                page: glyph.page,
+                                buffer,
+                                fill_buffer,
+                                gamma,
+                                color: stroke_color,
+                            },
+                        ]);
+                    }
+
+                    // insert vertices for shadow
+
+                    if style.shadow.is_some() {
+                        // Shadow uses a different base buffer for visual effect
+                        // Original algorithm used 0.7 in SRGB space for better shadow visibility
+                        let base_buffer = match color_space {
+                            ColorSpace::Linear => 0.448, // Precise conversion of SRGB 0.7
+                            ColorSpace::SRGB => 0.7,     // Original empirically tuned value
+                        };
+                        // For shadow, if fill alpha is 0, which means no fill, so we do not draw shadow either,
+                        // or else there should be shadow.
+                        let fill_buffer = if fill_color[3] > 0.0 {
+                            fill_buffer
+                        } else {
+                            buffer
+                        };
+                        let buffer = base_buffer
+                            - GAMMA_COEFFICIENT * shadow_width
+                                / 2.
+                                / (style.font_size / FONT_SIZE) as f32
+                                * x_scale as f32
+                                / grid_scale_ratio_w as f32;
+                        let gamma = GAMMA_COEFFICIENT * shadow_blur
                             / 2.
-                            / (style.font_size / FONT_SIZE) as f32
+                            / (style.font_size / FONT_SIZE * 2.) as f32
                             * x_scale as f32
                             / grid_scale_ratio_w as f32;
-                    let gamma = GAMMA_COEFFICIENT * shadow_blur
-                        / 2.
-                        / (style.font_size / FONT_SIZE * 2.) as f32
-                        * x_scale as f32
-                        / grid_scale_ratio_w as f32;
 
-                    // avoid minus (buffer - gamma) value passed to shader
-                    let buffer = buffer.max(gamma);
+                        // avoid minus (buffer - gamma) value passed to shader
+                        let buffer = buffer.max(gamma);
 
-                    let offset_x = shadow_offset_x / VIEWPORT_WIDTH as f32 * 2.;
-                    let offset_y = shadow_offset_y / VIEWPORT_HEIGHT as f32 * 2.;
-                    vertices_shadow.extend([
-                        Vertex {
-                            position: [p0x as f32 + offset_x, p0y as f32 + offset_y, 0.0],
-                            tex_coords: [glyph.u_min, glyph.v_min],
-                            page: glyph.page,
-                            buffer,
-                            fill_buffer,
-                            gamma,
-                            color: shadow_color,
-                        },
-                        Vertex {
-                            position: [p1x as f32 + offset_x, p1y as f32 + offset_y, 0.0],
-                            tex_coords: [glyph.u_min, glyph.v_max],
-                            page: glyph.page,
-                            buffer,
-                            fill_buffer,
-                            gamma,
-                            color: shadow_color,
-                        },
-                        Vertex {
-                            position: [p2x as f32 + offset_x, p2y as f32 + offset_y, 0.0],
-                            tex_coords: [glyph.u_max, glyph.v_max],
-                            page: glyph.page,
-                            buffer,
-                            fill_buffer,
-                            gamma,
-                            color: shadow_color,
-                        },
-                        Vertex {
-                            position: [p3x as f32 + offset_x, p3y as f32 + offset_y, 0.0],
-                            tex_coords: [glyph.u_max, glyph.v_min],
-                            page: glyph.page,
-                            buffer,
-                            fill_buffer,
-                            gamma,
-                            color: shadow_color,
-                        },
-                    ]);
+                        let offset_x = shadow_offset_x / VIEWPORT_WIDTH as f32 * 2.;
+                        let offset_y = shadow_offset_y / VIEWPORT_HEIGHT as f32 * 2.;
+                        vertices_shadow.extend([
+                            Vertex {
+                                position: [p0x as f32 + offset_x, p0y as f32 + offset_y, 0.0],
+                                tex_coords: [glyph.u_min, glyph.v_min],
+                                page: glyph.page,
+                                buffer,
+                                fill_buffer,
+                                gamma,
+                                color: shadow_color,
+                            },
+                            Vertex {
+                                position: [p1x as f32 + offset_x, p1y as f32 + offset_y, 0.0],
+                                tex_coords: [glyph.u_min, glyph.v_max],
+                                page: glyph.page,
+                                buffer,
+                                fill_buffer,
+                                gamma,
+                                color: shadow_color,
+                            },
+                            Vertex {
+                                position: [p2x as f32 + offset_x, p2y as f32 + offset_y, 0.0],
+                                tex_coords: [glyph.u_max, glyph.v_max],
+                                page: glyph.page,
+                                buffer,
+                                fill_buffer,
+                                gamma,
+                                color: shadow_color,
+                            },
+                            Vertex {
+                                position: [p3x as f32 + offset_x, p3y as f32 + offset_y, 0.0],
+                                tex_coords: [glyph.u_max, glyph.v_min],
+                                page: glyph.page,
+                                buffer,
+                                fill_buffer,
+                                gamma,
+                                color: shadow_color,
+                            },
+                        ]);
+                    }
+
+                    let glyph_vertices = GlyphVertices {
+                        fill: vertices_fill,
+                        stroke: vertices_stroke,
+                        shadow: vertices_shadow,
+                        indices,
+                        col: current_col,
+                        row: current_row,
+                        x: current_x.round() as u32,
+                        y: current_y.round() as u32,
+                        width: h_advance.round() as u32,
+                        height: (FONT_SIZE * style.line_height).round() as u32,
+                        scale_ratio: actual_scale_ratio as f32,
+                    };
+
+                    glyph_vertices_vec.push(glyph_vertices);
+
+                    current_x += h_advance;
+                    current_col += 1;
                 }
 
-                let glyph_vertices = GlyphVertices {
-                    fill: vertices_fill,
-                    stroke: vertices_stroke,
-                    shadow: vertices_shadow,
-                    indices,
-                    col: current_col,
-                    row: current_row,
-                    x: current_x.round() as u32,
-                    y: current_y.round() as u32,
-                    width: h_advance.round() as u32,
-                    height: (FONT_SIZE * style.line_height).round() as u32,
-                    scale_ratio: actual_scale_ratio as f32,
-                };
+                // in case of the last line without line break
+                total_width_of_run = total_width_of_run.max(current_x);
+                _total_height_of_run = current_y + FONT_SIZE * style.line_height;
 
-                glyph_vertices_vec.push(glyph_vertices);
-
-                current_x += h_advance;
-                current_col += 1;
+                // update total size
+                total_width = total_width.max(total_width_of_run / FONT_SIZE * style.font_size);
+                total_height += _total_height_of_run / FONT_SIZE * style.font_size;
             }
-
-            // in case of the last line without line break
-            total_width_of_run = total_width_of_run.max(current_x);
-            _total_height_of_run = current_y + FONT_SIZE * style.line_height;
-
-            // update total size
-            total_width = total_width.max(total_width_of_run / FONT_SIZE * style.font_size);
-            total_height += _total_height_of_run / FONT_SIZE * style.font_size;
         }
 
         (
@@ -586,18 +677,18 @@ impl Huozi {
     }
 }
 
-fn parse_str<T: FromStr>(str: &str, fallback: T) -> T {
+fn parse_str<T: FromStr + Clone>(str: &str, fallback: &T) -> T {
     str.parse::<T>().unwrap_or_else(|_| {
         warn!(
             "cannot parse string value `{}` to type `{}`.",
             str,
             std::any::type_name::<T>()
         );
-        fallback
+        (*fallback).clone()
     })
 }
 
-fn parse_str_optional<T: FromStr>(str: &str, fallback: Option<T>) -> Option<T> {
+fn parse_str_optional<T: FromStr + Clone>(str: &str, fallback: Option<&T>) -> Option<T> {
     str.parse::<T>()
         .and_then(|v| Ok(Some(v)))
         .unwrap_or_else(|_| {
@@ -606,7 +697,7 @@ fn parse_str_optional<T: FromStr>(str: &str, fallback: Option<T>) -> Option<T> {
                 str,
                 std::any::type_name::<T>()
             );
-            fallback
+            fallback.cloned()
         })
 }
 
