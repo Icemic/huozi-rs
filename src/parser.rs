@@ -187,6 +187,7 @@ fn tag_head_keypair<const OPEN: char, const CLOSE: char>(
                 |(k, v)| (k, Some(v)),
             ),
             map(preceded(multispace0, tag_key::<OPEN, CLOSE>), |s| (s, None)),
+            value(("".to_string(), None), multispace0),
         )),
     )
     .parse(input)
@@ -227,7 +228,7 @@ fn tag_end<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<
         preceded(
             tag(end_prefix),
             cut(terminated(
-                tag_value::<OPEN, CLOSE>,
+                alt((tag_key::<OPEN, CLOSE>, value("".to_string(), multispace0))),
                 preceded(multispace0, char(CLOSE)),
             )),
         ),
@@ -497,6 +498,24 @@ mod tests {
                     content: "text".to_string()
                 }],
                 tag: "foo".to_string(),
+                value: None
+            }]
+        );
+    }
+
+    #[test]
+    fn no_tag_block() {
+        assert_eq!(
+            parse(r"[]text[/]").unwrap(),
+            vec![Element::Block {
+                start: 0,
+                end: 9,
+                inner: vec![Element::Text {
+                    start: 2,
+                    end: 6,
+                    content: "text".to_string()
+                }],
+                tag: "".to_string(),
                 value: None
             }]
         );
