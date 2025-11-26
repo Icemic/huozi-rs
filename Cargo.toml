@@ -21,7 +21,7 @@ wgpu = ["dep:wgpu"]
 ab_glyph = {version = "0.2", optional = true}
 anyhow = "1"
 bytemuck = {version = "1.4", features = ["derive"]}
-csscolorparser = {version = "0.7", features = ["serde"]}
+csscolorparser = {version = "0.8.0", features = ["serde"]}
 font-kit = {version = "0.14", optional = true}
 fontdue = {version = "0.9.2", optional = true}
 image = {version = "0.25", default-features = false}
