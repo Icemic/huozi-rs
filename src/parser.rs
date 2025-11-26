@@ -25,7 +25,8 @@ mod tests {
             vec![Element::Text {
                 start: 0,
                 end: 11,
-                content: " some text ".to_string()
+                content: " some text ".to_string(),
+                segment_id: None,
             }]
         );
     }
@@ -37,7 +38,8 @@ mod tests {
             vec![Element::Text {
                 start: 0,
                 end: 14,
-                content: " some \n  text ".to_string()
+                content: " some \n  text ".to_string(),
+                segment_id: None,
             }]
         );
     }
@@ -49,7 +51,8 @@ mod tests {
             vec![Element::Text {
                 start: 0,
                 end: 15,
-                content: r" some \n [text".to_string()
+                content: r" some \n [text".to_string(),
+                segment_id: None,
             }]
         );
     }
@@ -61,7 +64,8 @@ mod tests {
             vec![Element::Text {
                 start: 0,
                 end: 11,
-                content: "[bracket]".to_string()
+                content: "[bracket]".to_string(),
+                segment_id: None,
             }]
         );
     }
@@ -73,7 +77,8 @@ mod tests {
             vec![Element::Text {
                 start: 0,
                 end: 28,
-                content: "text [left] more [right]".to_string()
+                content: "text [left] more [right]".to_string(),
+                segment_id: None,
             }]
         );
     }
@@ -85,7 +90,8 @@ mod tests {
             vec![Element::Text {
                 start: 0,
                 end: 14,
-                content: "[[double]]".to_string()
+                content: "[[double]]".to_string(),
+                segment_id: None,
             }]
         );
     }
@@ -98,7 +104,8 @@ mod tests {
                 Element::Text {
                     start: 0,
                     end: 8,
-                    content: "[tag] ".to_string()
+                    content: "[tag] ".to_string(),
+                    segment_id: None,
                 },
                 Element::Block {
                     start: 8,
@@ -106,7 +113,8 @@ mod tests {
                     inner: vec![Element::Text {
                         start: 14,
                         end: 21,
-                        content: "content".to_string()
+                        content: "content".to_string(),
+                        segment_id: None,
                     }],
                     tag: "real".to_string(),
                     value: None
@@ -123,7 +131,8 @@ mod tests {
                 Element::Text {
                     start: 0,
                     end: 1,
-                    content: " ".to_string()
+                    content: " ".to_string(),
+                    segment_id: None,
                 },
                 Element::Block {
                     start: 1,
@@ -131,7 +140,8 @@ mod tests {
                     inner: vec![Element::Text {
                         start: 7,
                         end: 14,
-                        content: "content".to_string()
+                        content: "content".to_string(),
+                        segment_id: None,
                     }],
                     tag: "real".to_string(),
                     value: None
@@ -151,7 +161,8 @@ mod tests {
                 Element::Text {
                     start: 0,
                     end: 43,
-                    content: "Show [bold]text[/bold] as literal, but ".to_string()
+                    content: "Show [bold]text[/bold] as literal, but ".to_string(),
+                    segment_id: None,
                 },
                 Element::Block {
                     start: 43,
@@ -159,7 +170,8 @@ mod tests {
                     inner: vec![Element::Text {
                         start: 49,
                         end: 53,
-                        content: "this".to_string()
+                        content: "this".to_string(),
+                        segment_id: None,
                     }],
                     tag: "bold".to_string(),
                     value: None
@@ -167,7 +179,8 @@ mod tests {
                 Element::Text {
                     start: 60,
                     end: 68,
-                    content: " is real".to_string()
+                    content: " is real".to_string(),
+                    segment_id: None,
                 }
             ]
         );
@@ -183,7 +196,8 @@ mod tests {
                 inner: vec![Element::Text {
                     start: 5,
                     end: 9,
-                    content: "text".to_string()
+                    content: "text".to_string(),
+                    segment_id: None,
                 }],
                 tag: "foo".to_string(),
                 value: None
@@ -201,7 +215,8 @@ mod tests {
                 inner: vec![Element::Text {
                     start: 2,
                     end: 6,
-                    content: "text".to_string()
+                    content: "text".to_string(),
+                    segment_id: None,
                 }],
                 tag: "".to_string(),
                 value: None
@@ -219,7 +234,8 @@ mod tests {
                 inner: vec![Element::Text {
                     start: 9,
                     end: 13,
-                    content: "text".to_string()
+                    content: "text".to_string(),
+                    segment_id: None,
                 }],
                 tag: "foo".to_string(),
                 value: Some("bar".to_string())
@@ -237,7 +253,8 @@ mod tests {
                 inner: vec![Element::Text {
                     start: 12,
                     end: 16,
-                    content: "text".to_string()
+                    content: "text".to_string(),
+                    segment_id: None,
                 }],
                 tag: "foo".to_string(),
                 value: Some("bar ".to_string())
@@ -255,7 +272,8 @@ mod tests {
                 inner: vec![Element::Text {
                     start: 12,
                     end: 16,
-                    content: "text".to_string()
+                    content: "text".to_string(),
+                    segment_id: None,
                 }],
                 tag: "foo".to_string(),
                 value: Some("bar ".to_string())
@@ -273,7 +291,8 @@ mod tests {
                 inner: vec![Element::Text {
                     start: 9,
                     end: 18,
-                    content: "\ntext\n  \n".to_string()
+                    content: "\ntext\n  \n".to_string(),
+                    segment_id: None,
                 }],
                 tag: "foo".to_string(),
                 value: Some("bar".to_string())
@@ -289,7 +308,8 @@ mod tests {
                 Element::Text {
                     start: 0,
                     end: 11,
-                    content: " some text ".to_string()
+                    content: " some text ".to_string(),
+                    segment_id: None,
                 },
                 Element::Block {
                     start: 11,
@@ -297,7 +317,8 @@ mod tests {
                     inner: vec![Element::Text {
                         start: 20,
                         end: 24,
-                        content: "text".to_string()
+                        content: "text".to_string(),
+                        segment_id: None,
                     }],
                     tag: "foo".to_string(),
                     value: Some("bar".to_string())
@@ -338,7 +359,8 @@ mod tests {
                 Element::Text {
                     start: 0,
                     end: 3,
-                    content: r"a\n".to_string()
+                    content: r"a\n".to_string(),
+                    segment_id: None,
                 },
                 Element::Block {
                     start: 3,
@@ -347,7 +369,8 @@ mod tests {
                         Element::Text {
                             start: 12,
                             end: 13,
-                            content: "q".to_string()
+                            content: "q".to_string(),
+                            segment_id: None,
                         },
                         Element::Block {
                             start: 13,
@@ -359,7 +382,8 @@ mod tests {
                         Element::Text {
                             start: 26,
                             end: 27,
-                            content: "x".to_string()
+                            content: "x".to_string(),
+                            segment_id: None,
                         }
                     ],
                     tag: "foo".to_string(),
@@ -386,7 +410,8 @@ mod tests {
                 inner: vec![Element::Text {
                     start: 16,
                     end: 20,
-                    content: "text".to_string()
+                    content: "text".to_string(),
+                    segment_id: None,
                 }],
                 tag: "foo".to_string(),
                 value: Some("bar ".to_string())

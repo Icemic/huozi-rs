@@ -48,12 +48,13 @@ pub(crate) fn to_spans(
                 start,
                 end,
                 content,
+                segment_id,
             } => {
                 current_runs.push(TextRun {
                     text: content,
                     style: current_style.clone(),
                     source_range: SourceRange {
-                        segment_id: Some(SegmentId::Lite(0)),
+                        segment_id,
                         start,
                         end,
                     },

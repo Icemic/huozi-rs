@@ -21,7 +21,8 @@ fn unicode_brackets_basic() {
             Element::Text {
                 start: 0,
                 end: 7,
-                content: "文本 ".to_string()
+                content: "文本 ".to_string(),
+                segment_id: None,
             },
             Element::Block {
                 start: 7,
@@ -29,7 +30,8 @@ fn unicode_brackets_basic() {
                 inner: vec![Element::Text {
                     start: 19,
                     end: 25,
-                    content: "内容".to_string()
+                    content: "内容".to_string(),
+                    segment_id: None,
                 }],
                 tag: "粗体".to_string(),
                 value: None
@@ -48,7 +50,8 @@ fn unicode_brackets_with_escape() {
             Element::Text {
                 start: 0,
                 end: 30,
-                content: "显示 【字面】 和 ".to_string()
+                content: "显示 【字面】 和 ".to_string(),
+                segment_id: None,
             },
             Element::Block {
                 start: 30,
@@ -56,7 +59,8 @@ fn unicode_brackets_with_escape() {
                 inner: vec![Element::Text {
                     start: 42,
                     end: 48,
-                    content: "内容".to_string()
+                    content: "内容".to_string(),
+                    segment_id: None,
                 }],
                 tag: "标签".to_string(),
                 value: None
@@ -75,7 +79,8 @@ fn unicode_brackets_nested() {
             Element::Text {
                 start: 0,
                 end: 7,
-                content: "文本 ".to_string()
+                content: "文本 ".to_string(),
+                segment_id: None,
             },
             Element::Block {
                 start: 7,
@@ -84,7 +89,8 @@ fn unicode_brackets_nested() {
                     Element::Text {
                         start: 19,
                         end: 20,
-                        content: "a".to_string()
+                        content: "a".to_string(),
+                        segment_id: None,
                     },
                     Element::Block {
                         start: 20,
@@ -92,7 +98,8 @@ fn unicode_brackets_nested() {
                         inner: vec![Element::Text {
                             start: 32,
                             end: 33,
-                            content: "b".to_string()
+                            content: "b".to_string(),
+                            segment_id: None,
                         }],
                         tag: "内层".to_string(),
                         value: None
@@ -100,7 +107,8 @@ fn unicode_brackets_nested() {
                     Element::Text {
                         start: 46,
                         end: 47,
-                        content: "c".to_string()
+                        content: "c".to_string(),
+                        segment_id: None,
                     }
                 ],
                 tag: "外层".to_string(),
@@ -120,7 +128,8 @@ fn unicode_brackets_with_value() {
             Element::Text {
                 start: 0,
                 end: 7,
-                content: "文本 ".to_string()
+                content: "文本 ".to_string(),
+                segment_id: None,
             },
             Element::Block {
                 start: 7,
@@ -128,7 +137,8 @@ fn unicode_brackets_with_value() {
                 inner: vec![Element::Text {
                     start: 26,
                     end: 32,
-                    content: "内容".to_string()
+                    content: "内容".to_string(),
+                    segment_id: None,
                 }],
                 tag: "颜色".to_string(),
                 value: Some("红色".to_string())
@@ -147,7 +157,8 @@ fn unicode_brackets_with_quoted_value() {
             Element::Text {
                 start: 0,
                 end: 7,
-                content: "文本 ".to_string()
+                content: "文本 ".to_string(),
+                segment_id: None,
             },
             Element::Block {
                 start: 7,
@@ -155,7 +166,8 @@ fn unicode_brackets_with_quoted_value() {
                 inner: vec![Element::Text {
                     start: 29,
                     end: 35,
-                    content: "内容".to_string()
+                    content: "内容".to_string(),
+                    segment_id: None,
                 }],
                 tag: "颜色".to_string(),
                 value: Some("红 色".to_string())
@@ -174,7 +186,8 @@ fn unicode_brackets_with_single_quoted_value() {
             Element::Text {
                 start: 0,
                 end: 7,
-                content: "文本 ".to_string()
+                content: "文本 ".to_string(),
+                segment_id: None,
             },
             Element::Block {
                 start: 7,
@@ -182,7 +195,8 @@ fn unicode_brackets_with_single_quoted_value() {
                 inner: vec![Element::Text {
                     start: 29,
                     end: 35,
-                    content: "内容".to_string()
+                    content: "内容".to_string(),
+                    segment_id: None,
                 }],
                 tag: "颜色".to_string(),
                 value: Some("红 色".to_string())
@@ -201,7 +215,8 @@ fn unicode_brackets_mixed_content() {
             Element::Text {
                 start: 0,
                 end: 6,
-                content: "Hello ".to_string()
+                content: "Hello ".to_string(),
+                segment_id: None,
             },
             Element::Block {
                 start: 6,
@@ -209,7 +224,8 @@ fn unicode_brackets_mixed_content() {
                 inner: vec![Element::Text {
                     start: 16,
                     end: 22,
-                    content: "世界".to_string()
+                    content: "世界".to_string(),
+                    segment_id: None,
                 }],
                 tag: "bold".to_string(),
                 value: None
@@ -217,7 +233,8 @@ fn unicode_brackets_mixed_content() {
             Element::Text {
                 start: 33,
                 end: 39,
-                content: " World".to_string()
+                content: " World".to_string(),
+                segment_id: None,
             }
         ]
     );
@@ -233,7 +250,8 @@ fn unicode_brackets_empty_tag() {
             Element::Text {
                 start: 0,
                 end: 7,
-                content: "文本 ".to_string()
+                content: "文本 ".to_string(),
+                segment_id: None,
             },
             Element::Block {
                 start: 7,
@@ -258,7 +276,8 @@ fn unicode_brackets_multiline() {
             inner: vec![Element::Text {
                 start: 12,
                 end: 32,
-                content: "第一行\n第二行\n".to_string()
+                content: "第一行\n第二行\n".to_string(),
+                segment_id: None,
             }],
             tag: "标签".to_string(),
             value: None
@@ -275,7 +294,8 @@ fn unicode_brackets_quad_escape() {
         vec![Element::Text {
             start: 0,
             end: 37,
-            content: "显示 【【双层】】".to_string()
+            content: "显示 【【双层】】".to_string(),
+            segment_id: None,
         }]
     );
 }

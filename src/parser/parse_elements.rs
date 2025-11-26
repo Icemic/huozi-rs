@@ -15,7 +15,7 @@ use std::sync::OnceLock;
 use crate::parser::{Segment, SegmentId};
 
 // Type alias for input with location tracking
-pub type Span<'a> = LocatedSpan<&'a str, SegmentId>;
+pub type Span<'a> = LocatedSpan<&'a str, Option<SegmentId>>;
 
 // Global caches for tag symbols
 // Note: These are shared across all generic parameter combinations.
@@ -55,6 +55,7 @@ pub enum Element {
         start: usize,
         end: usize,
         content: String,
+        segment_id: Option<SegmentId>,
     },
     Block {
         start: usize,
@@ -153,6 +154,7 @@ fn string_without_space<const OPEN: char, const CLOSE: char>(
 
 fn plain_text<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<'_, Element> {
     let start_offset = input.location_offset();
+    let segment_id = input.extra.clone();
 
     let (remaining, content) = context(
         "PlainText",
@@ -170,6 +172,7 @@ fn plain_text<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResu
             start: start_offset,
             end: end_offset,
             content,
+            segment_id,
         },
     ))
 }

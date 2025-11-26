@@ -6,15 +6,12 @@ pub enum SegmentId {
 }
 
 pub struct Segment<'s> {
-    pub id: SegmentId,
+    pub id: Option<SegmentId>,
     pub content: &'s str,
 }
 
 impl<'s> Segment<'s> {
     pub const fn dummy(content: &'s str) -> Self {
-        Self {
-            id: SegmentId::Lite(0),
-            content,
-        }
+        Self { id: None, content }
     }
 }
