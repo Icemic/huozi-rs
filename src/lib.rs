@@ -7,7 +7,6 @@ pub mod glyph_vertices;
 mod huozi;
 #[cfg(feature = "layout")]
 pub mod layout;
-#[cfg(feature = "parser")]
 pub mod parser;
 #[cfg(feature = "sdf")]
 pub mod sdf;

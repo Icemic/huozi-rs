@@ -23,7 +23,6 @@ pub enum ColorSpace {
 }
 
 impl Huozi {
-    #[cfg(feature = "parser")]
     pub fn parse_text(
         &self,
         text: &str,
@@ -34,7 +33,6 @@ impl Huozi {
         to_spans(elements, initial_text_style, style_prefabs)
     }
 
-    #[cfg(feature = "parser")]
     pub fn parse_text_with<const OPEN: char, const CLOSE: char>(
         &self,
         text: &str,
@@ -45,7 +43,6 @@ impl Huozi {
         to_spans(elements, initial_text_style, style_prefabs)
     }
 
-    #[cfg(feature = "parser")]
     pub fn layout_parse(
         &mut self,
         text: &str,
@@ -58,7 +55,6 @@ impl Huozi {
         Ok(self.layout(&layout_style, &text_spans, color_space))
     }
 
-    #[cfg(feature = "parser")]
     pub fn layout_parse_with<const OPEN: char, const CLOSE: char>(
         &mut self,
         text: &str,
