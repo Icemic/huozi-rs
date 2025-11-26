@@ -5,6 +5,7 @@ pub enum SegmentId {
     Lite(u32),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Segment<'s> {
     pub id: Option<SegmentId>,
     pub content: &'s str,
