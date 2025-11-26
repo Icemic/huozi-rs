@@ -134,7 +134,7 @@ impl Huozi {
                     }
                     // start a new segment span
                     current_segment_id = segment_id.clone();
-                    current_segment_range_start = glyph_vertices_vec.len() - 1;
+                    current_segment_range_start = glyph_vertices_vec.len();
                 }
 
                 // Buffer value depends on color space due to gamma correction
@@ -500,6 +500,14 @@ impl Huozi {
                 total_width = total_width.max(total_width_of_run / FONT_SIZE * style.font_size);
                 total_height += _total_height_of_run / FONT_SIZE * style.font_size;
             }
+        }
+
+        // save the last segment span
+        if let Some(seg_id) = &current_segment_id {
+            segment_glyph_spans.push(SegmentGlyphSpan {
+                segment_id: seg_id.clone(),
+                glyph_range: current_segment_range_start..glyph_vertices_vec.len(),
+            });
         }
 
         (
