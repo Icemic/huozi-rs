@@ -5,7 +5,7 @@ mod text_run;
 mod text_span;
 mod text_style;
 
-pub use elements_to_spans::*;
+pub(crate) use elements_to_spans::*;
 pub use parse_elements::*;
 pub use source_range::*;
 pub use text_run::*;
