@@ -1,3 +1,4 @@
+mod color_space;
 mod layout_style;
 mod vertex;
 
@@ -5,8 +6,8 @@ use std::collections::HashMap;
 
 use crate::parser::*;
 use anyhow::Result;
-use csscolorparser::Color;
 
+pub use self::color_space::*;
 pub use self::layout_style::*;
 pub use self::vertex::*;
 
@@ -16,11 +17,6 @@ use crate::{
     parser::parse,
     Huozi,
 };
-
-pub enum ColorSpace {
-    Linear,
-    SRGB,
-}
 
 impl Huozi {
     pub fn parse_text(
@@ -476,13 +472,5 @@ impl Huozi {
             total_width.round() as u32,
             total_height.round() as u32,
         )
-    }
-}
-
-#[inline]
-fn get_color_value(color: &Color, color_space: &ColorSpace) -> [f32; 4] {
-    match color_space {
-        ColorSpace::Linear => color.to_linear_rgba(),
-        ColorSpace::SRGB => color.to_array(),
     }
 }
