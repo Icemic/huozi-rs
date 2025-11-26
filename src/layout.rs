@@ -11,17 +11,15 @@ use anyhow::Result;
 use csscolorparser::Color;
 pub use layout_style::*;
 use log::warn;
+pub use source_range::*;
 pub use text_run::*;
+pub use text_span::*;
 pub use text_style::*;
 pub use vertex::*;
 
 use crate::{
     constant::{ASCENT, FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE, VIEWPORT_HEIGHT, VIEWPORT_WIDTH},
     glyph_vertices::GlyphVertices,
-    layout::{
-        source_range::{SegmentId, SourceRange},
-        text_span::{SpanId, TextSpan},
-    },
     parser::{parse, parse_with, Element},
     Huozi,
 };
@@ -39,7 +37,8 @@ pub fn parse_text_recursive(
     let mut spans = vec![];
     let mut current_runs = vec![];
 
-    let mut stack: Vec<(Rc<RefCell<std::vec::IntoIter<Element>>>, TextStyle)> = vec![];
+    // (elements iterator, current style, is_span)
+    let mut stack: Vec<(Rc<RefCell<std::vec::IntoIter<Element>>>, TextStyle, bool)> = vec![];
     let mut current_style = current_style.clone();
     let mut elements = Rc::new(RefCell::new(elements.into_iter()));
 
@@ -47,7 +46,11 @@ pub fn parse_text_recursive(
         let elements_remaining = elements.borrow_mut().len();
         if elements_remaining == 0 {
             if !stack.is_empty() {
-                if !current_runs.is_empty() {
+                let (next_elements, next_style, is_span) = stack.pop().unwrap();
+                elements = next_elements;
+                current_style = next_style;
+
+                if is_span && !current_runs.is_empty() {
                     let runs = current_runs.drain(..).collect();
                     let span = TextSpan {
                         runs,
@@ -56,9 +59,6 @@ pub fn parse_text_recursive(
                     spans.push(span);
                 }
 
-                let (next_elements, next_style) = stack.pop().unwrap();
-                elements = next_elements;
-                current_style = next_style;
                 continue;
             } else {
                 break;
@@ -91,6 +91,9 @@ pub fn parse_text_recursive(
                 value,
             } => {
                 if tag.as_str() != "span" && value.is_some() {
+                    stack.push((elements.clone(), current_style.clone(), false));
+                    elements = Rc::new(RefCell::new(inner.into_iter()));
+
                     let value = value.as_ref().unwrap();
                     match tag.as_str() {
                         "size" => {
@@ -168,27 +171,31 @@ pub fn parse_text_recursive(
                         }
                     };
                 } else {
-                    stack.push((elements.clone(), current_style.clone()));
-                    elements = Rc::new(RefCell::new(inner.into_iter()));
-
                     if let Some(style_prefabs) = style_prefabs {
                         if let Some(style_prefab) = style_prefabs.get(&tag) {
-                            current_style = style_prefab.clone();
-                        }
-                    } else {
-                        if tag.as_str() != "span" && !tag.is_empty() {
-                            warn!("unrecognized prefab tag `{}`, treated as normal span", tag);
-                        }
+                            stack.push((elements.clone(), current_style.clone(), false));
+                            elements = Rc::new(RefCell::new(inner.into_iter()));
 
-                        if !current_runs.is_empty() {
-                            let runs = current_runs.drain(..).collect();
-                            let span = TextSpan {
-                                runs,
-                                span_id: Some(SpanId::Lite(0)),
-                            };
-                            spans.push(span);
+                            current_style = style_prefab.clone();
+                            continue;
                         }
                     }
+
+                    if tag.as_str() != "span" && !tag.is_empty() {
+                        warn!("unrecognized prefab tag `{}`, treated as normal span", tag);
+                    }
+
+                    if !current_runs.is_empty() {
+                        let runs = current_runs.drain(..).collect();
+                        let span = TextSpan {
+                            runs,
+                            span_id: Some(SpanId::Lite(0)),
+                        };
+                        spans.push(span);
+                    }
+
+                    stack.push((elements.clone(), current_style.clone(), true));
+                    elements = Rc::new(RefCell::new(inner.into_iter()));
                 }
             }
         }
