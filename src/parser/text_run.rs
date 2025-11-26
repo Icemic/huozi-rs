@@ -38,5 +38,5 @@ use crate::parser::text_style::TextStyle;
 pub struct TextRun {
     pub text: String,
     pub style: TextStyle,
-    pub source_range: Option<SourceRange>,
+    pub source_range: SourceRange,
 }

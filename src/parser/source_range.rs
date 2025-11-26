@@ -1,9 +1,9 @@
 use crate::parser::SegmentId;
 
 /// A range in the source content, identified by a segment ID and start/end positions.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SourceRange {
-    pub segment_id: SegmentId,
+    pub segment_id: Option<SegmentId>,
     pub start: usize,
     pub end: usize,
 }
