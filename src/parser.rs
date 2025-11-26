@@ -1,5 +1,6 @@
 mod elements_to_spans;
 mod parse_elements;
+mod segment;
 mod source_range;
 mod text_run;
 mod text_span;
@@ -7,6 +8,7 @@ mod text_style;
 
 pub(crate) use elements_to_spans::*;
 pub use parse_elements::*;
+pub use segment::*;
 pub use source_range::*;
 pub use text_run::*;
 pub use text_span::*;

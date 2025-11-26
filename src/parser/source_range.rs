@@ -1,9 +1,4 @@
-/// An identifier for a segment in the source content, which can be either a String or u32.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SegmentId {
-    Tag(String),
-    Lite(u32),
-}
+use crate::parser::SegmentId;
 
 /// A range in the source content, identified by a segment ID and start/end positions.
 #[derive(Debug, Clone, PartialEq, Eq)]
