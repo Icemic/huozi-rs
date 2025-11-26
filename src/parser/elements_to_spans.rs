@@ -52,11 +52,11 @@ pub(crate) fn to_spans(
                 current_runs.push(TextRun {
                     text: content,
                     style: current_style.clone(),
-                    source_range: Some(SourceRange {
-                        segment_id: SegmentId::Lite(0),
+                    source_range: SourceRange {
+                        segment_id: Some(SegmentId::Lite(0)),
                         start,
                         end,
-                    }),
+                    },
                 });
             }
             Element::Block {
@@ -226,7 +226,7 @@ mod tests {
     #[test]
     fn test_plain_text() {
         let input = "[span]Hello, World![/span]";
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -236,7 +236,7 @@ mod tests {
         assert_eq!(result[0].runs[0].text, "Hello, World!");
 
         // Check source range byte positions
-        let source_range = result[0].runs[0].source_range.as_ref().unwrap();
+        let source_range = &result[0].runs[0].source_range;
         assert_eq!(source_range.start, 6); // After "[span]"
         assert_eq!(source_range.end, 19); // Before "[/span]"
     }
@@ -244,7 +244,7 @@ mod tests {
     #[test]
     fn test_single_style_tag() {
         let input = "[span]Text with [size=48]large[/size] size[/span]";
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -255,21 +255,21 @@ mod tests {
         // First run: "Text with "
         assert_eq!(result[0].runs[0].text, "Text with ");
         assert_eq!(result[0].runs[0].style.font_size, 32.0);
-        let sr = result[0].runs[0].source_range.as_ref().unwrap();
+        let sr = &result[0].runs[0].source_range;
         assert_eq!(sr.start, 6);
         assert_eq!(sr.end, 16);
 
         // Second run: "large" with size=48
         assert_eq!(result[0].runs[1].text, "large");
         assert_eq!(result[0].runs[1].style.font_size, 48.0);
-        let sr = result[0].runs[1].source_range.as_ref().unwrap();
+        let sr = &result[0].runs[1].source_range;
         assert_eq!(sr.start, 25);
         assert_eq!(sr.end, 30);
 
         // Third run: " size"
         assert_eq!(result[0].runs[2].text, " size");
         assert_eq!(result[0].runs[2].style.font_size, 32.0);
-        let sr = result[0].runs[2].source_range.as_ref().unwrap();
+        let sr = &result[0].runs[2].source_range;
         assert_eq!(sr.start, 37);
         assert_eq!(sr.end, 42);
     }
@@ -277,7 +277,7 @@ mod tests {
     #[test]
     fn test_single_span_tag() {
         let input = "[span]Before [span]inside[/span] after[/span]";
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn test_empty_tag_structure() {
         let input = "[span]Text with []empty tag[/] content[/span]";
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -317,7 +317,7 @@ mod tests {
     #[test]
     fn test_nonexistent_tag_fallback_to_span() {
         let input = "[span]Before [unknownTag]content[/unknownTag] after[/span]";
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -333,7 +333,7 @@ mod tests {
     #[test]
     fn test_nested_spans() {
         let input = "[span]Outer [span]Middle [span]Inner[/span] middle[/span] outer[/span]";
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -360,7 +360,7 @@ mod tests {
             " with [strokeColor=#0000ff]blue stroke[/strokeColor] end.",
             "[/span]"
         );
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -420,7 +420,7 @@ mod tests {
     fn test_multiple_style_attributes() {
         let input =
         "[span][color=#ff0000][size=48][lineHeight=2.0]Styled[/lineHeight][/size][/color][/span]";
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -446,7 +446,7 @@ mod tests {
             "[/shadowBlur][/shadowOffsetY][/shadowOffsetX]",
             "[/span]"
         );
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -468,7 +468,7 @@ mod tests {
     fn test_stroke_attributes() {
         let input =
         "[span][strokeColor=#0000ff][strokeWidth=2.5]Stroked[/strokeWidth][/strokeColor][/span]";
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -490,7 +490,7 @@ mod tests {
     fn test_byte_positions() {
         // Test with multi-byte characters
         let input = "[span]你好[size=48]世界[/size]！[/span]";
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
@@ -502,20 +502,20 @@ mod tests {
 
         // "你好" - 2 Chinese characters, each 3 bytes in UTF-8
         assert_eq!(result[0].runs[0].text, "你好");
-        let sr = result[0].runs[0].source_range.as_ref().unwrap();
+        let sr = &result[0].runs[0].source_range;
         assert_eq!(sr.start, 6);
         assert_eq!(sr.end, 12);
 
         // "世界" with size=48
         assert_eq!(result[0].runs[1].text, "世界");
         assert_eq!(result[0].runs[1].style.font_size, 48.0);
-        let sr = result[0].runs[1].source_range.as_ref().unwrap();
+        let sr = &result[0].runs[1].source_range;
         assert_eq!(sr.start, 21);
         assert_eq!(sr.end, 27);
 
         // "！"
         assert_eq!(result[0].runs[2].text, "！");
-        let sr = result[0].runs[2].source_range.as_ref().unwrap();
+        let sr = &result[0].runs[2].source_range;
         assert_eq!(sr.start, 34);
         assert_eq!(sr.end, 37);
     }
@@ -523,7 +523,7 @@ mod tests {
     #[test]
     fn test_indent_attribute() {
         let input = "[span][indent=2.5]Indented text[/indent][/span]";
-        let elements = parse(input).expect("Failed to parse");
+        let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
             to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");

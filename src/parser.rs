@@ -16,12 +16,12 @@ pub use text_style::*;
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::parse_elements::*;
+    use crate::parser::{parse_elements::*, Segment};
 
     #[test]
     fn plain_text() {
         assert_eq!(
-            parse(" some text ").unwrap(),
+            parse(&Segment::dummy(" some text ")).unwrap(),
             vec![Element::Text {
                 start: 0,
                 end: 11,
@@ -33,7 +33,7 @@ mod tests {
     #[test]
     fn plain_text_multiple_line() {
         assert_eq!(
-            parse(" some \n  text ").unwrap(),
+            parse(&Segment::dummy(" some \n  text ")).unwrap(),
             vec![Element::Text {
                 start: 0,
                 end: 14,
@@ -45,7 +45,7 @@ mod tests {
     #[test]
     fn plain_text_with_backslash() {
         assert_eq!(
-            parse(r" some \n [[text").unwrap(),
+            parse(&Segment::dummy(r" some \n [[text")).unwrap(),
             vec![Element::Text {
                 start: 0,
                 end: 15,
@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn double_bracket_escape() {
         assert_eq!(
-            parse("[[bracket]]").unwrap(),
+            parse(&Segment::dummy("[[bracket]]")).unwrap(),
             vec![Element::Text {
                 start: 0,
                 end: 11,
@@ -69,7 +69,7 @@ mod tests {
     #[test]
     fn double_bracket_in_text() {
         assert_eq!(
-            parse("text [[left]] more [[right]]").unwrap(),
+            parse(&Segment::dummy("text [[left]] more [[right]]")).unwrap(),
             vec![Element::Text {
                 start: 0,
                 end: 28,
@@ -81,7 +81,7 @@ mod tests {
     #[test]
     fn quad_bracket_escape() {
         assert_eq!(
-            parse("[[[[double]]]]").unwrap(),
+            parse(&Segment::dummy("[[[[double]]]]")).unwrap(),
             vec![Element::Text {
                 start: 0,
                 end: 14,
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn mixed_escape_and_tag() {
         assert_eq!(
-            parse("[[tag]] [real]content[/real]").unwrap(),
+            parse(&Segment::dummy("[[tag]] [real]content[/real]")).unwrap(),
             vec![
                 Element::Text {
                     start: 0,
@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn mixed_escape_and_tag2() {
         assert_eq!(
-            parse(" [real]content[/real]").unwrap(),
+            parse(&Segment::dummy(" [real]content[/real]")).unwrap(),
             vec![
                 Element::Text {
                     start: 0,
@@ -143,7 +143,10 @@ mod tests {
     #[test]
     fn complex_escape_tags() {
         assert_eq!(
-            parse("Show [[bold]]text[[/bold]] as literal, but [bold]this[/bold] is real").unwrap(),
+            parse(&Segment::dummy(
+                "Show [[bold]]text[[/bold]] as literal, but [bold]this[/bold] is real"
+            ))
+            .unwrap(),
             vec![
                 Element::Text {
                     start: 0,
@@ -173,7 +176,7 @@ mod tests {
     #[test]
     fn single_block_without_value() {
         assert_eq!(
-            parse(r"[foo]text[/foo]").unwrap(),
+            parse(&Segment::dummy(r"[foo]text[/foo]")).unwrap(),
             vec![Element::Block {
                 start: 0,
                 end: 15,
@@ -191,7 +194,7 @@ mod tests {
     #[test]
     fn no_tag_block() {
         assert_eq!(
-            parse(r"[]text[/]").unwrap(),
+            parse(&Segment::dummy(r"[]text[/]")).unwrap(),
             vec![Element::Block {
                 start: 0,
                 end: 9,
@@ -209,7 +212,7 @@ mod tests {
     #[test]
     fn single_block_with_value() {
         assert_eq!(
-            parse(r"[foo=bar]text[/foo]").unwrap(),
+            parse(&Segment::dummy(r"[foo=bar]text[/foo]")).unwrap(),
             vec![Element::Block {
                 start: 0,
                 end: 19,
@@ -227,7 +230,7 @@ mod tests {
     #[test]
     fn single_block_with_value_quoted_double() {
         assert_eq!(
-            parse(r#"[foo="bar "]text[/foo]"#).unwrap(),
+            parse(&Segment::dummy(r#"[foo="bar "]text[/foo]"#)).unwrap(),
             vec![Element::Block {
                 start: 0,
                 end: 22,
@@ -245,7 +248,7 @@ mod tests {
     #[test]
     fn single_block_with_value_quoted_single() {
         assert_eq!(
-            parse(r#"[foo='bar ']text[/foo]"#).unwrap(),
+            parse(&Segment::dummy(r#"[foo='bar ']text[/foo]"#)).unwrap(),
             vec![Element::Block {
                 start: 0,
                 end: 22,
@@ -263,7 +266,7 @@ mod tests {
     #[test]
     fn single_block_multiline() {
         assert_eq!(
-            parse("[foo=bar]\ntext\n  \n[/foo]").unwrap(),
+            parse(&Segment::dummy("[foo=bar]\ntext\n  \n[/foo]")).unwrap(),
             vec![Element::Block {
                 start: 0,
                 end: 24,
@@ -281,7 +284,7 @@ mod tests {
     #[test]
     fn mixed_text_and_block() {
         assert_eq!(
-            parse(r" some text [foo=bar]text[/foo]").unwrap(),
+            parse(&Segment::dummy(r" some text [foo=bar]text[/foo]")).unwrap(),
             vec![
                 Element::Text {
                     start: 0,
@@ -306,7 +309,7 @@ mod tests {
     #[test]
     fn nested_blocks() {
         assert_eq!(
-            parse(r"[foo=bar][xx=123][/xx][/foo]").unwrap(),
+            parse(&Segment::dummy(r"[foo=bar][xx=123][/xx][/foo]")).unwrap(),
             vec![Element::Block {
                 start: 0,
                 end: 28,
@@ -327,7 +330,10 @@ mod tests {
     fn complex_elements() {
         // Backslash and 'n' are now treated as literal characters, not escape sequence
         assert_eq!(
-            parse(r"a\n[foo=bar]q[xx=123][/xx]x[/foo][yy][/yy]").unwrap(),
+            parse(&Segment::dummy(
+                r"a\n[foo=bar]q[xx=123][/xx]x[/foo][yy][/yy]"
+            ))
+            .unwrap(),
             vec![
                 Element::Text {
                     start: 0,
@@ -373,7 +379,7 @@ mod tests {
     #[test]
     fn tagpair_with_spaces() {
         assert_eq!(
-            parse(r#"[ foo = "bar " ]text[/ foo  ]"#).unwrap(),
+            parse(&Segment::dummy(r#"[ foo = "bar " ]text[/ foo  ]"#)).unwrap(),
             vec![Element::Block {
                 start: 0,
                 end: 29,
@@ -390,6 +396,6 @@ mod tests {
 
     #[test]
     fn empty() {
-        assert_eq!(parse("").unwrap(), vec![]);
+        assert_eq!(parse(&Segment::dummy("")).unwrap(), vec![]);
     }
 }

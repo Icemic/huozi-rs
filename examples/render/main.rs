@@ -2,7 +2,7 @@ use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
     constant::TEXTURE_SIZE,
     layout::{ColorSpace, LayoutDirection, LayoutStyle, Vertex},
-    parser::TextStyle,
+    parser::{Segment, TextStyle},
     Huozi,
 };
 use log::{error, info};
@@ -435,7 +435,7 @@ impl State {
         };
 
         match huozi.layout_parse(
-            &self.input_text,
+            &vec![Segment::dummy(&self.input_text)],
             &self.layout_config,
             &self.text_config,
             ColorSpace::SRGB,

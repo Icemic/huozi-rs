@@ -22,49 +22,61 @@ impl Huozi {
     /// Parse the text into text spans.
     pub fn parse_text(
         &self,
-        text: &str,
+        segments: &Vec<Segment>,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<Vec<TextSpan>, String> {
-        let elements = parse(text)?;
+        let elements = segments
+            .iter()
+            .map(|segment| parse(segment))
+            .collect::<Result<Vec<Vec<Element>>, String>>()?
+            .into_iter()
+            .flatten()
+            .collect();
         to_spans(elements, initial_text_style, style_prefabs)
     }
 
     /// Parse the text with custom open and close tag characters.
     pub fn parse_text_with<const OPEN: char, const CLOSE: char>(
         &self,
-        text: &str,
+        segments: &Vec<Segment>,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<Vec<TextSpan>, String> {
-        let elements = parse_with::<OPEN, CLOSE>(text)?;
+        let elements = segments
+            .iter()
+            .map(|segment| parse_with::<OPEN, CLOSE>(segment))
+            .collect::<Result<Vec<Vec<Element>>, String>>()?
+            .into_iter()
+            .flatten()
+            .collect();
         to_spans(elements, initial_text_style, style_prefabs)
     }
 
     /// Parse the text into text spans, then layout into glyph vertices.
     pub fn layout_parse(
         &mut self,
-        text: &str,
+        segments: &Vec<Segment>,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
-        let text_spans = self.parse_text(text, initial_text_style, style_prefabs)?;
+        let text_spans = self.parse_text(segments, initial_text_style, style_prefabs)?;
         Ok(self.layout(&layout_style, &text_spans, color_space))
     }
 
     /// Parse the text with custom open and close tag characters, then layout into glyph vertices.
     pub fn layout_parse_with<const OPEN: char, const CLOSE: char>(
         &mut self,
-        text: &str,
+        segments: &Vec<Segment>,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
         let text_spans =
-            self.parse_text_with::<OPEN, CLOSE>(text, initial_text_style, style_prefabs)?;
+            self.parse_text_with::<OPEN, CLOSE>(segments, initial_text_style, style_prefabs)?;
         Ok(self.layout(&layout_style, &text_spans, color_space))
     }
 

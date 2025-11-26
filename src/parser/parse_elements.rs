@@ -12,8 +12,10 @@ use nom_language::error::{convert_error, VerboseError};
 use nom_locate::LocatedSpan;
 use std::sync::OnceLock;
 
+use crate::parser::{Segment, SegmentId};
+
 // Type alias for input with location tracking
-pub type Span<'a> = LocatedSpan<&'a str>;
+pub type Span<'a> = LocatedSpan<&'a str, SegmentId>;
 
 // Global caches for tag symbols
 // Note: These are shared across all generic parameter combinations.
@@ -300,9 +302,9 @@ fn elements<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult
 /// let result = parse_with::<'{', '}'>("text {bold}content{/bold}");
 /// ```
 pub fn parse_with<const OPEN: char, const CLOSE: char>(
-    input: &str,
+    input: &Segment<'_>,
 ) -> Result<Vec<Element>, String> {
-    let span = Span::new(input);
+    let span = Span::new_extra(input.content, input.id.clone());
     match context("Root", many_till(element::<OPEN, CLOSE>, eof)).parse(span) {
         Ok((_, (r, _))) => Ok(r),
         Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
@@ -314,7 +316,7 @@ pub fn parse_with<const OPEN: char, const CLOSE: char>(
                     .map(|(span, kind)| (*span.fragment(), kind))
                     .collect(),
             };
-            Err(convert_error(input, converted_error))
+            Err(convert_error(input.content, converted_error))
         }
         Err(nom::Err::Incomplete(_)) => {
             unreachable!("it should not reach this branch, may be a bug.");
@@ -325,6 +327,6 @@ pub fn parse_with<const OPEN: char, const CLOSE: char>(
 /// Parse input with default square bracket tags `[]`.
 ///
 /// This is equivalent to calling `parse_with::<'[', ']'>(input)`.
-pub fn parse(input: &str) -> Result<Vec<Element>, String> {
+pub fn parse(input: &Segment<'_>) -> Result<Vec<Element>, String> {
     parse_with::<'[', ']'>(input)
 }

@@ -9,14 +9,14 @@
 // 2. Support for non-ASCII symbols
 // 3. The custom symbol feature works correctly
 
-use huozi::parser::{parse_with, Element};
+use huozi::parser::{parse_with, Element, Segment};
 
 #[test]
 fn unicode_brackets_basic() {
     // Test basic tag parsing with 【】
     let input = "文本 【粗体】内容【/粗体】";
     assert_eq!(
-        parse_with::<'【', '】'>(input).unwrap(),
+        parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
                 start: 0,
@@ -43,7 +43,7 @@ fn unicode_brackets_with_escape() {
     // Test 【【 and 】】 escape sequences
     let input = "显示 【【字面】】 和 【标签】内容【/标签】";
     assert_eq!(
-        parse_with::<'【', '】'>(input).unwrap(),
+        parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
                 start: 0,
@@ -70,7 +70,7 @@ fn unicode_brackets_nested() {
     // Test nested tags
     let input = "文本 【外层】a【内层】b【/内层】c【/外层】";
     assert_eq!(
-        parse_with::<'【', '】'>(input).unwrap(),
+        parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
                 start: 0,
@@ -115,7 +115,7 @@ fn unicode_brackets_with_value() {
     // Test tags with values
     let input = "文本 【颜色=红色】内容【/颜色】";
     assert_eq!(
-        parse_with::<'【', '】'>(input).unwrap(),
+        parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
                 start: 0,
@@ -142,7 +142,7 @@ fn unicode_brackets_with_quoted_value() {
     // Test tags with quoted values (double quotes)
     let input = r#"文本 【颜色="红 色"】内容【/颜色】"#;
     assert_eq!(
-        parse_with::<'【', '】'>(input).unwrap(),
+        parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
                 start: 0,
@@ -169,7 +169,7 @@ fn unicode_brackets_with_single_quoted_value() {
     // Test tags with quoted values (single quotes)
     let input = "文本 【颜色='红 色'】内容【/颜色】";
     assert_eq!(
-        parse_with::<'【', '】'>(input).unwrap(),
+        parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
                 start: 0,
@@ -196,7 +196,7 @@ fn unicode_brackets_mixed_content() {
     // Test mixed ASCII and Unicode content
     let input = "Hello 【bold】世界【/bold】 World";
     assert_eq!(
-        parse_with::<'【', '】'>(input).unwrap(),
+        parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
                 start: 0,
@@ -228,7 +228,7 @@ fn unicode_brackets_empty_tag() {
     // Test empty tag
     let input = "文本 【标签】【/标签】";
     assert_eq!(
-        parse_with::<'【', '】'>(input).unwrap(),
+        parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
                 start: 0,
@@ -251,7 +251,7 @@ fn unicode_brackets_multiline() {
     // Test multiline content
     let input = "【标签】第一行\n第二行\n【/标签】";
     assert_eq!(
-        parse_with::<'【', '】'>(input).unwrap(),
+        parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![Element::Block {
             start: 0,
             end: 45,
@@ -271,7 +271,7 @@ fn unicode_brackets_quad_escape() {
     // Test quadruple escaping: 【【【【 -> 【【
     let input = "显示 【【【【双层】】】】";
     assert_eq!(
-        parse_with::<'【', '】'>(input).unwrap(),
+        parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![Element::Text {
             start: 0,
             end: 37,
