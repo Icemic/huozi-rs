@@ -6,29 +6,29 @@ use super::TextStyle;
 /// For example, a plain text shall be presented as
 ///
 /// ```rust
-///     use huozi::layout::Textrun;
-///     let run = Textrun {
+///     use huozi::layout::TextRun;
+///     let run = TextRun {
 ///         text: "This is plain text.".to_string(),
 ///         ..Default::default()
 ///     };
 /// ```
 ///
-/// or a rich text can be presented as a vector of Textrun, such as
+/// or a rich text can be presented as a vector of TextRun, such as
 ///
 /// ```rust
-///     use huozi::layout::Textrun;
+///     use huozi::layout::TextRun;
 ///     // for text "This is <color=#f00>rich</color> text."
 ///     let runs = vec![
-///         Textrun {
+///         TextRun {
 ///             text: "This is ".to_string(),
 ///             ..Default::default()
 ///         },
-///         Textrun {
+///         TextRun {
 ///             text: "rich".to_string(),
 ///             // the style should be set to red color
 ///             ..Default::default()
 ///         },
-///         Textrun {
+///         TextRun {
 ///             text: " text.".to_string(),
 ///             ..Default::default()
 ///         },

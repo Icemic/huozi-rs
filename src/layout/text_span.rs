@@ -5,8 +5,9 @@ use super::TextRun;
 /// For example, a text span can be created as follows:
 ///
 /// ```rust
-/// use huozi::layout::TextRun;
+/// use huozi::layout::{TextRun, TextSpan};
 /// let span = TextSpan {
+///   span_id: None,
 ///   runs: vec![
 ///     TextRun {
 ///       text: "Hello, ".to_string(),
