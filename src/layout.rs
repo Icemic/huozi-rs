@@ -19,6 +19,7 @@ use crate::{
 };
 
 impl Huozi {
+    /// Parse the text into text spans.
     pub fn parse_text(
         &self,
         text: &str,
@@ -29,6 +30,7 @@ impl Huozi {
         to_spans(elements, initial_text_style, style_prefabs)
     }
 
+    /// Parse the text with custom open and close tag characters.
     pub fn parse_text_with<const OPEN: char, const CLOSE: char>(
         &self,
         text: &str,
@@ -39,6 +41,7 @@ impl Huozi {
         to_spans(elements, initial_text_style, style_prefabs)
     }
 
+    /// Parse the text into text spans, then layout into glyph vertices.
     pub fn layout_parse(
         &mut self,
         text: &str,
@@ -51,6 +54,7 @@ impl Huozi {
         Ok(self.layout(&layout_style, &text_spans, color_space))
     }
 
+    /// Parse the text with custom open and close tag characters, then layout into glyph vertices.
     pub fn layout_parse_with<const OPEN: char, const CLOSE: char>(
         &mut self,
         text: &str,
@@ -64,6 +68,7 @@ impl Huozi {
         Ok(self.layout(&layout_style, &text_spans, color_space))
     }
 
+    /// Layout the given text spans into glyph vertices according to the layout style and color space.
     pub fn layout<'a, T: AsRef<Vec<TextSpan>>>(
         &mut self,
         layout_style: &LayoutStyle,
