@@ -441,7 +441,7 @@ impl State {
             ColorSpace::SRGB,
             None,
         ) {
-            Ok((glyphs, total_width, total_height)) => {
+            Ok((glyphs, _, total_width, total_height)) => {
                 info!(
                     "text layouting finished, {}ms",
                     SystemTime::now().duration_since(t).unwrap().as_millis()

@@ -1,4 +1,5 @@
 mod color_space;
+mod glyph_span;
 mod layout_style;
 mod vertex;
 
@@ -8,6 +9,7 @@ use crate::parser::*;
 use anyhow::Result;
 
 pub use self::color_space::*;
+pub use self::glyph_span::*;
 pub use self::layout_style::*;
 pub use self::vertex::*;
 
@@ -61,7 +63,7 @@ impl Huozi {
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
+    ) -> Result<(Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32), String> {
         let text_spans = self.parse_text(segments, initial_text_style, style_prefabs)?;
         Ok(self.layout(&layout_style, &text_spans, color_space))
     }
@@ -74,7 +76,7 @@ impl Huozi {
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<(Vec<GlyphVertices>, u32, u32), String> {
+    ) -> Result<(Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32), String> {
         let text_spans =
             self.parse_text_with::<OPEN, CLOSE>(segments, initial_text_style, style_prefabs)?;
         Ok(self.layout(&layout_style, &text_spans, color_space))
@@ -86,7 +88,7 @@ impl Huozi {
         layout_style: &LayoutStyle,
         text_spans: T,
         color_space: ColorSpace,
-    ) -> (Vec<GlyphVertices>, u32, u32) {
+    ) -> (Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32) {
         let mut total_width: f64 = 0.;
         let mut total_height: f64 = 0.;
 
@@ -106,18 +108,34 @@ impl Huozi {
         let max_width = layout_style.box_width;
         let max_height = layout_style.box_height;
 
-        // preallocate memory for  vertices and indices
         let mut glyph_vertices_vec = vec![];
+        let mut segment_glyph_spans = vec![];
+        let mut current_segment_id: Option<SegmentId> = None;
+        let mut current_segment_range_start: usize = 0;
 
         for span in text_spans.as_ref() {
             let text_runs = &span.runs;
 
-            // preallocate memory for  vertices and indices
+            // preallocate memory for vertices and indices
             glyph_vertices_vec.reserve(text_runs.iter().map(|s| s.text.len()).sum());
 
             'out: for run in text_runs {
                 let style = &run.style;
                 let text = &run.text;
+                let segment_id = &run.source_range.segment_id;
+
+                if segment_id != &current_segment_id {
+                    // save previous segment span
+                    if let Some(seg_id) = &current_segment_id {
+                        segment_glyph_spans.push(SegmentGlyphSpan {
+                            segment_id: seg_id.clone(),
+                            glyph_range: current_segment_range_start..glyph_vertices_vec.len(),
+                        });
+                    }
+                    // start a new segment span
+                    current_segment_id = segment_id.clone();
+                    current_segment_range_start = glyph_vertices_vec.len() - 1;
+                }
 
                 // Buffer value depends on color space due to gamma correction
                 // Linear 0.5 corresponds to SRGB 0.735357, using precise theoretical values
@@ -486,6 +504,7 @@ impl Huozi {
 
         (
             glyph_vertices_vec,
+            segment_glyph_spans,
             total_width.round() as u32,
             total_height.round() as u32,
         )
