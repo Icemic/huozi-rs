@@ -1,11 +1,11 @@
-use super::TextRun;
+use crate::parser::text_run::TextRun;
 
 /// A sequence of text runs which form a complete paragraph or a block of text.
 ///
 /// For example, a text span can be created as follows:
 ///
 /// ```rust
-/// use huozi::layout::{TextRun, TextSpan};
+/// use huozi::parser::{TextRun, TextSpan};
 /// let span = TextSpan {
 ///   span_id: None,
 ///   runs: vec![

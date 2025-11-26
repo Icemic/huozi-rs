@@ -1,12 +1,11 @@
-use crate::layout::source_range::SourceRange;
-
-use super::TextStyle;
+use crate::parser::source_range::SourceRange;
+use crate::parser::text_style::TextStyle;
 
 /// An item in a sequence of text which is divided to groups by its' same style.
 /// For example, a plain text shall be presented as
 ///
 /// ```rust
-///     use huozi::layout::TextRun;
+///     use huozi::parser::TextRun;
 ///     let run = TextRun {
 ///         text: "This is plain text.".to_string(),
 ///         ..Default::default()
@@ -16,7 +15,7 @@ use super::TextStyle;
 /// or a rich text can be presented as a vector of TextRun, such as
 ///
 /// ```rust
-///     use huozi::layout::TextRun;
+///     use huozi::parser::TextRun;
 ///     // for text "This is <color=#f00>rich</color> text."
 ///     let runs = vec![
 ///         TextRun {

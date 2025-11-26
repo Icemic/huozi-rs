@@ -1,7 +1,8 @@
 use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
     constant::TEXTURE_SIZE,
-    layout::{ColorSpace, LayoutDirection, LayoutStyle, TextStyle, Vertex},
+    layout::{ColorSpace, LayoutDirection, LayoutStyle, Vertex},
+    parser::TextStyle,
     Huozi,
 };
 use log::{error, info};

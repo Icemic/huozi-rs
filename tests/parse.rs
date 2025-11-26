@@ -1,5 +1,4 @@
-use huozi::layout::{parse_text_recursive, TextStyle};
-use huozi::parser::parse_with;
+use huozi::parser::*;
 
 /// Helper function to create a default TextStyle
 fn default_style() -> TextStyle {
@@ -11,8 +10,8 @@ fn test_plain_text() {
     let input = "<span>Hello, World!</span>";
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].runs.len(), 1);
@@ -29,8 +28,8 @@ fn test_single_style_tag() {
     let input = "<span>Text with <size=48>large</size> size</span>";
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].runs.len(), 3);
@@ -62,8 +61,8 @@ fn test_single_span_tag() {
     let input = "<span>Before <span>inside</span> after</span>";
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     // Without style_prefabs, span tags create separate TextSpans
     assert_eq!(result.len(), 3);
@@ -86,8 +85,8 @@ fn test_empty_tag_structure() {
     let input = "<span>Text with <>empty tag</> content</span>";
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     // Empty tag is treated as a span, creating separate TextSpans
     assert_eq!(result.len(), 3);
@@ -102,8 +101,8 @@ fn test_nonexistent_tag_fallback_to_span() {
     let input = "<span>Before <unknownTag>content</unknownTag> after</span>";
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     // Unknown tags without style_prefabs are treated as spans
     assert_eq!(result.len(), 3);
@@ -118,8 +117,8 @@ fn test_nested_spans() {
     let input = "<span>Outer <span>Middle <span>Inner</span> middle</span> outer</span>";
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     // Multiple nested spans create multiple TextSpans
     assert_eq!(result.len(), 5);
@@ -145,8 +144,8 @@ fn test_complex_scenario() {
     );
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     // This complex scenario has spans within style tags
     assert!(
@@ -205,8 +204,8 @@ fn test_multiple_style_attributes() {
         "<span><color=#ff0000><size=48><lineHeight=2.0>Styled</lineHeight></size></color></span>";
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].runs.len(), 1);
@@ -231,8 +230,8 @@ fn test_shadow_style_attributes() {
     );
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].runs[0].text, "Shadow text");
@@ -253,8 +252,8 @@ fn test_stroke_attributes() {
         "<span><strokeColor=#0000ff><strokeWidth=2.5>Stroked</strokeWidth></strokeColor></span>";
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].runs[0].text, "Stroked");
@@ -275,8 +274,8 @@ fn test_byte_positions() {
     let input = "<span>你好<size=48>世界</size>！</span>";
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     println!("{:#?}", result);
 
@@ -308,8 +307,8 @@ fn test_indent_attribute() {
     let input = "<span><indent=2.5>Indented text</indent></span>";
     let elements = parse_with::<'<', '>'>(input).expect("Failed to parse");
 
-    let result = parse_text_recursive(elements, &default_style(), None)
-        .expect("Failed to parse text recursive");
+    let result =
+        to_spans(elements, &default_style(), None).expect("Failed to parse text recursive");
 
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].runs[0].text, "Indented text");
