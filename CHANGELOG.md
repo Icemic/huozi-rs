@@ -5,9 +5,102 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v0.15.0 (2025-11-07)
+## v0.16.0 (2025-11-27)
+
+### Documentation
+
+ - <csr-id-0b482751f68e2ca5f2487028bf6e47d1d6cb886e/> update README files with English version and add GUI debugger image
+ - <csr-id-6f64fdfbdc44423369dafae702299f7e075858a5/> add GUI debugging section with example usage
 
 ### New Features
+
+ - <csr-id-5d24765a0c18844a3c13ddfbc15f72be19826c77/> add derive attributes for Segment struct
+ - <csr-id-dc200ef1ee66be6f5a68729d08de5adcea97cc69/> add support for empty tags in tag parsing
+ - <csr-id-b5ed301e57f0ba0d84f06fdcb8f4f3dc79c21ced/> add source range record for parser
+
+### Bug Fixes
+
+ - <csr-id-50320d6c7c10046168827cdc3a2a90ea8e6b6721/> update edition to 2024 in Cargo.toml
+ - <csr-id-28303ad66689e01b4062d849f0758ce6d50f7ff9/> correct segment range start calculation and save last segment span in layout parsing
+ - <csr-id-a88222e300c177b24dcf62b8d0f6c00e7f6fbe14/> transforming from element to text span
+ - <csr-id-4047f4810ba447a48e41e8d4a6ab4ed317d93f6e/> correct spelling of TextRun in documentation examples
+ - <csr-id-6b1868ff09798a5a5d01487ea827591807af299c/> test case
+ - <csr-id-bdfd1434c48d7fd1675e2f2aa7caaaba08441b4b/> add LFS tracking for snapshot files
+
+### Refactor
+
+ - <csr-id-a4c35e5639c3b8d87d4617916b35ce0403d2e92b/> update layout functions to include SegmentGlyphSpan for segment-based glyph management
+ - <csr-id-1bbcac6c85bf814198d59cff3d99c2f9ef8db8d4/> add segment_id to Element and update related parsing logic
+ - <csr-id-f21e6a97b29ac15d24853278e5637ea7a7ad7a6a/> replace string parsing with segment-based parsing in layout and parser
+ - <csr-id-1ddee733c18c58f8c9558aca8ced2c27b34fbe04/> add documentation comments for text parsing and layout functions
+ - <csr-id-bea4470493a8db98199a1df962565306d34f5878/> update SourceRange to use Option<SegmentId> and adjust TextRun to use SourceRange directly
+ - <csr-id-85f47eb5535b185247ad8dcb3e3477ea11f1c66d/> update test inputs to use bracketed syntax for elements
+ - <csr-id-2d9a7068dd0f8ca5d9b2d80984a3a30f27dbd6fe/> move ColorSpace and get_color_value to a new color_space module
+ - <csr-id-e7d0fffa95f498e58cd0620dd903497466ffe24f/> move SegmentId definition to segment module and update source_range to use it
+ - <csr-id-37d792a0b9521ccd7f2462e6b91f0ae832773579/> move to_spans tests to mod file from separate test; set to_spans as crate public
+ - <csr-id-197d43b3df4ee0c9ae2a3643341f8ce1b8e2c86e/> remove parser feature condition
+ - <csr-id-ae1e3e4b3158272f68922ec3489a85bbeacb33db/> Split functionality into separate files
+ - <csr-id-d6bebc64fc340bcdbfcae7beee4db2b6b8c49213/> change text parameter type from Vec<String> to &str in parsing functions
+ - <csr-id-54908a4a52b788c0a0c04a3a9d343d3d216eb1aa/> rename TextSection to TextRun
+
+### Test
+
+ - <csr-id-2b06fba0ea7cdc56c842a0b517ae70041536e51e/> add tests for text parsing
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 27 commits contributed to the release over the course of 19 calendar days.
+ - 19 days passed between releases.
+ - 25 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Update edition to 2024 in Cargo.toml ([`50320d6`](https://github.com/Icemic/huozi-rs/commit/50320d6c7c10046168827cdc3a2a90ea8e6b6721))
+    - Update deps ([`2bed23a`](https://github.com/Icemic/huozi-rs/commit/2bed23a76d9c286d183f665ccaa2b1d9b81fe0fb))
+    - Correct segment range start calculation and save last segment span in layout parsing ([`28303ad`](https://github.com/Icemic/huozi-rs/commit/28303ad66689e01b4062d849f0758ce6d50f7ff9))
+    - Add derive attributes for Segment struct ([`5d24765`](https://github.com/Icemic/huozi-rs/commit/5d24765a0c18844a3c13ddfbc15f72be19826c77))
+    - Update layout functions to include SegmentGlyphSpan for segment-based glyph management ([`a4c35e5`](https://github.com/Icemic/huozi-rs/commit/a4c35e5639c3b8d87d4617916b35ce0403d2e92b))
+    - Add segment_id to Element and update related parsing logic ([`1bbcac6`](https://github.com/Icemic/huozi-rs/commit/1bbcac6c85bf814198d59cff3d99c2f9ef8db8d4))
+    - Replace string parsing with segment-based parsing in layout and parser ([`f21e6a9`](https://github.com/Icemic/huozi-rs/commit/f21e6a97b29ac15d24853278e5637ea7a7ad7a6a))
+    - Add documentation comments for text parsing and layout functions ([`1ddee73`](https://github.com/Icemic/huozi-rs/commit/1ddee733c18c58f8c9558aca8ced2c27b34fbe04))
+    - Update SourceRange to use Option<SegmentId> and adjust TextRun to use SourceRange directly ([`bea4470`](https://github.com/Icemic/huozi-rs/commit/bea4470493a8db98199a1df962565306d34f5878))
+    - Update test inputs to use bracketed syntax for elements ([`85f47eb`](https://github.com/Icemic/huozi-rs/commit/85f47eb5535b185247ad8dcb3e3477ea11f1c66d))
+    - Move ColorSpace and get_color_value to a new color_space module ([`2d9a706`](https://github.com/Icemic/huozi-rs/commit/2d9a7068dd0f8ca5d9b2d80984a3a30f27dbd6fe))
+    - Move SegmentId definition to segment module and update source_range to use it ([`e7d0fff`](https://github.com/Icemic/huozi-rs/commit/e7d0fffa95f498e58cd0620dd903497466ffe24f))
+    - Move to_spans tests to mod file from separate test; set to_spans as crate public ([`37d792a`](https://github.com/Icemic/huozi-rs/commit/37d792a0b9521ccd7f2462e6b91f0ae832773579))
+    - Remove parser feature condition ([`197d43b`](https://github.com/Icemic/huozi-rs/commit/197d43b3df4ee0c9ae2a3643341f8ce1b8e2c86e))
+    - Split functionality into separate files ([`ae1e3e4`](https://github.com/Icemic/huozi-rs/commit/ae1e3e4b3158272f68922ec3489a85bbeacb33db))
+    - Add tests for text parsing ([`2b06fba`](https://github.com/Icemic/huozi-rs/commit/2b06fba0ea7cdc56c842a0b517ae70041536e51e))
+    - Change text parameter type from Vec<String> to &str in parsing functions ([`d6bebc6`](https://github.com/Icemic/huozi-rs/commit/d6bebc64fc340bcdbfcae7beee4db2b6b8c49213))
+    - Transforming from element to text span ([`a88222e`](https://github.com/Icemic/huozi-rs/commit/a88222e300c177b24dcf62b8d0f6c00e7f6fbe14))
+    - Correct spelling of TextRun in documentation examples ([`4047f48`](https://github.com/Icemic/huozi-rs/commit/4047f4810ba447a48e41e8d4a6ab4ed317d93f6e))
+    - Add support for empty tags in tag parsing ([`dc200ef`](https://github.com/Icemic/huozi-rs/commit/dc200ef1ee66be6f5a68729d08de5adcea97cc69))
+    - Test case ([`6b1868f`](https://github.com/Icemic/huozi-rs/commit/6b1868ff09798a5a5d01487ea827591807af299c))
+    - Feat: implement source range tracking in text parsing and layout - add SourceRange and SegmentId structs for tracking source positions - modify TextRun to include source_range field - create TextSpan struct to group multiple TextRuns - update parse_text_recursive to utilize new structures for better text layout management ([`6714e85`](https://github.com/Icemic/huozi-rs/commit/6714e85f76fe0dfc8fc3f1111ba71ec4923c7fad))
+    - Add source range record for parser ([`b5ed301`](https://github.com/Icemic/huozi-rs/commit/b5ed301e57f0ba0d84f06fdcb8f4f3dc79c21ced))
+    - Rename TextSection to TextRun ([`54908a4`](https://github.com/Icemic/huozi-rs/commit/54908a4a52b788c0a0c04a3a9d343d3d216eb1aa))
+    - Update README files with English version and add GUI debugger image ([`0b48275`](https://github.com/Icemic/huozi-rs/commit/0b482751f68e2ca5f2487028bf6e47d1d6cb886e))
+    - Add LFS tracking for snapshot files ([`bdfd143`](https://github.com/Icemic/huozi-rs/commit/bdfd1434c48d7fd1675e2f2aa7caaaba08441b4b))
+    - Add GUI debugging section with example usage ([`6f64fdf`](https://github.com/Icemic/huozi-rs/commit/6f64fdfbdc44423369dafae702299f7e075858a5))
+</details>
+
+## v0.15.0 (2025-11-07)
+
+<csr-id-9965186256147e10fc87dca5d6e7413d8dc09fda/>
+<csr-id-3840a9f0e3688793f43efbc9a5799c6de7b8696e/>
+<csr-id-86852f5d2544aa149c4deff3ead411471b9f1aa1/>
+
+### New Features
+
+<csr-id-989391b96f1a3ded60e7f62a3c44b67344b1fe85/>
 
  - <csr-id-3226fe6180edbbad7d9db4e9980af8139bf0cdf4/> add fill_buffer to Vertex struct to support hollow text
  - <csr-id-c9d90b78d84afb43b152dcc1f41217b2c60a2a09/> move measuring and logging time taken to preload SDF texture characters to `texture` example
@@ -22,12 +115,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-8cc2c04bc9e7698ccb1c6e3ea34e314fd2da25f3/> Enhance layout and text style configuration in egui integration
  - <csr-id-72ef1ebf29e8c24be353e5b2ae192b4edc6b8e0c/> Integrate egui for text input and rendering
    - Added egui and related dependencies to Cargo.toml.
-   - Implemented egui context, state, and renderer in the main rendering loop.
-   - Created a bottom panel for text input using egui, allowing users to enter and edit text.
-   - Updated the rendering logic to re-render text when the input changes.
-   - Enhanced text rendering by integrating egui's texture management and paint jobs.
-   - Refactored the update method to handle egui events and rendering.
- - <csr-id-989391b96f1a3ded60e7f62a3c44b67344b1fe85/> upgrade to winit 0.30.x
+- Implemented egui context, state, and renderer in the main rendering loop.
+- Created a bottom panel for text input using egui, allowing users to enter and edit text.
+- Updated the rendering logic to re-render text when the input changes.
+- Enhanced text rendering by integrating egui's texture management and paint jobs.
+- Refactored the update method to handle egui events and rendering.
 
 ### Bug Fixes
 
@@ -49,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 25 commits contributed to the release over the course of 2 calendar days.
+ - 26 commits contributed to the release over the course of 2 calendar days.
  - 3 days passed between releases.
  - 23 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -61,6 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.15.0 ([`302244c`](https://github.com/Icemic/huozi-rs/commit/302244c207473530071161d4fb747f5f33008b07))
     - Remove debug print ([`fd33c5e`](https://github.com/Icemic/huozi-rs/commit/fd33c5e54e2ceee6bb4c3e1b2dafe5f2484c2c98))
     - Add source han serif cn semibold ([`359d121`](https://github.com/Icemic/huozi-rs/commit/359d121a8c89eebe5a755fa6e7c04d5b4b771da9))
     - Potential panic on SDF calculation ([`de807c6`](https://github.com/Icemic/huozi-rs/commit/de807c61dce04d7b64b668b183b90bf54359e062))
@@ -87,6 +180,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Integrate egui for text input and rendering ([`72ef1eb`](https://github.com/Icemic/huozi-rs/commit/72ef1ebf29e8c24be353e5b2ae192b4edc6b8e0c))
     - Upgrade to winit 0.30.x ([`989391b`](https://github.com/Icemic/huozi-rs/commit/989391b96f1a3ded60e7f62a3c44b67344b1fe85))
 </details>
+
+<csr-unknown>
+ upgrade to winit 0.30.x<csr-unknown/>
 
 ## v0.14.3 (2025-11-03)
 
