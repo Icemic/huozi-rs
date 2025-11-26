@@ -217,39 +217,29 @@ impl Huozi {
     #[cfg(feature = "parser")]
     pub fn parse_text(
         &self,
-        text: &Vec<String>,
+        text: &str,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<Vec<TextSpan>, String> {
-        let input = text
-            .iter()
-            .map(|seg| format!("<span>{}</span>", seg))
-            .collect::<String>();
-
-        let elements = parse(&input)?;
+        let elements = parse(text)?;
         parse_text_recursive(elements, initial_text_style, style_prefabs)
     }
 
     #[cfg(feature = "parser")]
     pub fn parse_text_with<const OPEN: char, const CLOSE: char>(
         &self,
-        text: &Vec<String>,
+        text: &str,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<Vec<TextSpan>, String> {
-        let input = text
-            .iter()
-            .map(|seg| format!("<span>{}</span>", seg))
-            .collect::<String>();
-
-        let elements = parse_with::<OPEN, CLOSE>(&input)?;
+        let elements = parse_with::<OPEN, CLOSE>(text)?;
         parse_text_recursive(elements, initial_text_style, style_prefabs)
     }
 
     #[cfg(feature = "parser")]
     pub fn layout_parse(
         &mut self,
-        text: &Vec<String>,
+        text: &str,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
@@ -262,7 +252,7 @@ impl Huozi {
     #[cfg(feature = "parser")]
     pub fn layout_parse_with<const OPEN: char, const CLOSE: char>(
         &mut self,
-        text: &Vec<String>,
+        text: &str,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
