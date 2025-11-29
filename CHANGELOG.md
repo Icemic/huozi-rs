@@ -5,7 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.16.1 (2025-11-30)
+
+### Bug Fixes
+
+ - <csr-id-ce7272abb41c020c527358084e47d4d9785c3e3f/> update Segment struct to use Cow for content
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 3 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Update Segment struct to use Cow for content ([`ce7272a`](https://github.com/Icemic/huozi-rs/commit/ce7272abb41c020c527358084e47d4d9785c3e3f))
+</details>
+
 ## v0.16.0 (2025-11-27)
+
+<csr-id-a4c35e5639c3b8d87d4617916b35ce0403d2e92b/>
+<csr-id-1bbcac6c85bf814198d59cff3d99c2f9ef8db8d4/>
+<csr-id-f21e6a97b29ac15d24853278e5637ea7a7ad7a6a/>
+<csr-id-1ddee733c18c58f8c9558aca8ced2c27b34fbe04/>
+<csr-id-bea4470493a8db98199a1df962565306d34f5878/>
+<csr-id-85f47eb5535b185247ad8dcb3e3477ea11f1c66d/>
+<csr-id-2d9a7068dd0f8ca5d9b2d80984a3a30f27dbd6fe/>
+<csr-id-e7d0fffa95f498e58cd0620dd903497466ffe24f/>
+<csr-id-37d792a0b9521ccd7f2462e6b91f0ae832773579/>
+<csr-id-197d43b3df4ee0c9ae2a3643341f8ce1b8e2c86e/>
+<csr-id-ae1e3e4b3158272f68922ec3489a85bbeacb33db/>
+<csr-id-d6bebc64fc340bcdbfcae7beee4db2b6b8c49213/>
+<csr-id-54908a4a52b788c0a0c04a3a9d343d3d216eb1aa/>
+<csr-id-2b06fba0ea7cdc56c842a0b517ae70041536e51e/>
 
 ### Documentation
 
@@ -51,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 27 commits contributed to the release over the course of 19 calendar days.
+ - 28 commits contributed to the release over the course of 19 calendar days.
  - 19 days passed between releases.
  - 25 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -63,6 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.16.0 ([`738c07f`](https://github.com/Icemic/huozi-rs/commit/738c07f4329423a86f456a284108f8513d504d32))
     - Update edition to 2024 in Cargo.toml ([`50320d6`](https://github.com/Icemic/huozi-rs/commit/50320d6c7c10046168827cdc3a2a90ea8e6b6721))
     - Update deps ([`2bed23a`](https://github.com/Icemic/huozi-rs/commit/2bed23a76d9c286d183f665ccaa2b1d9b81fe0fb))
     - Correct segment range start calculation and save last segment span in layout parsing ([`28303ad`](https://github.com/Icemic/huozi-rs/commit/28303ad66689e01b4062d849f0758ce6d50f7ff9))
@@ -115,11 +156,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-8cc2c04bc9e7698ccb1c6e3ea34e314fd2da25f3/> Enhance layout and text style configuration in egui integration
  - <csr-id-72ef1ebf29e8c24be353e5b2ae192b4edc6b8e0c/> Integrate egui for text input and rendering
    - Added egui and related dependencies to Cargo.toml.
-- Implemented egui context, state, and renderer in the main rendering loop.
-- Created a bottom panel for text input using egui, allowing users to enter and edit text.
-- Updated the rendering logic to re-render text when the input changes.
-- Enhanced text rendering by integrating egui's texture management and paint jobs.
-- Refactored the update method to handle egui events and rendering.
 
 ### Bug Fixes
 
@@ -182,7 +218,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 </details>
 
 <csr-unknown>
- upgrade to winit 0.30.x<csr-unknown/>
+Implemented egui context, state, and renderer in the main rendering loop.Created a bottom panel for text input using egui, allowing users to enter and edit text.Updated the rendering logic to re-render text when the input changes.Enhanced text rendering by integrating egui’s texture management and paint jobs.Refactored the update method to handle egui events and rendering.<csr-unknown/>
 
 ## v0.14.3 (2025-11-03)
 
