@@ -1,14 +1,14 @@
 use nom::{
+    IResult, Parser,
     branch::alt,
     bytes::complete::{is_not, tag},
     character::complete::{char, multispace0},
     combinator::{cut, eof, map, not, value, verify},
     error::context,
-    multi::{fold_many0, many0, many_till},
+    multi::{fold_many0, many_till, many0},
     sequence::{preceded, separated_pair, terminated},
-    IResult, Parser,
 };
-use nom_language::error::{convert_error, VerboseError};
+use nom_language::error::{VerboseError, convert_error};
 use nom_locate::LocatedSpan;
 use std::sync::OnceLock;
 
@@ -307,7 +307,7 @@ fn elements<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult
 pub fn parse_with<const OPEN: char, const CLOSE: char>(
     input: &Segment<'_>,
 ) -> Result<Vec<Element>, String> {
-    let span = Span::new_extra(input.content, input.id.clone());
+    let span = Span::new_extra(&input.content, input.id.clone());
     match context("Root", many_till(element::<OPEN, CLOSE>, eof)).parse(span) {
         Ok((_, (r, _))) => Ok(r),
         Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
@@ -319,7 +319,10 @@ pub fn parse_with<const OPEN: char, const CLOSE: char>(
                     .map(|(span, kind)| (*span.fragment(), kind))
                     .collect(),
             };
-            Err(convert_error(input.content, converted_error))
+            Err(convert_error(
+                input.content.to_string().as_str(),
+                converted_error,
+            ))
         }
         Err(nom::Err::Incomplete(_)) => {
             unreachable!("it should not reach this branch, may be a bug.");
