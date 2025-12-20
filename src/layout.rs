@@ -498,7 +498,7 @@ impl Huozi {
 
                 // update total size
                 total_width = total_width.max(total_width_of_run / FONT_SIZE * style.font_size);
-                total_height += _total_height_of_run / FONT_SIZE * style.font_size;
+                total_height = total_height.max(_total_height_of_run / FONT_SIZE * style.font_size);
             }
         }
 
