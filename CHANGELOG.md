@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.16.2 (2025-12-20)
+
+### Bug Fixes
+
+ - <csr-id-af2d0c093ed0de0603d930412e07d1c6a03df720/> correct total height calculation in layout
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 20 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Correct total height calculation in layout ([`af2d0c0`](https://github.com/Icemic/huozi-rs/commit/af2d0c093ed0de0603d930412e07d1c6a03df720))
+</details>
+
 ## v0.16.1 (2025-11-30)
 
 ### Bug Fixes
@@ -15,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 3 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -27,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.16.1 ([`7d7449a`](https://github.com/Icemic/huozi-rs/commit/7d7449a33d63b28b70034092c9031a56ccdfb5ab))
     - Update Segment struct to use Cow for content ([`ce7272a`](https://github.com/Icemic/huozi-rs/commit/ce7272abb41c020c527358084e47d4d9785c3e3f))
 </details>
 
@@ -216,9 +242,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Integrate egui for text input and rendering ([`72ef1eb`](https://github.com/Icemic/huozi-rs/commit/72ef1ebf29e8c24be353e5b2ae192b4edc6b8e0c))
     - Upgrade to winit 0.30.x ([`989391b`](https://github.com/Icemic/huozi-rs/commit/989391b96f1a3ded60e7f62a3c44b67344b1fe85))
 </details>
-
-<csr-unknown>
-Implemented egui context, state, and renderer in the main rendering loop.Created a bottom panel for text input using egui, allowing users to enter and edit text.Updated the rendering logic to re-render text when the input changes.Enhanced text rendering by integrating egui’s texture management and paint jobs.Refactored the update method to handle egui events and rendering.<csr-unknown/>
 
 ## v0.14.3 (2025-11-03)
 
