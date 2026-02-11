@@ -320,7 +320,7 @@ pub fn parse_with<const OPEN: char, const CLOSE: char>(
                     .collect(),
             };
             Err(convert_error(
-                input.content.to_string().as_str(),
+                input.content.as_ref(),
                 converted_error,
             ))
         }
