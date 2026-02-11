@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.16.3 (2026-02-12)
+
+### Bug Fixes
+
+ - <csr-id-2c30899fdbe882c318ee02c8f5074047fb60b6ae/> pass input as &str to convert errors
+
+### Test
+
+ - <csr-id-af28df86d478ec06dd30d64f631274848a5fd69a/> add test for parsing failure with invalid segment
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 53 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Pass input as &str to convert errors ([`2c30899`](https://github.com/Icemic/huozi-rs/commit/2c30899fdbe882c318ee02c8f5074047fb60b6ae))
+    - Add test for parsing failure with invalid segment ([`af28df8`](https://github.com/Icemic/huozi-rs/commit/af28df86d478ec06dd30d64f631274848a5fd69a))
+</details>
+
 ## v0.16.2 (2025-12-20)
 
 ### Bug Fixes
@@ -15,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 20 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -27,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.16.2 ([`a966862`](https://github.com/Icemic/huozi-rs/commit/a9668622a64a6d2a4da339d926e71adff25437a0))
     - Correct total height calculation in layout ([`af2d0c0`](https://github.com/Icemic/huozi-rs/commit/af2d0c093ed0de0603d930412e07d1c6a03df720))
 </details>
 
@@ -777,13 +808,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-9611f3a97ef85dfedc773199363f652647b83a73/> Release huozi version 0.4.1
 
+### Other
+
+ - <csr-id-10c52143972473b87f05dd50e8d966a2b9a3e5c1/> move font assets into examples/
+
+### Bug Fixes
+
+ - <csr-id-f7f3ed1d68f149118026ef5e5834b111839153d8/> coordinate calculation
+ - <csr-id-3904d319a31bdf01c2c6050477f984728300cc72/> lint
+ - <csr-id-d3367a0f61bdc872710aca0ee75985e014358372/> switch to use stable toolchain
+ - <csr-id-0042f6658a483e9343fa5a2cf2dda898a1d7e411/> adjust default values
+ - <csr-id-1eba8f7e9826721361e2536143d28ced10941e33/> bump versions
+ - <csr-id-f8ac1f4c300525122c08d125587fbb43a195f88b/> assets
+ - <csr-id-053003defdb84833d1e2d735bf2c7ccecfbe6fba/> remove fonts with copyright problem
+ - <csr-id-ba851f0b0bb54412ad4b85ea52ee72ee51744aab/> context name
+ - <csr-id-bdf4ac1da381962f4ce04372d3d60dd84af23978/> remove useless EOF check
+ - <csr-id-8331ecd3b3a60c3b9e070e643efedd38a8c58ec7/> lint
+ - <csr-id-4e1fd9161a3572585fec8dafc61323d697864fbc/> texture gen example
+ - <csr-id-c34827e2ad9d4559a483f999aeb50033745e1706/> shader buffer size
+ - <csr-id-a06bd725395b60b12fb3896c19a12ad4795b8194/> critical bug causes render wrong
+ - <csr-id-9061e7abae2679bdd1e2dcd8e6888d05cdba4e5f/> texture use constant as size
+ - <csr-id-051dd8007fd59fd28704d20418ef86370709c076/> use fake INFINITY in edt algorithm
+ - <csr-id-e9c7dbc88dafdbe688ef72dd85e35e6fc17b3d3f/> shader
+ - <csr-id-b719c0b7b3aee04ff1e1800bfb9f1c90562da3d3/> gamma value
+ - <csr-id-3b91363e38f6e9a00ec1c48ccd50cd6be8c36c62/> handling \n and \r
+ - <csr-id-f80b686181658a29694b0b050fb3c64ff5b8ccdb/> sdf generation params
+ - <csr-id-1dcfcbd5b64dae8f5d416cd734a2fb52b725c2f2/> remove `page` in uniforms
+ - <csr-id-33265928eb2547fc5f0890b05259c4cf4bbb8744/> wired border around rendered glyph
+ - <csr-id-5691faf1cff2a3a2ad9d6815ead206a1f0bf6fff/> texture format
+ - <csr-id-e4dcdfd72639186ca0a22b4131ae9b25eaa414bc/> tidy up
+
+### New Features
+
+ - <csr-id-3dc0732bbe0d367aac698d71e2e189bea831b684/> bump all deps' version
+ - <csr-id-937c6f5c798b709f84e0f4e53e5ca83522db0054/> use open source fonts as samples
+ - <csr-id-e00d96b5bfc72696d8d5fc33f9c47c1522794ca1/> huozi add parse api
+ - <csr-id-6ae68e7c622ca8b57384912d1c71c3bb18dbe044/> adjust parse return value
+ - <csr-id-9ba08faca72090b1a79cf614a72c4e4ca90ff3db/> move parser tests to mod
+ - <csr-id-a5ddb201b3f387f503102a571aed6a4d907c7465/> parser
+ - <csr-id-d7b3239421213b6312b31940bb0cd20608e9fb2c/> move layout func to Huozi impl
+ - <csr-id-15d65f1df63693709a76d86d22dba99d81727211/> warn if glyph not exists
+ - <csr-id-4645e32f18284fc12ac3cc2e1ae27a3cc07a93c6/> properly handles characters larger than 1em in width
+ - <csr-id-5fb4c2f4453a9a166c376a5e39e23df0e0b2b16f/> make `wgpu` optional
+ - <csr-id-e48cda3a49bfa22587cbe1a5cc16236057d4f54c/> better texture generation example
+ - <csr-id-6ca41fc8a66aab188480365671e60afc15a636e3/> implement color to [f32;4] with trait
+ - <csr-id-b204ed93a6c9630469e1a56e19c4844fdde826f8/> support stroke and shadow
+ - <csr-id-d3057d794ca712edb51a24da58ee3d9466de4e87/> add layouting time log
+ - <csr-id-3e69da196173c1439183432b4deb0a434240da19/> move color and buffer to vertex attribute
+ - <csr-id-810413de40e7129c2fe65127c69b8f029f7ff204/> add features
+ - <csr-id-f3418f8fa02b8920a8bd0d71b11fea713d227571/> switch font extractor via features
+ - <csr-id-9a54ad624b028ea8880092da883433ed775c6b39/> font extractor, ab_glyph implement
+ - <csr-id-1d490c64ca5ba4cc9cc035bc168b2434ac21d128/> better texture vertex calculation with font size
+ - <csr-id-94d51a074b56cc8b6235e21a3a964c88b6d7eb1c/> log font load time and sdf texture gen time
+ - <csr-id-8e935ea48ce1f8aa8e3232e84a32392e0cbd28d9/> basic layout
+ - <csr-id-87723c4bb9866edf7dc3f5e1149d363a17f4357a/> tidy up codebase
+ - <csr-id-9d8b9dcdd83c18efc073ebb9b13de5cc1e8ef58b/> cache sdf glyph with lru
+ - <csr-id-58dbfc96fab5c5109528d0088168d6a0db27a90b/> render example
+ - <csr-id-26008f4df915ce48b26ad783bf52935a85b9d47e/> sdf texture gen
+
+### Chore
+
+ - <csr-id-8c89261042bd9d74297a1af623a19f327594a698/> Release huozi version 0.4.0
+ - <csr-id-0846e566036bf908fa5a959ed4d2be4786df5443/> Release huozi version 0.3.0
+ - <csr-id-cf73c122bd0ad34d9495ccb39bf05cc15b4b3a4e/> Release huozi version 0.2.0
+ - <csr-id-f4eda510ecba5c0a56c4006798ba3b6021005fb0/> add ignore files in package
+ - <csr-id-760bfea80da5cc408f5b083550512ffd2bf30d5a/> add package metadata
+
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release over the course of 6 calendar days.
- - 8 days passed between releases.
- - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 64 commits contributed to the release over the course of 494 calendar days.
+ - 55 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
@@ -796,6 +892,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Release huozi version 0.4.1 ([`9611f3a`](https://github.com/Icemic/huozi-rs/commit/9611f3a97ef85dfedc773199363f652647b83a73))
     - Fix text layouting that calculates total width and height wrongly when text is single line ([`1539cbf`](https://github.com/Icemic/huozi-rs/commit/1539cbfdb6ba589e170e935f91ef901de0c424bd))
     - Add readme and license file ([`b4d8b64`](https://github.com/Icemic/huozi-rs/commit/b4d8b64450fc8c889f7364c70e8aa50654da32fa))
+    - Release huozi version 0.4.0 ([`8c89261`](https://github.com/Icemic/huozi-rs/commit/8c89261042bd9d74297a1af623a19f327594a698))
+    - Upgrade wgpu to 0.19.1 and winit to 0.29.10 ([`539e39c`](https://github.com/Icemic/huozi-rs/commit/539e39c5275e2494ac414a4b1a2e03e7e0db791f))
+    - Release huozi version 0.3.0 ([`0846e56`](https://github.com/Icemic/huozi-rs/commit/0846e566036bf908fa5a959ed4d2be4786df5443))
+    - Update dependencies and fix window size ([`5e38ef8`](https://github.com/Icemic/huozi-rs/commit/5e38ef8415e2393439699609b18d4380504a507d))
+    - Release huozi version 0.2.0 ([`cf73c12`](https://github.com/Icemic/huozi-rs/commit/cf73c122bd0ad34d9495ccb39bf05cc15b4b3a4e))
+    - Coordinate calculation ([`f7f3ed1`](https://github.com/Icemic/huozi-rs/commit/f7f3ed1d68f149118026ef5e5834b111839153d8))
+    - Update ([`900a869`](https://github.com/Icemic/huozi-rs/commit/900a869b729ae3bad81dff74b2ad8baba51e3fe3))
+    - Lint ([`3904d31`](https://github.com/Icemic/huozi-rs/commit/3904d319a31bdf01c2c6050477f984728300cc72))
+    - Bump all deps' version ([`3dc0732`](https://github.com/Icemic/huozi-rs/commit/3dc0732bbe0d367aac698d71e2e189bea831b684))
+    - Switch to use stable toolchain ([`d3367a0`](https://github.com/Icemic/huozi-rs/commit/d3367a0f61bdc872710aca0ee75985e014358372))
+    - Add ignore files in package ([`f4eda51`](https://github.com/Icemic/huozi-rs/commit/f4eda510ecba5c0a56c4006798ba3b6021005fb0))
+    - Add package metadata ([`760bfea`](https://github.com/Icemic/huozi-rs/commit/760bfea80da5cc408f5b083550512ffd2bf30d5a))
+    - Adjust default values ([`0042f66`](https://github.com/Icemic/huozi-rs/commit/0042f6658a483e9343fa5a2cf2dda898a1d7e411))
+    - Bump versions ([`1eba8f7`](https://github.com/Icemic/huozi-rs/commit/1eba8f7e9826721361e2536143d28ced10941e33))
+    - Assets ([`f8ac1f4`](https://github.com/Icemic/huozi-rs/commit/f8ac1f4c300525122c08d125587fbb43a195f88b))
+    - Move font assets into examples/ ([`10c5214`](https://github.com/Icemic/huozi-rs/commit/10c52143972473b87f05dd50e8d966a2b9a3e5c1))
+    - Remove fonts with copyright problem ([`053003d`](https://github.com/Icemic/huozi-rs/commit/053003defdb84833d1e2d735bf2c7ccecfbe6fba))
+    - Use open source fonts as samples ([`937c6f5`](https://github.com/Icemic/huozi-rs/commit/937c6f5c798b709f84e0f4e53e5ca83522db0054))
+    - Feat: parse to String instead of &str fix: unescape ([`8c527cb`](https://github.com/Icemic/huozi-rs/commit/8c527cbbb6d1a74a036d1ac283ce115390ea9c1b))
+    - Huozi add parse api ([`e00d96b`](https://github.com/Icemic/huozi-rs/commit/e00d96b5bfc72696d8d5fc33f9c47c1522794ca1))
+    - Adjust parse return value ([`6ae68e7`](https://github.com/Icemic/huozi-rs/commit/6ae68e7c622ca8b57384912d1c71c3bb18dbe044))
+    - Context name ([`ba851f0`](https://github.com/Icemic/huozi-rs/commit/ba851f0b0bb54412ad4b85ea52ee72ee51744aab))
+    - Remove useless EOF check ([`bdf4ac1`](https://github.com/Icemic/huozi-rs/commit/bdf4ac1da381962f4ce04372d3d60dd84af23978))
+    - Move parser tests to mod ([`9ba08fa`](https://github.com/Icemic/huozi-rs/commit/9ba08faca72090b1a79cf614a72c4e4ca90ff3db))
+    - Parser ([`a5ddb20`](https://github.com/Icemic/huozi-rs/commit/a5ddb201b3f387f503102a571aed6a4d907c7465))
+    - Move layout func to Huozi impl ([`d7b3239`](https://github.com/Icemic/huozi-rs/commit/d7b3239421213b6312b31940bb0cd20608e9fb2c))
+    - Lint ([`8331ecd`](https://github.com/Icemic/huozi-rs/commit/8331ecd3b3a60c3b9e070e643efedd38a8c58ec7))
+    - Warn if glyph not exists ([`15d65f1`](https://github.com/Icemic/huozi-rs/commit/15d65f1df63693709a76d86d22dba99d81727211))
+    - Properly handles characters larger than 1em in width ([`4645e32`](https://github.com/Icemic/huozi-rs/commit/4645e32f18284fc12ac3cc2e1ae27a3cc07a93c6))
+    - Texture gen example ([`4e1fd91`](https://github.com/Icemic/huozi-rs/commit/4e1fd9161a3572585fec8dafc61323d697864fbc))
+    - Shader buffer size ([`c34827e`](https://github.com/Icemic/huozi-rs/commit/c34827e2ad9d4559a483f999aeb50033745e1706))
+    - Fix ([`35f1a4a`](https://github.com/Icemic/huozi-rs/commit/35f1a4ae6e4056d8f8e7c789a58423ecf0942158))
+    - Make `wgpu` optional ([`5fb4c2f`](https://github.com/Icemic/huozi-rs/commit/5fb4c2f4453a9a166c376a5e39e23df0e0b2b16f))
+    - Better texture generation example ([`e48cda3`](https://github.com/Icemic/huozi-rs/commit/e48cda3a49bfa22587cbe1a5cc16236057d4f54c))
+    - Critical bug causes render wrong ([`a06bd72`](https://github.com/Icemic/huozi-rs/commit/a06bd725395b60b12fb3896c19a12ad4795b8194))
+    - Texture use constant as size ([`9061e7a`](https://github.com/Icemic/huozi-rs/commit/9061e7abae2679bdd1e2dcd8e6888d05cdba4e5f))
+    - Implement color to [f32;4] with trait ([`6ca41fc`](https://github.com/Icemic/huozi-rs/commit/6ca41fc8a66aab188480365671e60afc15a636e3))
+    - Support stroke and shadow ([`b204ed9`](https://github.com/Icemic/huozi-rs/commit/b204ed93a6c9630469e1a56e19c4844fdde826f8))
+    - Add layouting time log ([`d3057d7`](https://github.com/Icemic/huozi-rs/commit/d3057d794ca712edb51a24da58ee3d9466de4e87))
+    - Move color and buffer to vertex attribute ([`3e69da1`](https://github.com/Icemic/huozi-rs/commit/3e69da196173c1439183432b4deb0a434240da19))
+    - Use fake INFINITY in edt algorithm ([`051dd80`](https://github.com/Icemic/huozi-rs/commit/051dd8007fd59fd28704d20418ef86370709c076))
+    - Shader ([`e9c7dbc`](https://github.com/Icemic/huozi-rs/commit/e9c7dbc88dafdbe688ef72dd85e35e6fc17b3d3f))
+    - Add features ([`810413d`](https://github.com/Icemic/huozi-rs/commit/810413de40e7129c2fe65127c69b8f029f7ff204))
+    - Switch font extractor via features ([`f3418f8`](https://github.com/Icemic/huozi-rs/commit/f3418f8fa02b8920a8bd0d71b11fea713d227571))
+    - Gamma value ([`b719c0b`](https://github.com/Icemic/huozi-rs/commit/b719c0b7b3aee04ff1e1800bfb9f1c90562da3d3))
+    - Font extractor, ab_glyph implement ([`9a54ad6`](https://github.com/Icemic/huozi-rs/commit/9a54ad624b028ea8880092da883433ed775c6b39))
+    - Fix ([`c7f553b`](https://github.com/Icemic/huozi-rs/commit/c7f553bff9f40a1dde50b24c2411975bbad27cbe))
+    - Handling \n and \r ([`3b91363`](https://github.com/Icemic/huozi-rs/commit/3b91363e38f6e9a00ec1c48ccd50cd6be8c36c62))
+    - Better texture vertex calculation with font size ([`1d490c6`](https://github.com/Icemic/huozi-rs/commit/1d490c64ca5ba4cc9cc035bc168b2434ac21d128))
+    - Log font load time and sdf texture gen time ([`94d51a0`](https://github.com/Icemic/huozi-rs/commit/94d51a074b56cc8b6235e21a3a964c88b6d7eb1c))
+    - Sdf generation params ([`f80b686`](https://github.com/Icemic/huozi-rs/commit/f80b686181658a29694b0b050fb3c64ff5b8ccdb))
+    - Remove `page` in uniforms ([`1dcfcbd`](https://github.com/Icemic/huozi-rs/commit/1dcfcbd5b64dae8f5d416cd734a2fb52b725c2f2))
+    - Wired border around rendered glyph ([`3326592`](https://github.com/Icemic/huozi-rs/commit/33265928eb2547fc5f0890b05259c4cf4bbb8744))
+    - Basic layout ([`8e935ea`](https://github.com/Icemic/huozi-rs/commit/8e935ea48ce1f8aa8e3232e84a32392e0cbd28d9))
+    - Tidy up codebase ([`87723c4`](https://github.com/Icemic/huozi-rs/commit/87723c4bb9866edf7dc3f5e1149d363a17f4357a))
+    - Texture format ([`5691faf`](https://github.com/Icemic/huozi-rs/commit/5691faf1cff2a3a2ad9d6815ead206a1f0bf6fff))
+    - Tidy up ([`e4dcdfd`](https://github.com/Icemic/huozi-rs/commit/e4dcdfd72639186ca0a22b4131ae9b25eaa414bc))
+    - Cache sdf glyph with lru ([`9d8b9dc`](https://github.com/Icemic/huozi-rs/commit/9d8b9dcdd83c18efc073ebb9b13de5cc1e8ef58b))
+    - Render example ([`58dbfc9`](https://github.com/Icemic/huozi-rs/commit/58dbfc96fab5c5109528d0088168d6a0db27a90b))
+    - Sdf texture gen ([`26008f4`](https://github.com/Icemic/huozi-rs/commit/26008f4df915ce48b26ad783bf52935a85b9d47e))
+    - Initial commit ([`810f26f`](https://github.com/Icemic/huozi-rs/commit/810f26f5440f1d97e84189ee7f680ff36bfc590e))
 </details>
 
 ## v0.4.0 (2024-02-02)
@@ -806,26 +963,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-8c89261042bd9d74297a1af623a19f327594a698/> Release huozi version 0.4.0
 
-### Commit Statistics
-
-<csr-read-only-do-not-edit/>
-
- - 2 commits contributed to the release.
- - 48 days passed between releases.
- - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' were seen in commit messages
-
-### Commit Details
-
-<csr-read-only-do-not-edit/>
-
-<details><summary>view details</summary>
-
- * **Uncategorized**
-    - Release huozi version 0.4.0 ([`8c89261`](https://github.com/Icemic/huozi-rs/commit/8c89261042bd9d74297a1af623a19f327594a698))
-    - Upgrade wgpu to 0.19.1 and winit to 0.29.10 ([`539e39c`](https://github.com/Icemic/huozi-rs/commit/539e39c5275e2494ac414a4b1a2e03e7e0db791f))
-</details>
-
 ## v0.3.0 (2023-12-15)
 
 <csr-id-0846e566036bf908fa5a959ed4d2be4786df5443/>
@@ -833,26 +970,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Chore
 
  - <csr-id-0846e566036bf908fa5a959ed4d2be4786df5443/> Release huozi version 0.3.0
-
-### Commit Statistics
-
-<csr-read-only-do-not-edit/>
-
- - 2 commits contributed to the release.
- - 113 days passed between releases.
- - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' were seen in commit messages
-
-### Commit Details
-
-<csr-read-only-do-not-edit/>
-
-<details><summary>view details</summary>
-
- * **Uncategorized**
-    - Release huozi version 0.3.0 ([`0846e56`](https://github.com/Icemic/huozi-rs/commit/0846e566036bf908fa5a959ed4d2be4786df5443))
-    - Update dependencies and fix window size ([`5e38ef8`](https://github.com/Icemic/huozi-rs/commit/5e38ef8415e2393439699609b18d4380504a507d))
-</details>
 
 ## v0.2.0 (2023-08-24)
 
@@ -871,30 +988,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-f7f3ed1d68f149118026ef5e5834b111839153d8/> coordinate calculation
  - <csr-id-3904d319a31bdf01c2c6050477f984728300cc72/> lint
  - <csr-id-d3367a0f61bdc872710aca0ee75985e014358372/> switch to use stable toolchain
-
-### Commit Statistics
-
-<csr-read-only-do-not-edit/>
-
- - 6 commits contributed to the release over the course of 7 calendar days.
- - 116 days passed between releases.
- - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' were seen in commit messages
-
-### Commit Details
-
-<csr-read-only-do-not-edit/>
-
-<details><summary>view details</summary>
-
- * **Uncategorized**
-    - Release huozi version 0.2.0 ([`cf73c12`](https://github.com/Icemic/huozi-rs/commit/cf73c122bd0ad34d9495ccb39bf05cc15b4b3a4e))
-    - Coordinate calculation ([`f7f3ed1`](https://github.com/Icemic/huozi-rs/commit/f7f3ed1d68f149118026ef5e5834b111839153d8))
-    - Update ([`900a869`](https://github.com/Icemic/huozi-rs/commit/900a869b729ae3bad81dff74b2ad8baba51e3fe3))
-    - Lint ([`3904d31`](https://github.com/Icemic/huozi-rs/commit/3904d319a31bdf01c2c6050477f984728300cc72))
-    - Bump all deps' version ([`3dc0732`](https://github.com/Icemic/huozi-rs/commit/3dc0732bbe0d367aac698d71e2e189bea831b684))
-    - Switch to use stable toolchain ([`d3367a0`](https://github.com/Icemic/huozi-rs/commit/d3367a0f61bdc872710aca0ee75985e014358372))
-</details>
 
 ## v0.1.0 (2023-04-30)
 
@@ -960,72 +1053,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Other
 
  - <csr-id-10c52143972473b87f05dd50e8d966a2b9a3e5c1/> move font assets into examples/
-
-### Commit Statistics
-
-<csr-read-only-do-not-edit/>
-
- - 51 commits contributed to the release over the course of 208 calendar days.
- - 47 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' were seen in commit messages
-
-### Commit Details
-
-<csr-read-only-do-not-edit/>
-
-<details><summary>view details</summary>
-
- * **Uncategorized**
-    - Add ignore files in package ([`f4eda51`](https://github.com/Icemic/huozi-rs/commit/f4eda510ecba5c0a56c4006798ba3b6021005fb0))
-    - Add package metadata ([`760bfea`](https://github.com/Icemic/huozi-rs/commit/760bfea80da5cc408f5b083550512ffd2bf30d5a))
-    - Adjust default values ([`0042f66`](https://github.com/Icemic/huozi-rs/commit/0042f6658a483e9343fa5a2cf2dda898a1d7e411))
-    - Bump versions ([`1eba8f7`](https://github.com/Icemic/huozi-rs/commit/1eba8f7e9826721361e2536143d28ced10941e33))
-    - Assets ([`f8ac1f4`](https://github.com/Icemic/huozi-rs/commit/f8ac1f4c300525122c08d125587fbb43a195f88b))
-    - Move font assets into examples/ ([`10c5214`](https://github.com/Icemic/huozi-rs/commit/10c52143972473b87f05dd50e8d966a2b9a3e5c1))
-    - Remove fonts with copyright problem ([`053003d`](https://github.com/Icemic/huozi-rs/commit/053003defdb84833d1e2d735bf2c7ccecfbe6fba))
-    - Use open source fonts as samples ([`937c6f5`](https://github.com/Icemic/huozi-rs/commit/937c6f5c798b709f84e0f4e53e5ca83522db0054))
-    - Feat: parse to String instead of &str fix: unescape ([`8c527cb`](https://github.com/Icemic/huozi-rs/commit/8c527cbbb6d1a74a036d1ac283ce115390ea9c1b))
-    - Huozi add parse api ([`e00d96b`](https://github.com/Icemic/huozi-rs/commit/e00d96b5bfc72696d8d5fc33f9c47c1522794ca1))
-    - Adjust parse return value ([`6ae68e7`](https://github.com/Icemic/huozi-rs/commit/6ae68e7c622ca8b57384912d1c71c3bb18dbe044))
-    - Context name ([`ba851f0`](https://github.com/Icemic/huozi-rs/commit/ba851f0b0bb54412ad4b85ea52ee72ee51744aab))
-    - Remove useless EOF check ([`bdf4ac1`](https://github.com/Icemic/huozi-rs/commit/bdf4ac1da381962f4ce04372d3d60dd84af23978))
-    - Move parser tests to mod ([`9ba08fa`](https://github.com/Icemic/huozi-rs/commit/9ba08faca72090b1a79cf614a72c4e4ca90ff3db))
-    - Parser ([`a5ddb20`](https://github.com/Icemic/huozi-rs/commit/a5ddb201b3f387f503102a571aed6a4d907c7465))
-    - Move layout func to Huozi impl ([`d7b3239`](https://github.com/Icemic/huozi-rs/commit/d7b3239421213b6312b31940bb0cd20608e9fb2c))
-    - Lint ([`8331ecd`](https://github.com/Icemic/huozi-rs/commit/8331ecd3b3a60c3b9e070e643efedd38a8c58ec7))
-    - Warn if glyph not exists ([`15d65f1`](https://github.com/Icemic/huozi-rs/commit/15d65f1df63693709a76d86d22dba99d81727211))
-    - Properly handles characters larger than 1em in width ([`4645e32`](https://github.com/Icemic/huozi-rs/commit/4645e32f18284fc12ac3cc2e1ae27a3cc07a93c6))
-    - Texture gen example ([`4e1fd91`](https://github.com/Icemic/huozi-rs/commit/4e1fd9161a3572585fec8dafc61323d697864fbc))
-    - Shader buffer size ([`c34827e`](https://github.com/Icemic/huozi-rs/commit/c34827e2ad9d4559a483f999aeb50033745e1706))
-    - Fix ([`35f1a4a`](https://github.com/Icemic/huozi-rs/commit/35f1a4ae6e4056d8f8e7c789a58423ecf0942158))
-    - Make `wgpu` optional ([`5fb4c2f`](https://github.com/Icemic/huozi-rs/commit/5fb4c2f4453a9a166c376a5e39e23df0e0b2b16f))
-    - Better texture generation example ([`e48cda3`](https://github.com/Icemic/huozi-rs/commit/e48cda3a49bfa22587cbe1a5cc16236057d4f54c))
-    - Critical bug causes render wrong ([`a06bd72`](https://github.com/Icemic/huozi-rs/commit/a06bd725395b60b12fb3896c19a12ad4795b8194))
-    - Texture use constant as size ([`9061e7a`](https://github.com/Icemic/huozi-rs/commit/9061e7abae2679bdd1e2dcd8e6888d05cdba4e5f))
-    - Implement color to [f32;4] with trait ([`6ca41fc`](https://github.com/Icemic/huozi-rs/commit/6ca41fc8a66aab188480365671e60afc15a636e3))
-    - Support stroke and shadow ([`b204ed9`](https://github.com/Icemic/huozi-rs/commit/b204ed93a6c9630469e1a56e19c4844fdde826f8))
-    - Add layouting time log ([`d3057d7`](https://github.com/Icemic/huozi-rs/commit/d3057d794ca712edb51a24da58ee3d9466de4e87))
-    - Move color and buffer to vertex attribute ([`3e69da1`](https://github.com/Icemic/huozi-rs/commit/3e69da196173c1439183432b4deb0a434240da19))
-    - Use fake INFINITY in edt algorithm ([`051dd80`](https://github.com/Icemic/huozi-rs/commit/051dd8007fd59fd28704d20418ef86370709c076))
-    - Shader ([`e9c7dbc`](https://github.com/Icemic/huozi-rs/commit/e9c7dbc88dafdbe688ef72dd85e35e6fc17b3d3f))
-    - Add features ([`810413d`](https://github.com/Icemic/huozi-rs/commit/810413de40e7129c2fe65127c69b8f029f7ff204))
-    - Switch font extractor via features ([`f3418f8`](https://github.com/Icemic/huozi-rs/commit/f3418f8fa02b8920a8bd0d71b11fea713d227571))
-    - Gamma value ([`b719c0b`](https://github.com/Icemic/huozi-rs/commit/b719c0b7b3aee04ff1e1800bfb9f1c90562da3d3))
-    - Font extractor, ab_glyph implement ([`9a54ad6`](https://github.com/Icemic/huozi-rs/commit/9a54ad624b028ea8880092da883433ed775c6b39))
-    - Fix ([`c7f553b`](https://github.com/Icemic/huozi-rs/commit/c7f553bff9f40a1dde50b24c2411975bbad27cbe))
-    - Handling \n and \r ([`3b91363`](https://github.com/Icemic/huozi-rs/commit/3b91363e38f6e9a00ec1c48ccd50cd6be8c36c62))
-    - Better texture vertex calculation with font size ([`1d490c6`](https://github.com/Icemic/huozi-rs/commit/1d490c64ca5ba4cc9cc035bc168b2434ac21d128))
-    - Log font load time and sdf texture gen time ([`94d51a0`](https://github.com/Icemic/huozi-rs/commit/94d51a074b56cc8b6235e21a3a964c88b6d7eb1c))
-    - Sdf generation params ([`f80b686`](https://github.com/Icemic/huozi-rs/commit/f80b686181658a29694b0b050fb3c64ff5b8ccdb))
-    - Remove `page` in uniforms ([`1dcfcbd`](https://github.com/Icemic/huozi-rs/commit/1dcfcbd5b64dae8f5d416cd734a2fb52b725c2f2))
-    - Wired border around rendered glyph ([`3326592`](https://github.com/Icemic/huozi-rs/commit/33265928eb2547fc5f0890b05259c4cf4bbb8744))
-    - Basic layout ([`8e935ea`](https://github.com/Icemic/huozi-rs/commit/8e935ea48ce1f8aa8e3232e84a32392e0cbd28d9))
-    - Tidy up codebase ([`87723c4`](https://github.com/Icemic/huozi-rs/commit/87723c4bb9866edf7dc3f5e1149d363a17f4357a))
-    - Texture format ([`5691faf`](https://github.com/Icemic/huozi-rs/commit/5691faf1cff2a3a2ad9d6815ead206a1f0bf6fff))
-    - Tidy up ([`e4dcdfd`](https://github.com/Icemic/huozi-rs/commit/e4dcdfd72639186ca0a22b4131ae9b25eaa414bc))
-    - Cache sdf glyph with lru ([`9d8b9dc`](https://github.com/Icemic/huozi-rs/commit/9d8b9dcdd83c18efc073ebb9b13de5cc1e8ef58b))
-    - Render example ([`58dbfc9`](https://github.com/Icemic/huozi-rs/commit/58dbfc96fab5c5109528d0088168d6a0db27a90b))
-    - Sdf texture gen ([`26008f4`](https://github.com/Icemic/huozi-rs/commit/26008f4df915ce48b26ad783bf52935a85b9d47e))
-    - Initial commit ([`810f26f`](https://github.com/Icemic/huozi-rs/commit/810f26f5440f1d97e84189ee7f680ff36bfc590e))
-</details>
 
