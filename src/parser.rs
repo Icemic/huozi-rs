@@ -423,4 +423,9 @@ mod tests {
     fn empty() {
         assert_eq!(parse(&Segment::dummy("")).unwrap(), vec![]);
     }
+
+    #[test]
+    fn failed() {
+        assert!(parse(&Segment::dummy("foo[bar]")).is_err());
+    }
 }
