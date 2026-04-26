@@ -1,18 +1,22 @@
 use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
+    Huozi,
     constant::TEXTURE_SIZE,
     layout::{ColorSpace, LayoutDirection, LayoutStyle, Vertex},
     parser::{Segment, TextStyle},
-    Huozi,
 };
 use log::{error, info};
-use std::{iter, sync::Arc, time::SystemTime};
-use wgpu::{util::DeviceExt, BlendState};
+use std::{
+    iter,
+    sync::Arc,
+    time::{Duration, Instant, SystemTime},
+};
+use wgpu::{BlendState, util::DeviceExt};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
     event::*,
-    event_loop::{ActiveEventLoop, EventLoop},
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
     window::Window,
 };
@@ -36,6 +40,12 @@ A simple typography engine for CJK languages, especially designed for game rich-
 huózì 活字 gM 123.!""?;:-_/+=<>==
 CJK 标点——⸺，。：；“”？、《》「」【】
 "#;
+
+#[cfg(target_os = "windows")]
+const REDRAW_DELAY: Duration = Duration::from_millis(1);
+
+#[cfg(not(target_os = "windows"))]
+const REDRAW_DELAY: Duration = Duration::ZERO;
 
 pub struct State {
     surface: wgpu::Surface<'static>,
@@ -383,40 +393,26 @@ impl State {
         }
     }
 
-    fn update_ime_cursor_area(&self, window: &Window, ime: egui::output::IMEOutput) {
-        let cursor_rect_px = self.egui_context.pixels_per_point() * ime.cursor_rect;
-
-        window.set_ime_cursor_area(
-            winit::dpi::PhysicalPosition {
-                x: cursor_rect_px.min.x,
-                y: cursor_rect_px.min.y,
-            },
-            winit::dpi::PhysicalSize {
-                width: cursor_rect_px.width().max(1.0),
-                height: cursor_rect_px.height().max(1.0),
-            },
-        );
-    }
-
     fn update(&mut self, window: &Window) {
         // Reset config changed flag
         self.config_changed = false;
 
         // Build egui UI
-        let full_output = render_control_panel_ui(self, window);
-        let ime_output = full_output.platform_output.ime;
+        let mut full_output = render_control_panel_ui(self, window);
 
         // Mark config as changed if there was any UI interaction in config panels
         if full_output.platform_output.events.iter().any(|_| true) {
             self.config_changed = true;
         }
 
+        if let Some(ime) = full_output.platform_output.ime.as_mut() {
+            // egui-winit uses `ime.rect` for the IME cursor area, but for Windows IMEs we want
+            // the caret rectangle instead of the whole text box.
+            ime.rect = ime.cursor_rect;
+        }
+
         self.egui_state
             .handle_platform_output(window, full_output.platform_output);
-
-        if let Some(ime) = ime_output {
-            self.update_ime_cursor_area(window, ime);
-        }
 
         // Store textures delta and paint jobs for rendering
         self.egui_textures_delta = full_output.textures_delta;
@@ -648,6 +644,8 @@ impl State {
 struct App {
     window: Option<Arc<Window>>,
     state: Option<State>,
+    pending_redraw: bool,
+    next_redraw_at: Option<Instant>,
 }
 
 impl App {
@@ -655,6 +653,18 @@ impl App {
         Self {
             window: None,
             state: None,
+            pending_redraw: false,
+            next_redraw_at: None,
+        }
+    }
+
+    fn queue_redraw(&mut self) {
+        self.pending_redraw = true;
+
+        let scheduled_at = Instant::now() + REDRAW_DELAY;
+        match self.next_redraw_at {
+            Some(current) if current <= scheduled_at => {}
+            _ => self.next_redraw_at = Some(scheduled_at),
         }
     }
 }
@@ -691,6 +701,7 @@ impl ApplicationHandler for App {
 
             // Initial render text
             self.state.as_mut().unwrap().render_huozi_text();
+            self.queue_redraw();
         }
     }
 
@@ -702,7 +713,13 @@ impl ApplicationHandler for App {
     ) {
         // Let egui handle the event first
         if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref()) {
+            let need_redraw = state.egui_context.has_requested_repaint();
             let response = state.egui_state.on_window_event(window, &event);
+
+            if response.repaint || need_redraw {
+                self.queue_redraw();
+            }
+
             if response.consumed {
                 return; // Event was consumed by egui, don't process it further
             }
@@ -711,14 +728,15 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::RedrawRequested => {
                 if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref()) {
+                    self.pending_redraw = false;
+                    self.next_redraw_at = None;
+
                     state.update(window);
                     match state.render() {
                         RenderOutcome::Success => {}
                         RenderOutcome::Suboptimal
                         | RenderOutcome::Outdated
-                        | RenderOutcome::Lost => {
-                            state.resize(state.size)
-                        }
+                        | RenderOutcome::Lost => state.resize(state.size),
                         RenderOutcome::Timeout | RenderOutcome::Occluded => {}
                         RenderOutcome::Validation => log::warn!("Surface validation error"),
                     }
@@ -743,9 +761,20 @@ impl ApplicationHandler for App {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         if let Some(window) = self.window.as_ref() {
-            window.request_redraw();
+            if self.pending_redraw {
+                let now = Instant::now();
+                let next_redraw_at = self.next_redraw_at.get_or_insert(now + REDRAW_DELAY);
+
+                // On Windows IME composition, issuing the redraw one idle turn later is enough
+                // to avoid the candidate window getting disrupted by immediate redraw requests.
+                if now >= *next_redraw_at {
+                    window.request_redraw();
+                }
+            }
+
+            event_loop.set_control_flow(ControlFlow::Wait);
         }
     }
 }
