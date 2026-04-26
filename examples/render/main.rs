@@ -383,12 +383,28 @@ impl State {
         }
     }
 
+    fn update_ime_cursor_area(&self, window: &Window, ime: egui::output::IMEOutput) {
+        let cursor_rect_px = self.egui_context.pixels_per_point() * ime.cursor_rect;
+
+        window.set_ime_cursor_area(
+            winit::dpi::PhysicalPosition {
+                x: cursor_rect_px.min.x,
+                y: cursor_rect_px.min.y,
+            },
+            winit::dpi::PhysicalSize {
+                width: cursor_rect_px.width().max(1.0),
+                height: cursor_rect_px.height().max(1.0),
+            },
+        );
+    }
+
     fn update(&mut self, window: &Window) {
         // Reset config changed flag
         self.config_changed = false;
 
         // Build egui UI
         let full_output = render_control_panel_ui(self, window);
+        let ime_output = full_output.platform_output.ime;
 
         // Mark config as changed if there was any UI interaction in config panels
         if full_output.platform_output.events.iter().any(|_| true) {
@@ -397,6 +413,10 @@ impl State {
 
         self.egui_state
             .handle_platform_output(window, full_output.platform_output);
+
+        if let Some(ime) = ime_output {
+            self.update_ime_cursor_area(window, ime);
+        }
 
         // Store textures delta and paint jobs for rendering
         self.egui_textures_delta = full_output.textures_delta;
