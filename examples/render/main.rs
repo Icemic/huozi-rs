@@ -79,23 +79,26 @@ pub struct State {
     egui_textures_delta: egui::TexturesDelta,
 }
 
+enum RenderOutcome {
+    Success,
+    Suboptimal,
+    Timeout,
+    Occluded,
+    Outdated,
+    Lost,
+    Validation,
+}
+
 impl State {
     async fn new(window: &Arc<Window>) -> Self {
         let size = window.inner_size();
 
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            backend_options: wgpu::BackendOptions {
-                dx12: wgpu::Dx12BackendOptions {
-                    shader_compiler: wgpu::Dx12Compiler::Fxc,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-            ..Default::default()
-        });
+        let mut instance_descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
+        instance_descriptor.backends = wgpu::Backends::all();
+        instance_descriptor.backend_options.dx12.shader_compiler = wgpu::Dx12Compiler::Fxc;
+        let instance = wgpu::Instance::new(instance_descriptor);
         let surface = instance
             .create_surface(window.clone())
             .expect("Failed to create surface.");
@@ -229,8 +232,11 @@ impl State {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&mvp_bind_group_layout, &texture_bind_group_layout],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[
+                    Some(&mvp_bind_group_layout),
+                    Some(&texture_bind_group_layout),
+                ],
+                immediate_size: 0,
             });
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -276,9 +282,7 @@ impl State {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
-            // If the pipeline will be used with a multiview render pass, this
-            // indicates how many array layers the attachments will have.
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -302,7 +306,7 @@ impl State {
                 priority: egui::epaint::text::FontPriority::Highest,
             }],
         ));
-        egui_context.style_mut(|style| {
+        egui_context.global_style_mut(|style| {
             style.text_styles.insert(
                 egui::TextStyle::Name("custom_font".into()),
                 egui::FontId::new(16.0, egui::FontFamily::Proportional),
@@ -511,8 +515,16 @@ impl State {
         }
     }
 
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
+    fn render(&mut self) -> RenderOutcome {
+        let (output, needs_reconfigure) = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(output) => (output, false),
+            wgpu::CurrentSurfaceTexture::Suboptimal(output) => (output, true),
+            wgpu::CurrentSurfaceTexture::Timeout => return RenderOutcome::Timeout,
+            wgpu::CurrentSurfaceTexture::Occluded => return RenderOutcome::Occluded,
+            wgpu::CurrentSurfaceTexture::Outdated => return RenderOutcome::Outdated,
+            wgpu::CurrentSurfaceTexture::Lost => return RenderOutcome::Lost,
+            wgpu::CurrentSurfaceTexture::Validation => return RenderOutcome::Validation,
+        };
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -605,7 +617,11 @@ impl State {
         self.queue.submit(iter::once(encoder.finish()));
         output.present();
 
-        Ok(())
+        if needs_reconfigure {
+            RenderOutcome::Suboptimal
+        } else {
+            RenderOutcome::Success
+        }
     }
 }
 
@@ -677,17 +693,14 @@ impl ApplicationHandler for App {
                 if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref()) {
                     state.update(window);
                     match state.render() {
-                        Ok(_) => {}
-                        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                        RenderOutcome::Success => {}
+                        RenderOutcome::Suboptimal
+                        | RenderOutcome::Outdated
+                        | RenderOutcome::Lost => {
                             state.resize(state.size)
                         }
-                        Err(wgpu::SurfaceError::OutOfMemory) => {
-                            event_loop.exit();
-                        }
-                        Err(wgpu::SurfaceError::Timeout) => log::warn!("Surface timeout"),
-                        Err(wgpu::SurfaceError::Other) => {
-                            log::warn!("Surface other error")
-                        }
+                        RenderOutcome::Timeout | RenderOutcome::Occluded => {}
+                        RenderOutcome::Validation => log::warn!("Surface validation error"),
                     }
                 }
             }

@@ -14,12 +14,12 @@ use crate::State;
 
 pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput {
     let raw_input = state.egui_state.take_egui_input(window);
-    state.egui_context.run(raw_input, |ctx| {
+    state.egui_context.run_ui(raw_input, |ui| {
         // Bottom panel for text input and configuration
-        egui::TopBottomPanel::bottom("text_input_panel")
+        egui::Panel::bottom("text_input_panel")
             .resizable(false)
-            .default_height(360.0)
-            .show(ctx, |ui| {
+            .default_size(360.0)
+            .show_inside(ui, |ui| {
                 ui.add_space(6.);
 
                 ui.horizontal(|ui| {

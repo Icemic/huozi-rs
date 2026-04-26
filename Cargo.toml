@@ -32,20 +32,20 @@ nom-language = {version = "0.1"}
 nom_locate = {version = "5.0.0", features = ["runtime-dispatch-simd"]}
 pathfinder_geometry = {version = "0.5.1", optional = true}
 serde = {version = "1", features = ["derive"]}
-wgpu = {version = "27.0", optional = true}
+wgpu = {version = "29.0", optional = true}
 
 [dev-dependencies]
 cfg-if = "1"
-egui = "0.33"
-egui-wgpu = "0.33"
-egui-winit = "0.33"
+egui = "0.34"
+egui-wgpu = "0.34"
+egui-winit = "0.34"
 env_logger = "0.11"
 image = {version = "0.25", default-features = false, features = ["png"]}
 pollster = "0.4"
 rustybuzz = "0.20"
 ttf-parser = "0.25"
-wgpu = "27.0"
-winit = "0.30.12"
+wgpu = "29.0"
+winit = "0.30.13"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 console_error_panic_hook = "0.1"
@@ -53,11 +53,11 @@ console_log = "1.0"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = {version = "0.3", features = ["Document", "Window", "Element"]}
-wgpu = {version = "27.0", features = ["webgl"]}
+wgpu = {version = "29.0", features = ["webgl"]}
 
 [target.'cfg(target_os = "android")'.dev-dependencies]
 android_logger = "0.15"
-winit = {version = "0.30.12", features = ["android-game-activity"]}
+winit = {version = "0.30.13", features = ["android-game-activity"]}
 
 [[example]]
 name = "render"
