@@ -58,11 +58,9 @@ impl FromStr for StrokeStyle {
                 if let Ok(color) = one.parse::<Color>() {
                     style.stroke_color = color;
                     Ok(style)
-                } else if let Ok(width) = one.parse::<f32>() {
-                    style.stroke_width = width;
-                    Ok(style)
                 } else {
-                    Err(format!("invalid stroke style `{s}`"))
+                    style.stroke_width = parse_valid_f32(one, "stroke width")?;
+                    Ok(style)
                 }
             }
 
@@ -70,9 +68,7 @@ impl FromStr for StrokeStyle {
                 style.stroke_color = color
                     .parse::<Color>()
                     .map_err(|_| format!("invalid stroke color `{color}`"))?;
-                style.stroke_width = width
-                    .parse::<f32>()
-                    .map_err(|_| format!("invalid stroke width `{width}`"))?;
+                style.stroke_width = parse_valid_f32(width, "stroke width")?;
                 Ok(style)
             }
 
@@ -124,14 +120,14 @@ impl FromStr for ShadowStyle {
             [x, y, blur] => {
                 style.shadow_offset_x = parse_f32(x, "shadow offset x")?;
                 style.shadow_offset_y = parse_f32(y, "shadow offset y")?;
-                style.shadow_blur = parse_f32(blur, "shadow blur")?;
+                style.shadow_blur = parse_valid_f32(blur, "shadow blur")?;
                 Ok(style)
             }
 
             [x, y, blur, color] => {
                 style.shadow_offset_x = parse_f32(x, "shadow offset x")?;
                 style.shadow_offset_y = parse_f32(y, "shadow offset y")?;
-                style.shadow_blur = parse_f32(blur, "shadow blur")?;
+                style.shadow_blur = parse_valid_f32(blur, "shadow blur")?;
                 style.shadow_color = color
                     .parse::<Color>()
                     .map_err(|_| format!("invalid shadow color `{color}`"))?;
@@ -141,11 +137,11 @@ impl FromStr for ShadowStyle {
             [x, y, blur, color, width] => {
                 style.shadow_offset_x = parse_f32(x, "shadow offset x")?;
                 style.shadow_offset_y = parse_f32(y, "shadow offset y")?;
-                style.shadow_blur = parse_f32(blur, "shadow blur")?;
+                style.shadow_blur = parse_valid_f32(blur, "shadow blur")?;
                 style.shadow_color = color
                     .parse::<Color>()
                     .map_err(|_| format!("invalid shadow color `{color}`"))?;
-                style.shadow_width = parse_f32(width, "shadow width")?;
+                style.shadow_width = parse_valid_f32(width, "shadow width")?;
                 Ok(style)
             }
 
@@ -159,4 +155,72 @@ impl FromStr for ShadowStyle {
 fn parse_f32(s: &str, name: &str) -> Result<f32, String> {
     s.parse::<f32>()
         .map_err(|_| format!("invalid {name} `{s}`"))
+}
+
+fn parse_valid_f32(s: &str, name: &str) -> Result<f32, String> {
+    let value = parse_f32(s, name)?;
+
+    if !value.is_finite() {
+        return Err(format!("invalid {name} `{s}`: expected a finite number"));
+    }
+
+    if value < 0.0 {
+        return Err(format!("invalid {name} `{s}`: expected a non-negative number"));
+    }
+
+    Ok(value)
+    // may be used for style.stroke_width, style.shadow_blur, style.shadow_width, to prevent NaN, neg, infty, etc.
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_stroke_style_width() {
+        let style = "2.5".parse::<StrokeStyle>().unwrap();
+        assert_eq!(style.stroke_width, 2.5);
+    }
+
+    #[test]
+    fn parse_stroke_style_color_and_width() {
+        let style = "#196883 2".parse::<StrokeStyle>().unwrap();
+        assert_eq!(style.stroke_width, 2.0);
+    }
+
+    #[test]
+    fn parse_shadow_style_offset() {
+        let style = "1 -2".parse::<ShadowStyle>().unwrap();
+        assert_eq!(style.shadow_offset_x, 1.0);
+        assert_eq!(style.shadow_offset_y, -2.0);
+    }
+
+    #[test]
+    fn parse_shadow_style_all() {
+        let style = "1 2 8 #196883 3".parse::<ShadowStyle>().unwrap();
+        assert_eq!(style.shadow_offset_x, 1.0);
+        assert_eq!(style.shadow_offset_y, 2.0);
+        assert_eq!(style.shadow_blur, 8.0);
+        assert_eq!(style.shadow_width, 3.0);
+    }
+
+    #[test]
+    fn parse_stroke_style_invalid() {
+        assert!("Gan Ren Chui".parse::<StrokeStyle>().is_err());
+    }
+
+    #[test]
+    fn parse_stroke_style_negative_width() {
+        assert!("red -1".parse::<StrokeStyle>().is_err());
+    }
+
+    #[test]
+    fn parse_shadow_style_negative_blur() {
+        assert!("1 2 -3".parse::<ShadowStyle>().is_err());
+    }
+
+    #[test]
+    fn parse_shadow_style_nan_width() {
+        assert!("1 2 3 red NaN".parse::<ShadowStyle>().is_err());
+    }
 }
