@@ -5,7 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.17.1 (2026-07-24)
+
+### New Features
+
+ - <csr-id-11a2bbf686ee5912a5ef8853df2435dad55b769b/> add layout_plain method for direct layout of text segments
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 5 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Add layout_plain method for direct layout of text segments ([`11a2bbf`](https://github.com/Icemic/huozi-rs/commit/11a2bbf686ee5912a5ef8853df2435dad55b769b))
+</details>
+
 ## v0.17.0 (2026-07-18)
+
+<csr-id-58b9c95ad99c83c91dab1a707fbfbc0870685307/>
+<csr-id-5315c057b431498a9bbd6d2c061727539ffa91c5/>
 
 ### Chore
 
@@ -21,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 8 commits contributed to the release over the course of 121 calendar days.
+ - 9 commits contributed to the release over the course of 121 calendar days.
  - 156 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -33,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.17.0 ([`f9fbfd8`](https://github.com/Icemic/huozi-rs/commit/f9fbfd8d5d268ec2efbb276a48ae14c8df167fee))
     - Update deps ([`58b9c95`](https://github.com/Icemic/huozi-rs/commit/58b9c95ad99c83c91dab1a707fbfbc0870685307))
     - Update egui and fix compatibility ([`5315c05`](https://github.com/Icemic/huozi-rs/commit/5315c057b431498a9bbd6d2c061727539ffa91c5))
     - Implement shorthand parsing for stroke and shadow styles ([`b15b48c`](https://github.com/Icemic/huozi-rs/commit/b15b48c92edd615546756a92bb3550c12df0dbba))
