@@ -117,6 +117,14 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                 .range(8.0..=128.0),
                         );
                         ui.end_row();
+
+                        ui.label("Compress CJK Punctuation:");
+                        ui.add(toggle(&mut state.layout_config.punctuation.compression));
+                        ui.end_row();
+
+                        ui.label("Hang Line-end Punctuation:");
+                        ui.add(toggle(&mut state.layout_config.punctuation.hanging));
+                        ui.end_row();
                     });
 
                     ui.separator();
