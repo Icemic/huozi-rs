@@ -133,6 +133,7 @@ impl Huozi {
         let mut current_col: u32 = 0;
         let mut current_row: u32 = 0;
         let mut previous_char_on_line: Option<char> = None;
+        let mut line_has_hanging_punctuation = false;
 
         let max_width = layout_style.box_width;
         let max_height = layout_style.box_height;
@@ -215,6 +216,7 @@ impl Huozi {
                         current_col = 0;
                         current_row += 1;
                         previous_char_on_line = None;
+                        line_has_hanging_punctuation = false;
 
                         // if text overflows the box, ignore the rest characters
                         if current_y / FONT_SIZE * style.font_size >= max_height {
@@ -229,16 +231,27 @@ impl Huozi {
 
                     let mut h_advance = metrics.h_advance as f64;
 
-                    if layout_style.direction == LayoutDirection::Horizontal
+                    let punctuation_compression = if layout_style.direction
+                        == LayoutDirection::Horizontal
                         && layout_style.punctuation.compression
                     {
-                        current_x -=
-                            punctuation::compression_between(previous_char_on_line, glyph.ch)
-                                * FONT_SIZE;
-                    }
+                        punctuation::compression_between(previous_char_on_line, glyph.ch)
+                            * FONT_SIZE
+                    } else {
+                        0.0
+                    };
+                    let compressed_x = current_x - punctuation_compression;
+                    let max_width_in_font_units = max_width * FONT_SIZE / style.font_size;
+                    let overflow = compressed_x + h_advance - max_width_in_font_units;
+                    let can_hang = layout_style.direction == LayoutDirection::Horizontal
+                        && layout_style.punctuation.hanging
+                        && !line_has_hanging_punctuation
+                        && punctuation::is_hangable(glyph.ch)
+                        && overflow > 0.0
+                        && overflow <= FONT_SIZE / 2.0;
 
                     // check text overflow
-                    if (current_x + h_advance) / FONT_SIZE * style.font_size >= max_width {
+                    if overflow > 0.0 && !can_hang {
                         // update actual width to max width
                         total_width_of_run = max_width * FONT_SIZE / style.font_size;
                         // reset x
@@ -249,6 +262,7 @@ impl Huozi {
                         current_col = 0;
                         current_row += 1;
                         previous_char_on_line = None;
+                        line_has_hanging_punctuation = false;
 
                         // if text overflows the box, ignore the rest characters
                         if current_y / FONT_SIZE * style.font_size >= max_height {
@@ -257,6 +271,9 @@ impl Huozi {
 
                         // update actual height to current_y with additional a line
                         _total_height_of_run = current_y + FONT_SIZE * style.line_height;
+                    } else {
+                        current_x = compressed_x;
+                        line_has_hanging_punctuation |= can_hang;
                     }
 
                     let x_scale = metrics.x_scale.unwrap_or(1.) as f64;

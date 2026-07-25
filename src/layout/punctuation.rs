@@ -52,6 +52,11 @@ pub(super) fn compression_between(previous: Option<char>, current: char) -> f64 
     }
 }
 
+/// Returns whether a punctuation mark may hang at the end of a horizontal line.
+pub(super) fn is_hangable(ch: char) -> bool {
+    matches!(ch, '、' | '，' | '。' | '：' | '；' | '？' | '！')
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -64,6 +69,17 @@ mod tests {
 
         for ch in ['中', 'A', ',', '.', '—', '…'] {
             assert!(!is_adjustable(ch), "{ch} should not be adjustable");
+        }
+    }
+
+    #[test]
+    fn classifies_hangable_cjk_punctuation() {
+        for ch in ['、', '，', '。', '：', '；', '？', '！'] {
+            assert!(is_hangable(ch), "{ch} should be hangable");
+        }
+
+        for ch in ['（', '」', '中', ',', '.'] {
+            assert!(!is_hangable(ch), "{ch} should not be hangable");
         }
     }
 
