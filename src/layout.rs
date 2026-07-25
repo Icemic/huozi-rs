@@ -14,10 +14,10 @@ pub use self::layout_style::*;
 pub use self::vertex::*;
 
 use crate::{
+    Huozi,
     constant::{ASCENT, FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE, VIEWPORT_HEIGHT, VIEWPORT_WIDTH},
     glyph_vertices::GlyphVertices,
     parser::parse,
-    Huozi,
 };
 
 impl Huozi {
@@ -79,6 +79,33 @@ impl Huozi {
     ) -> Result<(Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32), String> {
         let text_spans =
             self.parse_text_with::<OPEN, CLOSE>(segments, initial_text_style, style_prefabs)?;
+        Ok(self.layout(&layout_style, &text_spans, color_space))
+    }
+
+    /// Layout the text into glyph vertices without parsing.
+    pub fn layout_plain(
+        &mut self,
+        segments: &Vec<Segment>,
+        layout_style: &LayoutStyle,
+        initial_text_style: &TextStyle,
+        color_space: ColorSpace,
+    ) -> Result<(Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32), String> {
+        let text_spans = segments
+            .iter()
+            .map(|segment| TextSpan {
+                span_id: None,
+                runs: vec![TextRun {
+                    text: segment.content.to_string(),
+                    style: initial_text_style.clone(),
+                    source_range: SourceRange {
+                        segment_id: segment.id.clone(),
+                        start: 0,
+                        end: segment.content.len(),
+                    },
+                }],
+            })
+            .collect::<Vec<_>>();
+
         Ok(self.layout(&layout_style, &text_spans, color_space))
     }
 

@@ -1,7 +1,7 @@
 use egui::{Grid, Ui};
 
 pub fn render_grid_ui<R>(
-    id_salt: impl std::hash::Hash,
+    id_salt: impl std::hash::Hash + std::fmt::Debug,
     ui: &mut Ui,
     add_contents: impl FnOnce(&mut Ui) -> R,
 ) {
