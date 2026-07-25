@@ -8,6 +8,19 @@ pub enum LayoutDirection {
     Vertical,
 }
 
+/// Optional adjustments for full-width CJK punctuation.
+///
+/// Both adjustments are disabled by default so existing layouts remain
+/// unchanged.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PunctuationStyle {
+    /// Compress the space between adjacent adjustable punctuation marks.
+    pub compression: bool,
+    /// Allow a single punctuation mark to hang at the end of a line.
+    pub hanging: bool,
+}
+
 /// This is the setting of the full text in a `box`, which is also known as `text window`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -21,6 +34,8 @@ pub struct LayoutStyle {
     pub box_height: f64,
     /// the size of the glyph grid which each character be fit to, usually equals to `font_size`.
     pub glyph_grid_size: f64,
+    /// optional adjustments for full-width CJK punctuation.
+    pub punctuation: PunctuationStyle,
 }
 
 impl Default for LayoutStyle {
@@ -30,6 +45,20 @@ impl Default for LayoutStyle {
             box_width: 1280.,
             box_height: 720.,
             glyph_grid_size: 24.,
+            punctuation: Default::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn punctuation_adjustments_are_opt_in() {
+        let style = LayoutStyle::default();
+
+        assert!(!style.punctuation.compression);
+        assert!(!style.punctuation.hanging);
     }
 }
