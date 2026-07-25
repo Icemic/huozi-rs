@@ -1,6 +1,7 @@
 mod color_space;
 mod glyph_span;
 mod layout_style;
+mod punctuation;
 mod vertex;
 
 use std::collections::HashMap;
@@ -131,6 +132,7 @@ impl Huozi {
 
         let mut current_col: u32 = 0;
         let mut current_row: u32 = 0;
+        let mut previous_char_on_line: Option<char> = None;
 
         let max_width = layout_style.box_width;
         let max_height = layout_style.box_height;
@@ -212,6 +214,7 @@ impl Huozi {
 
                         current_col = 0;
                         current_row += 1;
+                        previous_char_on_line = None;
 
                         // if text overflows the box, ignore the rest characters
                         if current_y / FONT_SIZE * style.font_size >= max_height {
@@ -226,6 +229,14 @@ impl Huozi {
 
                     let mut h_advance = metrics.h_advance as f64;
 
+                    if layout_style.direction == LayoutDirection::Horizontal
+                        && layout_style.punctuation.compression
+                    {
+                        current_x -=
+                            punctuation::compression_between(previous_char_on_line, glyph.ch)
+                                * FONT_SIZE;
+                    }
+
                     // check text overflow
                     if (current_x + h_advance) / FONT_SIZE * style.font_size >= max_width {
                         // update actual width to max width
@@ -237,6 +248,7 @@ impl Huozi {
 
                         current_col = 0;
                         current_row += 1;
+                        previous_char_on_line = None;
 
                         // if text overflows the box, ignore the rest characters
                         if current_y / FONT_SIZE * style.font_size >= max_height {
@@ -517,6 +529,7 @@ impl Huozi {
 
                     current_x += h_advance;
                     current_col += 1;
+                    previous_char_on_line = Some(glyph.ch);
                 }
 
                 // in case of the last line without line break
