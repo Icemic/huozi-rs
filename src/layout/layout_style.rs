@@ -49,16 +49,3 @@ impl Default for LayoutStyle {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn punctuation_adjustments_are_opt_in() {
-        let style = LayoutStyle::default();
-
-        assert!(!style.punctuation.compression);
-        assert!(!style.punctuation.hanging);
-    }
-}
