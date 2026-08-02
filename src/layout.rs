@@ -248,7 +248,7 @@ impl Huozi {
                         && !line_has_hanging_punctuation
                         && punctuation::is_hangable(glyph.ch)
                         && overflow > 0.0
-                        && overflow <= FONT_SIZE / 2.0;
+                        && overflow <= FONT_SIZE * layout_style.punctuation.hanging_tolerance;
 
                     // check text overflow
                     if overflow > 0.0 && !can_hang {

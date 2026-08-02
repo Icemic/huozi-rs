@@ -9,16 +9,25 @@ pub enum LayoutDirection {
 }
 
 /// Optional adjustments for full-width CJK punctuation.
-///
-/// Both adjustments are disabled by default so existing layouts remain
-/// unchanged.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct PunctuationStyle {
     /// Compress the space between adjacent adjustable punctuation marks.
     pub compression: bool,
     /// Allow a single punctuation mark to hang at the end of a line.
     pub hanging: bool,
+    /// The maximum amount of overflow allowed for a hanging punctuation mark, in em.
+    pub hanging_tolerance: f64,
+}
+
+impl Default for PunctuationStyle {
+    fn default() -> Self {
+        Self {
+            compression: true,
+            hanging: true,
+            hanging_tolerance: 0.5,
+        }
+    }
 }
 
 /// This is the setting of the full text in a `box`, which is also known as `text window`.
