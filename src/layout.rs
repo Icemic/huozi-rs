@@ -140,13 +140,13 @@ impl Huozi {
         let mut current_segment_id: Option<SegmentId> = None;
         let mut current_segment_range_start: usize = 0;
 
-        for span in text_spans.as_ref() {
+        'out: for span in text_spans.as_ref() {
             let text_runs = &span.runs;
 
             // preallocate memory for vertices and indices
             glyph_vertices_vec.reserve(text_runs.iter().map(|s| s.text.len()).sum());
 
-            'out: for run in text_runs {
+            for run in text_runs {
                 let style = &run.style;
                 let text = &run.text;
                 let segment_id = &run.source_range.segment_id;
@@ -214,7 +214,12 @@ impl Huozi {
                         current_row += 1;
 
                         // if text overflows the box, ignore the rest characters
-                        if current_y / FONT_SIZE * style.font_size >= max_height {
+                        if max_height
+                            .is_some_and(|height| current_y / FONT_SIZE * style.font_size >= height)
+                        {
+                            total_width =
+                                total_width.max(total_width_of_run / FONT_SIZE * style.font_size);
+                            total_height = max_height.unwrap();
                             break 'out;
                         }
 
@@ -227,9 +232,11 @@ impl Huozi {
                     let mut h_advance = metrics.h_advance as f64;
 
                     // check text overflow
-                    if (current_x + h_advance) / FONT_SIZE * style.font_size >= max_width {
+                    if max_width.is_some_and(|width| {
+                        (current_x + h_advance) / FONT_SIZE * style.font_size >= width
+                    }) {
                         // update actual width to max width
-                        total_width_of_run = max_width * FONT_SIZE / style.font_size;
+                        total_width_of_run = max_width.unwrap() * FONT_SIZE / style.font_size;
                         // reset x
                         current_x = 0.;
                         // use original font size (when grid size is 64), it will be scaled in offset_y later.
@@ -239,7 +246,12 @@ impl Huozi {
                         current_row += 1;
 
                         // if text overflows the box, ignore the rest characters
-                        if current_y / FONT_SIZE * style.font_size >= max_height {
+                        if max_height
+                            .is_some_and(|height| current_y / FONT_SIZE * style.font_size >= height)
+                        {
+                            total_width =
+                                total_width.max(total_width_of_run / FONT_SIZE * style.font_size);
+                            total_height = max_height.unwrap();
                             break 'out;
                         }
 

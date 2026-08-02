@@ -98,14 +98,14 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
 
                         ui.label("Box Width:");
                         ui.add(egui::Slider::new(
-                            &mut state.layout_config.box_width,
+                            state.layout_config.box_width.get_or_insert(1280.0),
                             0.0..=1280.0,
                         ));
                         ui.end_row();
 
                         ui.label("Box Height:");
                         ui.add(egui::Slider::new(
-                            &mut state.layout_config.box_height,
+                            state.layout_config.box_height.get_or_insert(360.0),
                             0.0..=360.0,
                         ));
                         ui.end_row();

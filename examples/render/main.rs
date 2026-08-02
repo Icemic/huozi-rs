@@ -371,8 +371,8 @@ impl State {
             },
             layout_config: LayoutStyle {
                 direction: LayoutDirection::Horizontal,
-                box_width: 1280.,
-                box_height: 600.,
+                box_width: Some(1280.),
+                box_height: Some(600.),
                 glyph_grid_size: 32.,
             },
             text_config: text_style_default(),
