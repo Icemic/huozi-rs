@@ -6,11 +6,11 @@ use egui::FullOutput;
 use huozi::layout::LayoutDirection;
 use winit::window::Window;
 
+use crate::State;
 use crate::defaults::{shadow_default, stroke_default};
 use crate::fonts::get_builtin_fonts;
 use crate::ui::grid::render_grid_ui;
 use crate::ui::switch::toggle;
-use crate::State;
 
 pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput {
     let raw_input = state.egui_state.take_egui_input(window);
@@ -124,6 +124,16 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
 
                         ui.label("Hang Line-end Punctuation:");
                         ui.add(toggle(&mut state.layout_config.punctuation.hanging));
+                        ui.end_row();
+
+                        ui.label("Hang Line-end Tolerance:");
+                        ui.add(
+                            egui::Slider::new(
+                                &mut state.layout_config.punctuation.hanging_tolerance,
+                                0.0..=1.0,
+                            )
+                            .step_by(0.1),
+                        );
                         ui.end_row();
                     });
 
