@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.18.0 (2026-08-03)
+
+### New Features
+
+ - <csr-id-80871f156d1ca66b245d58f25a4d5890b17f5ce8/> add hanging punctuation tolerance control
+ - <csr-id-c7b4c80f98763a6237733c66d87c339e93207165/> add hanging punctuation tolerance setting
+ - <csr-id-dc76e7af836815ff423f0ead2f281ccbd1b5dc7b/> support optional box dimensions
+ - <csr-id-c55239aff39148b562994cff2543544eef427592/> hang line-end punctuation with test
+ - <csr-id-aca04131c4428ce36dd9ca730b253ae63b539974/> compress adjacent CJK punctuation
+ - <csr-id-bc034893e48a08b40974056029c028ee3a1fd194/> add punctuation adjustment configuration
+
+### Bug Fixes
+
+ - <csr-id-80b80cb7b2c21ca70090b15bec6428ec7fe5ebab/> test
+
+### Other
+
+ - <csr-id-22fd84f511ea23539204bc8031f8d462f195113c/> expose debug controls
+
+### Test
+
+ - <csr-id-a77f52ef8f7c18b7caa4f88cdb34958fed81e62d/> remove inline punctuation tests
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 11 commits contributed to the release over the course of 8 calendar days.
+ - 10 days passed between releases.
+ - 9 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Add hanging punctuation tolerance control ([`80871f1`](https://github.com/Icemic/huozi-rs/commit/80871f156d1ca66b245d58f25a4d5890b17f5ce8))
+    - Test ([`80b80cb`](https://github.com/Icemic/huozi-rs/commit/80b80cb7b2c21ca70090b15bec6428ec7fe5ebab))
+    - Merge branch 'DrCMWither/main' ([`ff06b73`](https://github.com/Icemic/huozi-rs/commit/ff06b736444c03d188b65941bd729508c4afcf4f))
+    - Add hanging punctuation tolerance setting ([`c7b4c80`](https://github.com/Icemic/huozi-rs/commit/c7b4c80f98763a6237733c66d87c339e93207165))
+    - Remove inline punctuation tests ([`a77f52e`](https://github.com/Icemic/huozi-rs/commit/a77f52ef8f7c18b7caa4f88cdb34958fed81e62d))
+    - Support optional box dimensions ([`dc76e7a`](https://github.com/Icemic/huozi-rs/commit/dc76e7af836815ff423f0ead2f281ccbd1b5dc7b))
+    - Expose debug controls ([`22fd84f`](https://github.com/Icemic/huozi-rs/commit/22fd84f511ea23539204bc8031f8d462f195113c))
+    - Hang line-end punctuation with test ([`c55239a`](https://github.com/Icemic/huozi-rs/commit/c55239aff39148b562994cff2543544eef427592))
+    - Compress adjacent CJK punctuation ([`aca0413`](https://github.com/Icemic/huozi-rs/commit/aca04131c4428ce36dd9ca730b253ae63b539974))
+    - Add punctuation adjustment configuration ([`bc03489`](https://github.com/Icemic/huozi-rs/commit/bc034893e48a08b40974056029c028ee3a1fd194))
+    - Merge https://github.com/Icemic/huozi-rs ([`16a9e08`](https://github.com/Icemic/huozi-rs/commit/16a9e086f1b61ee5b9ee4cfe79d3fbb86d277a5c))
+</details>
+
 ## v0.17.1 (2026-07-24)
 
 ### New Features
@@ -15,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 5 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -27,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.17.1 ([`5fb16cb`](https://github.com/Icemic/huozi-rs/commit/5fb16cbf7fecf3947e2172ec84a270c143e54434))
     - Add layout_plain method for direct layout of text segments ([`11a2bbf`](https://github.com/Icemic/huozi-rs/commit/11a2bbf686ee5912a5ef8853df2435dad55b769b))
 </details>
 
@@ -49,7 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 9 commits contributed to the release over the course of 121 calendar days.
+ - 12 commits contributed to the release over the course of 121 calendar days.
  - 156 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -64,8 +117,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Release huozi v0.17.0 ([`f9fbfd8`](https://github.com/Icemic/huozi-rs/commit/f9fbfd8d5d268ec2efbb276a48ae14c8df167fee))
     - Update deps ([`58b9c95`](https://github.com/Icemic/huozi-rs/commit/58b9c95ad99c83c91dab1a707fbfbc0870685307))
     - Update egui and fix compatibility ([`5315c05`](https://github.com/Icemic/huozi-rs/commit/5315c057b431498a9bbd6d2c061727539ffa91c5))
+    - Merge upstream ([`e7a623b`](https://github.com/Icemic/huozi-rs/commit/e7a623b19271babe6ae091e916785aede55bdd88))
     - Implement shorthand parsing for stroke and shadow styles ([`b15b48c`](https://github.com/Icemic/huozi-rs/commit/b15b48c92edd615546756a92bb3550c12df0dbba))
     - Feat(parser): implement stroke and shadow shorthand styles: implements `FromSt`r for `StrokeStyle` and `ShadowStyle`, enabling the existing [stroke=...] and [shadow=...] parser paths. ([`235c56e`](https://github.com/Icemic/huozi-rs/commit/235c56effe253d88ac8ccacbcd9eaa532b640417))
+    - Implement shorthand parsing for stroke and shadow styles ([`427e4e6`](https://github.com/Icemic/huozi-rs/commit/427e4e68dc60b7d3dc47952b7b13b72fc2113663))
+    - Feat(parser): implement stroke and shadow shorthand styles: implements `FromSt`r for `StrokeStyle` and `ShadowStyle`, enabling the existing [stroke=...] and [shadow=...] parser paths. ([`99f9fbb`](https://github.com/Icemic/huozi-rs/commit/99f9fbb3b96195e0469862539258af227c984575))
     - Improve IME cursor handling and optimize redraw logic ([`f37e8b7`](https://github.com/Icemic/huozi-rs/commit/f37e8b70859a1bc27876113449b5ead2af2418a6))
     - Add IME cursor area update for better text input handling ([`d011640`](https://github.com/Icemic/huozi-rs/commit/d011640855653aa90b345d1b6db2bfe6b53fb0bc))
     - Update rendering example for wgpu 29 and egui 0.34 ([`62cc6a1`](https://github.com/Icemic/huozi-rs/commit/62cc6a171238faf4310047ed56291be64da6e42b))
