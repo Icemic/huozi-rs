@@ -374,6 +374,7 @@ impl State {
                 box_width: Some(1280.),
                 box_height: Some(600.),
                 glyph_grid_size: 32.,
+                punctuation: Default::default(),
             },
             text_config: text_style_default(),
             stroke_enabled: true,

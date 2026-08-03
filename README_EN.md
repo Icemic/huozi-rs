@@ -44,7 +44,7 @@ Run `cargo run --example render --release` to see the following GUI window:
 - [ ] Underline, Strikethrough
 - [ ] Emphasis marks, Wavy underline
 - [x] Output as image or texture, providing vertex and texture coordinates
-- [ ] W3C Chinese Layout Requirements (Punctuation hanging, Punctuation squeezing)
+- [x] W3C Chinese Layout Requirements (Punctuation hanging, Punctuation squeezing)
 - [ ] Ligatures
 - [ ] Oblique, bold
 - [x] Supports Windows, macOS, Linux, Android, iOS, Web (WebAssembly) platforms

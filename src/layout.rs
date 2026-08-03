@@ -1,6 +1,7 @@
 mod color_space;
 mod glyph_span;
 mod layout_style;
+mod punctuation;
 mod vertex;
 
 use std::collections::HashMap;
@@ -131,6 +132,8 @@ impl Huozi {
 
         let mut current_col: u32 = 0;
         let mut current_row: u32 = 0;
+        let mut previous_char_on_line: Option<char> = None;
+        let mut line_has_hanging_punctuation = false;
 
         let max_width = layout_style.box_width;
         let max_height = layout_style.box_height;
@@ -212,6 +215,8 @@ impl Huozi {
 
                         current_col = 0;
                         current_row += 1;
+                        previous_char_on_line = None;
+                        line_has_hanging_punctuation = false;
 
                         // if text overflows the box, ignore the rest characters
                         if max_height
@@ -231,10 +236,31 @@ impl Huozi {
 
                     let mut h_advance = metrics.h_advance as f64;
 
+                    let punctuation_compression = if layout_style.direction
+                        == LayoutDirection::Horizontal
+                        && layout_style.punctuation.compression
+                    {
+                        punctuation::compression_between(previous_char_on_line, glyph.ch)
+                            * FONT_SIZE
+                    } else {
+                        0.0
+                    };
+                    let compressed_x = current_x - punctuation_compression;
+                    let overflow = max_width
+                        .and_then(|width| {
+                            let max_width_in_font_units = width * FONT_SIZE / style.font_size;
+                            Some(compressed_x + h_advance - max_width_in_font_units)
+                        })
+                        .unwrap_or(0.0);
+                    let can_hang = layout_style.direction == LayoutDirection::Horizontal
+                        && layout_style.punctuation.hanging
+                        && !line_has_hanging_punctuation
+                        && punctuation::is_hangable(glyph.ch)
+                        && overflow > 0.0
+                        && overflow <= FONT_SIZE * layout_style.punctuation.hanging_tolerance;
+
                     // check text overflow
-                    if max_width.is_some_and(|width| {
-                        (current_x + h_advance) / FONT_SIZE * style.font_size >= width
-                    }) {
+                    if overflow > 0.0 && !can_hang {
                         // update actual width to max width
                         total_width_of_run = max_width.unwrap() * FONT_SIZE / style.font_size;
                         // reset x
@@ -244,6 +270,8 @@ impl Huozi {
 
                         current_col = 0;
                         current_row += 1;
+                        previous_char_on_line = None;
+                        line_has_hanging_punctuation = false;
 
                         // if text overflows the box, ignore the rest characters
                         if max_height
@@ -257,6 +285,9 @@ impl Huozi {
 
                         // update actual height to current_y with additional a line
                         _total_height_of_run = current_y + FONT_SIZE * style.line_height;
+                    } else {
+                        current_x = compressed_x;
+                        line_has_hanging_punctuation |= can_hang;
                     }
 
                     let x_scale = metrics.x_scale.unwrap_or(1.) as f64;
@@ -529,6 +560,7 @@ impl Huozi {
 
                     current_x += h_advance;
                     current_col += 1;
+                    previous_char_on_line = Some(glyph.ch);
                 }
 
                 // in case of the last line without line break
