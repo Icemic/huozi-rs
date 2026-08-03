@@ -1,6 +1,6 @@
 use huozi::{
     Huozi,
-    layout::{ColorSpace, LayoutStyle},
+    layout::{ColorSpace, LayoutStyle, PunctuationStyle},
     parser::{Segment, SegmentId, SourceRange, TextRun, TextSpan, TextStyle},
 };
 
@@ -20,9 +20,14 @@ fn text_style() -> TextStyle {
 
 fn layout_style(width_in_em: f64) -> LayoutStyle {
     LayoutStyle {
-        box_width: width_in_em * 32.0,
-        box_height: 320.0,
+        box_width: Some(width_in_em * 32.0),
+        box_height: Some(320.0),
         glyph_grid_size: 32.0,
+        punctuation: PunctuationStyle {
+            compression: false,
+            hanging: false,
+            hanging_tolerance: 0.5,
+        },
         ..Default::default()
     }
 }
