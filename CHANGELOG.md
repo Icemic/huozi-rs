@@ -5,7 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.18.1 (2026-08-04)
+
+### Bug Fixes
+
+ - <csr-id-82225be772a05154d91e3ab2e849854fea7f2f45/> apply indentation at the start of each line
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 day passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Apply indentation at the start of each line ([`82225be`](https://github.com/Icemic/huozi-rs/commit/82225be772a05154d91e3ab2e849854fea7f2f45))
+</details>
+
 ## v0.18.0 (2026-08-03)
+
+<csr-id-22fd84f511ea23539204bc8031f8d462f195113c/>
+<csr-id-a77f52ef8f7c18b7caa4f88cdb34958fed81e62d/>
 
 ### New Features
 
@@ -32,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 11 commits contributed to the release over the course of 8 calendar days.
+ - 12 commits contributed to the release over the course of 8 calendar days.
  - 10 days passed between releases.
  - 9 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -44,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.18.0 ([`7d4ca41`](https://github.com/Icemic/huozi-rs/commit/7d4ca4135eb5653d15fcc12521354049ada62268))
     - Add hanging punctuation tolerance control ([`80871f1`](https://github.com/Icemic/huozi-rs/commit/80871f156d1ca66b245d58f25a4d5890b17f5ce8))
     - Test ([`80b80cb`](https://github.com/Icemic/huozi-rs/commit/80b80cb7b2c21ca70090b15bec6428ec7fe5ebab))
     - Merge branch 'DrCMWither/main' ([`ff06b73`](https://github.com/Icemic/huozi-rs/commit/ff06b736444c03d188b65941bd729508c4afcf4f))
