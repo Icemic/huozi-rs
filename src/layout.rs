@@ -125,10 +125,9 @@ impl Huozi {
             .first()
             .and_then(|span| span.runs.first());
 
-        let mut current_x = first_run
-            .and_then(|f| Some(f.style.indent * FONT_SIZE))
-            .unwrap_or(0.);
+        let mut current_x = 0.;
         let mut current_y = 0.;
+        let mut is_new_line = true;
 
         let mut current_col: u32 = 0;
         let mut current_row: u32 = 0;
@@ -204,14 +203,21 @@ impl Huozi {
                     let glyph = self.get_glyph(ch);
                     let metrics = &glyph.metrics;
 
+                    if is_new_line {
+                        current_x = style.indent * FONT_SIZE;
+                        is_new_line = false;
+                    }
+
                     // handles line break
                     if glyph.ch == '\n' || glyph.ch == '\r' {
                         // update actual width
                         total_width_of_run = total_width_of_run.max(current_x);
                         // reset x
-                        current_x = style.indent * FONT_SIZE;
+                        current_x = 0.;
                         // use original font size (when grid size is 64), it will be scaled in offset_y later.
                         current_y += FONT_SIZE * style.line_height;
+                        // mark new line
+                        is_new_line = true;
 
                         current_col = 0;
                         current_row += 1;
