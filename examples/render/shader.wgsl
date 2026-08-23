@@ -18,7 +18,7 @@ struct VertexInput {
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) tex_coords: vec2<f32>,
-    @location(1) page: i32,
+    @location(1) @interpolate(flat) page: i32,
     @location(2) buffer: f32,
     @location(3) fill_buffer: f32,
     @location(4) gamma: f32,

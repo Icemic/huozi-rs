@@ -117,6 +117,7 @@ impl State {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await
             .unwrap();
@@ -148,6 +149,7 @@ impl State {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
+            color_space: wgpu::SurfaceColorSpace::Auto,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
@@ -260,7 +262,7 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[Vertex::desc()],
+                buffers: &[Some(Vertex::desc())],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
@@ -585,9 +587,11 @@ impl State {
         // Render egui (only if there are paint jobs to render)
         if !self.egui_paint_jobs.is_empty() {
             // Update textures
-            for (id, image_delta) in &self.egui_textures_delta.set {
-                self.egui_renderer
-                    .update_texture(&self.device, &self.queue, *id, image_delta);
+            for (id, image_deltas) in &self.egui_textures_delta.set {
+                for image_delta in image_deltas {
+                    self.egui_renderer
+                        .update_texture(&self.device, &self.queue, *id, image_delta);
+                }
             }
 
             let screen_descriptor = egui_wgpu::ScreenDescriptor {
@@ -632,7 +636,7 @@ impl State {
         }
 
         self.queue.submit(iter::once(encoder.finish()));
-        output.present();
+    self.queue.present(output);
 
         if needs_reconfigure {
             RenderOutcome::Suboptimal
