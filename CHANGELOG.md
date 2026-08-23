@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.19.0 (2026-08-24)
+
+### Chore
+
+ - <csr-id-42a591c2c9013ac1161f3a7fc4b5699b458a3af9/> upgrade lru and pollster dependencies
+
+### New Features
+
+ - <csr-id-143a6da895a65bddc5a6f573685b9d1307a4c9ad/> upgrade wgpu and egui dependencies
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 18 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Upgrade lru and pollster dependencies ([`42a591c`](https://github.com/Icemic/huozi-rs/commit/42a591c2c9013ac1161f3a7fc4b5699b458a3af9))
+    - Upgrade wgpu and egui dependencies ([`143a6da`](https://github.com/Icemic/huozi-rs/commit/143a6da895a65bddc5a6f573685b9d1307a4c9ad))
+</details>
+
 ## v0.18.1 (2026-08-04)
 
 ### Bug Fixes
@@ -15,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 day passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -27,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.18.1 ([`9d15aac`](https://github.com/Icemic/huozi-rs/commit/9d15aac7f057f1e21f68b0ea9a425f0ed1df0add))
     - Apply indentation at the start of each line ([`82225be`](https://github.com/Icemic/huozi-rs/commit/82225be772a05154d91e3ab2e849854fea7f2f45))
 </details>
 
