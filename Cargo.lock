@@ -1228,7 +1228,7 @@ checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
 
 [[package]]
 name = "huozi"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "ab_glyph",
  "android_logger",

@@ -5,7 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.20.0 (2026-08-30)
+
+### Refactor
+
+ - <csr-id-4ae221f1c2522e27cb100e5b2dde63c632993a0d/> write glyph pixels directly to texture atlas
+ - <csr-id-a40f9eb280979677a8cd05558b2af1adeeb65634/> write texture data from raw pixels
+ - <csr-id-910adf79b11336c335e25ba86674fb36da6cd134/> replace image dependency with custom texture atlas
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 6 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Write glyph pixels directly to texture atlas ([`4ae221f`](https://github.com/Icemic/huozi-rs/commit/4ae221f1c2522e27cb100e5b2dde63c632993a0d))
+    - Write texture data from raw pixels ([`a40f9eb`](https://github.com/Icemic/huozi-rs/commit/a40f9eb280979677a8cd05558b2af1adeeb65634))
+    - Replace image dependency with custom texture atlas ([`910adf7`](https://github.com/Icemic/huozi-rs/commit/910adf79b11336c335e25ba86674fb36da6cd134))
+</details>
+
 ## v0.19.0 (2026-08-24)
+
+<csr-id-42a591c2c9013ac1161f3a7fc4b5699b458a3af9/>
 
 ### Chore
 
@@ -19,8 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
- - 18 days passed between releases.
+ - 3 commits contributed to the release.
+ - 19 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -31,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.19.0 ([`7bc6cf1`](https://github.com/Icemic/huozi-rs/commit/7bc6cf1a7163cadb18a89e6eddf836e5db72b7f8))
     - Upgrade lru and pollster dependencies ([`42a591c`](https://github.com/Icemic/huozi-rs/commit/42a591c2c9013ac1161f3a7fc4b5699b458a3af9))
     - Upgrade wgpu and egui dependencies ([`143a6da`](https://github.com/Icemic/huozi-rs/commit/143a6da895a65bddc5a6f573685b9d1307a4c9ad))
 </details>
