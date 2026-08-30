@@ -1,9 +1,6 @@
-use anyhow::Result;
-use image::{DynamicImage, RgbaImage};
 use log::{info, warn};
 use lru::LruCache;
 use std::num::NonZeroUsize;
-use std::path::Path;
 
 use crate::constant::{BUFFER, CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS, TEXTURE_SIZE};
 use crate::font_extractor::{GlyphExtractor, GlyphExtractorTrait, GlyphMetrics};
@@ -25,12 +22,53 @@ pub struct Glyph {
     pub v_max: f32,
 }
 
+pub struct TextureAtlas {
+    width: u32,
+    height: u32,
+    pixels: Vec<u8>,
+}
+
+impl TextureAtlas {
+    fn new(width: u32, height: u32) -> Self {
+        Self {
+            width,
+            height,
+            pixels: vec![0; width as usize * height as usize * 4],
+        }
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    pub fn pixels(&self) -> &[u8] {
+        &self.pixels
+    }
+
+    fn clear_channel_rect(&mut self, channel: usize, x: i32, y: i32, width: i32, height: i32) {
+        for y in y..y + height {
+            for x in x..x + width {
+                self.set_channel(channel, x, y, 0);
+            }
+        }
+    }
+
+    fn set_channel(&mut self, channel: usize, x: i32, y: i32, value: u8) {
+        let index = ((y as usize * self.width as usize + x as usize) * 4) + channel;
+        self.pixels[index] = value;
+    }
+}
+
 pub struct Huozi {
     #[cfg(feature = "sdf")]
     extractor: GlyphExtractor,
     #[cfg(feature = "sdf")]
     tiny_sdf: TinySDF,
-    image: RgbaImage,
+    texture: TextureAtlas,
     cache: lru::LruCache<char, Glyph>,
     next_grid_index: u32,
     /// increase this flag when the cache is changed
@@ -48,9 +86,7 @@ impl Huozi {
 
         info!("font metrics: {:?}", extractor.font_metrics());
 
-        let mut image = DynamicImage::new_rgba8(TEXTURE_SIZE, TEXTURE_SIZE).to_rgba8();
-
-        image.fill(0);
+        let texture = TextureAtlas::new(TEXTURE_SIZE, TEXTURE_SIZE);
 
         #[cfg(feature = "sdf")]
         let tiny_sdf = TinySDF::new(GRID_SIZE as u32, BUFFER as u32, RADIUS, CUTOFF);
@@ -64,7 +100,7 @@ impl Huozi {
             extractor,
             #[cfg(feature = "sdf")]
             tiny_sdf,
-            image,
+            texture,
             cache,
             next_grid_index: 0,
             image_version: 0,
@@ -111,7 +147,7 @@ impl Huozi {
 
             let grid_size = GRID_SIZE as i32;
 
-            let line_count = self.image.width() as i32 / grid_size;
+            let line_count = self.texture.width() as i32 / grid_size;
 
             let (page, index_in_page, overwrite) =
                 if let Some((_, expired_glyph)) = self.cache.push(ch, glyph) {
@@ -132,12 +168,13 @@ impl Huozi {
 
             // clear the block if it's reused from an expired glyph
             if overwrite {
-                for y in grid_y..grid_y + grid_size {
-                    for x in grid_x..grid_x + grid_size {
-                        let pixel = self.image.get_pixel_mut(x as u32, y as u32);
-                        pixel.0[page as usize] = 0;
-                    }
-                }
+                self.texture.clear_channel_rect(
+                    page as usize,
+                    grid_x,
+                    grid_y,
+                    grid_size,
+                    grid_size,
+                );
             }
 
             let offset_x =
@@ -161,11 +198,10 @@ impl Huozi {
 
                 let v = bitmap[i as usize];
 
-                let pixel = self.image.get_pixel_mut(x as u32, y as u32);
-                pixel.0[page as usize] = v;
+                self.texture.set_channel(page as usize, x, y, v);
             }
 
-            let texture_width = self.image.width() as f32;
+            let texture_width = self.texture.width() as f32;
             let glyph = self.cache.get_mut(&ch).unwrap();
             glyph.page = page;
             glyph.index = index_in_page;
@@ -202,17 +238,7 @@ impl Huozi {
     }
 
     #[cfg(feature = "sdf")]
-    pub fn texture_image(&self) -> &RgbaImage {
-        &self.image
-    }
-
-    #[cfg(feature = "sdf")]
-    pub fn dump_texture_to<Q>(&self, path: Q) -> Result<()>
-    where
-        Q: AsRef<Path>,
-    {
-        self.image.save(path)?;
-
-        Ok(())
+    pub fn texture_pixels(&self) -> &TextureAtlas {
+        &self.texture
     }
 }
