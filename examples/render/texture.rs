@@ -1,5 +1,3 @@
-use anyhow::*;
-use image::RgbaImage;
 use wgpu::TextureFormat;
 
 pub struct Texture {
@@ -9,19 +7,6 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn from_bytes(
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        bytes: &[u8],
-        label: &str,
-        format: Option<TextureFormat>,
-    ) -> Result<Self> {
-        let img = image::load_from_memory(bytes)?;
-        let mut t = Self::empty(device, img.width(), img.height(), Some(label), format);
-        t.write_bitmap(queue, &img.to_rgba8());
-        Ok(t)
-    }
-
     pub fn empty(
         device: &wgpu::Device,
         width: u32,
@@ -63,12 +48,10 @@ impl Texture {
         }
     }
 
-    pub fn write_bitmap(&mut self, queue: &wgpu::Queue, img: &RgbaImage) {
-        let dimensions = img.dimensions();
-
+    pub fn write_pixels(&mut self, queue: &wgpu::Queue, pixels: &[u8], width: u32, height: u32) {
         let size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
+            width,
+            height,
             depth_or_array_layers: 1,
         };
         queue.write_texture(
@@ -78,11 +61,11 @@ impl Texture {
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
-            &img,
+            pixels,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * img.width()),
-                rows_per_image: Some(img.height()),
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
             },
             size,
         );

@@ -525,8 +525,13 @@ impl State {
                 self.index_buffer = Some(index_buffer);
                 self.num_indices = Some(num_indices);
 
-                self.texture
-                    .write_bitmap(&self.queue, huozi.texture_image());
+                let texture = huozi.texture_pixels();
+                self.texture.write_pixels(
+                    &self.queue,
+                    texture.pixels(),
+                    texture.width(),
+                    texture.height(),
+                );
             }
             Err(err_msg) => {
                 error!("{}", err_msg);
@@ -636,7 +641,7 @@ impl State {
         }
 
         self.queue.submit(iter::once(encoder.finish()));
-    self.queue.present(output);
+        self.queue.present(output);
 
         if needs_reconfigure {
             RenderOutcome::Suboptimal

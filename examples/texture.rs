@@ -1,6 +1,7 @@
 use std::time::SystemTime;
 
 use huozi::charsets::{ASCII, CHS, CJK_SYMBOL};
+use image::RgbaImage;
 
 fn main() {
     let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
@@ -24,12 +25,15 @@ fn main() {
     );
 
     // copy red channel to green and blue channel, then fill alpha channel with 255 for easier viewing
-    let mut img = huozi.texture_image().clone();
-    img.chunks_exact_mut(4).for_each(|chunk| {
-        chunk[0] = chunk[0];
+    let texture = huozi.texture_pixels();
+    let mut pixels = texture.pixels().to_vec();
+    pixels.chunks_exact_mut(4).for_each(|chunk| {
         chunk[1] = chunk[0];
         chunk[2] = chunk[0];
         chunk[3] = 255;
     });
-    img.save("texture_dump.png").unwrap();
+    RgbaImage::from_raw(texture.width(), texture.height(), pixels)
+        .unwrap()
+        .save("texture_dump.png")
+        .unwrap();
 }
