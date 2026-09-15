@@ -9,13 +9,13 @@ use nom::{
     sequence::{preceded, separated_pair, terminated},
 };
 use nom_language::error::{VerboseError, convert_error};
-use nom_locate::LocatedSpan;
+use nom_locate_usv::LocatedSpan;
 use std::sync::OnceLock;
 
-use crate::parser::{Segment, SegmentId};
+use crate::parser::{ScalarOffset, Segment, SegmentId};
 
-// Type alias for input with location tracking
-pub type Span<'a> = LocatedSpan<&'a str, Option<SegmentId>>;
+// Type alias for input with location tracking.
+type Span<'a> = LocatedSpan<&'a str, Option<SegmentId>>;
 
 // Global caches for tag symbols
 // Note: These are shared across all generic parameter combinations.
@@ -52,21 +52,21 @@ fn get_excluded_chars<const OPEN: char, const CLOSE: char>() -> &'static str {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Element {
     Text {
-        start: usize,
-        end: usize,
+        start: ScalarOffset,
+        end: ScalarOffset,
         content: String,
         segment_id: Option<SegmentId>,
     },
     Block {
-        start: usize,
-        end: usize,
+        start: ScalarOffset,
+        end: ScalarOffset,
         inner: Vec<Element>,
         tag: String,
         value: Option<String>,
     },
 }
 
-pub type ParseResult<'a, T, E = VerboseError<Span<'a>>> = IResult<Span<'a>, T, E>;
+type ParseResult<'a, T, E = VerboseError<Span<'a>>> = IResult<Span<'a>, T, E>;
 
 /// Parse plain text with support for [[ and ]] escape sequences
 /// [[ -> [
@@ -153,7 +153,7 @@ fn string_without_space<const OPEN: char, const CLOSE: char>(
 }
 
 fn plain_text<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<'_, Element> {
-    let start_offset = input.location_offset();
+    let start = ScalarOffset(input.location_char_offset());
     let segment_id = input.extra.clone();
 
     let (remaining, content) = context(
@@ -164,13 +164,13 @@ fn plain_text<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResu
     )
     .parse(input)?;
 
-    let end_offset = remaining.location_offset();
+    let end = ScalarOffset(remaining.location_char_offset());
 
     Ok((
         remaining,
         Element::Text {
-            start: start_offset,
-            end: end_offset,
+            start,
+            end,
             content,
             segment_id,
         },
@@ -242,7 +242,7 @@ fn tag_end<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<
 }
 
 fn closed_tag<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<'_, Element> {
-    let start_offset = input.location_offset();
+    let start = ScalarOffset(input.location_char_offset());
 
     let (remaining, ((key, value), inner, _)) = context(
         "Tag",
@@ -257,13 +257,13 @@ fn closed_tag<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResu
     )
     .parse(input)?;
 
-    let end_offset = remaining.location_offset();
+    let end = ScalarOffset(remaining.location_char_offset());
 
     Ok((
         remaining,
         Element::Block {
-            start: start_offset,
-            end: end_offset,
+            start,
+            end,
             inner,
             tag: key.to_string(),
             value: value.map(|s| s.to_string()),
@@ -309,7 +309,7 @@ pub fn parse_with<const OPEN: char, const CLOSE: char>(
 ) -> Result<Vec<Element>, String> {
     let span = Span::new_extra(&input.content, input.id.clone());
     match context("Root", many_till(element::<OPEN, CLOSE>, eof)).parse(span) {
-        Ok((_, (r, _))) => Ok(r),
+        Ok((_, (elements, _))) => Ok(elements),
         Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
             // Convert Span-based error to str-based error for convert_error
             let converted_error: VerboseError<&str> = VerboseError {
@@ -319,10 +319,7 @@ pub fn parse_with<const OPEN: char, const CLOSE: char>(
                     .map(|(span, kind)| (*span.fragment(), kind))
                     .collect(),
             };
-            Err(convert_error(
-                input.content.as_ref(),
-                converted_error,
-            ))
+            Err(convert_error(input.content.as_ref(), converted_error))
         }
         Err(nom::Err::Incomplete(_)) => {
             unreachable!("it should not reach this branch, may be a bug.");

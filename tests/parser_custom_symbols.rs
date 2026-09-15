@@ -9,7 +9,7 @@
 // 2. Support for non-ASCII symbols
 // 3. The custom symbol feature works correctly
 
-use huozi::parser::{parse_with, Element, Segment};
+use huozi::parser::{Element, ScalarOffset, Segment, parse_with};
 
 #[test]
 fn unicode_brackets_basic() {
@@ -19,17 +19,17 @@ fn unicode_brackets_basic() {
         parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
-                start: 0,
-                end: 7,
+                start: ScalarOffset(0),
+                end: ScalarOffset(3),
                 content: "文本 ".to_string(),
                 segment_id: None,
             },
             Element::Block {
-                start: 7,
-                end: 38,
+                start: ScalarOffset(3),
+                end: ScalarOffset(14),
                 inner: vec![Element::Text {
-                    start: 19,
-                    end: 25,
+                    start: ScalarOffset(7),
+                    end: ScalarOffset(9),
                     content: "内容".to_string(),
                     segment_id: None,
                 }],
@@ -48,17 +48,17 @@ fn unicode_brackets_with_escape() {
         parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
-                start: 0,
-                end: 30,
+                start: ScalarOffset(0),
+                end: ScalarOffset(12),
                 content: "显示 【字面】 和 ".to_string(),
                 segment_id: None,
             },
             Element::Block {
-                start: 30,
-                end: 61,
+                start: ScalarOffset(12),
+                end: ScalarOffset(23),
                 inner: vec![Element::Text {
-                    start: 42,
-                    end: 48,
+                    start: ScalarOffset(16),
+                    end: ScalarOffset(18),
                     content: "内容".to_string(),
                     segment_id: None,
                 }],
@@ -77,27 +77,27 @@ fn unicode_brackets_nested() {
         parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
-                start: 0,
-                end: 7,
+                start: ScalarOffset(0),
+                end: ScalarOffset(3),
                 content: "文本 ".to_string(),
                 segment_id: None,
             },
             Element::Block {
-                start: 7,
-                end: 60,
+                start: ScalarOffset(3),
+                end: ScalarOffset(24),
                 inner: vec![
                     Element::Text {
-                        start: 19,
-                        end: 20,
+                        start: ScalarOffset(7),
+                        end: ScalarOffset(8),
                         content: "a".to_string(),
                         segment_id: None,
                     },
                     Element::Block {
-                        start: 20,
-                        end: 46,
+                        start: ScalarOffset(8),
+                        end: ScalarOffset(18),
                         inner: vec![Element::Text {
-                            start: 32,
-                            end: 33,
+                            start: ScalarOffset(12),
+                            end: ScalarOffset(13),
                             content: "b".to_string(),
                             segment_id: None,
                         }],
@@ -105,8 +105,8 @@ fn unicode_brackets_nested() {
                         value: None
                     },
                     Element::Text {
-                        start: 46,
-                        end: 47,
+                        start: ScalarOffset(18),
+                        end: ScalarOffset(19),
                         content: "c".to_string(),
                         segment_id: None,
                     }
@@ -126,17 +126,17 @@ fn unicode_brackets_with_value() {
         parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
-                start: 0,
-                end: 7,
+                start: ScalarOffset(0),
+                end: ScalarOffset(3),
                 content: "文本 ".to_string(),
                 segment_id: None,
             },
             Element::Block {
-                start: 7,
-                end: 45,
+                start: ScalarOffset(3),
+                end: ScalarOffset(17),
                 inner: vec![Element::Text {
-                    start: 26,
-                    end: 32,
+                    start: ScalarOffset(10),
+                    end: ScalarOffset(12),
                     content: "内容".to_string(),
                     segment_id: None,
                 }],
@@ -155,17 +155,17 @@ fn unicode_brackets_with_quoted_value() {
         parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
-                start: 0,
-                end: 7,
+                start: ScalarOffset(0),
+                end: ScalarOffset(3),
                 content: "文本 ".to_string(),
                 segment_id: None,
             },
             Element::Block {
-                start: 7,
-                end: 48,
+                start: ScalarOffset(3),
+                end: ScalarOffset(20),
                 inner: vec![Element::Text {
-                    start: 29,
-                    end: 35,
+                    start: ScalarOffset(13),
+                    end: ScalarOffset(15),
                     content: "内容".to_string(),
                     segment_id: None,
                 }],
@@ -184,17 +184,17 @@ fn unicode_brackets_with_single_quoted_value() {
         parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
-                start: 0,
-                end: 7,
+                start: ScalarOffset(0),
+                end: ScalarOffset(3),
                 content: "文本 ".to_string(),
                 segment_id: None,
             },
             Element::Block {
-                start: 7,
-                end: 48,
+                start: ScalarOffset(3),
+                end: ScalarOffset(20),
                 inner: vec![Element::Text {
-                    start: 29,
-                    end: 35,
+                    start: ScalarOffset(13),
+                    end: ScalarOffset(15),
                     content: "内容".to_string(),
                     segment_id: None,
                 }],
@@ -213,17 +213,17 @@ fn unicode_brackets_mixed_content() {
         parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
-                start: 0,
-                end: 6,
+                start: ScalarOffset(0),
+                end: ScalarOffset(6),
                 content: "Hello ".to_string(),
                 segment_id: None,
             },
             Element::Block {
-                start: 6,
-                end: 33,
+                start: ScalarOffset(6),
+                end: ScalarOffset(21),
                 inner: vec![Element::Text {
-                    start: 16,
-                    end: 22,
+                    start: ScalarOffset(12),
+                    end: ScalarOffset(14),
                     content: "世界".to_string(),
                     segment_id: None,
                 }],
@@ -231,8 +231,8 @@ fn unicode_brackets_mixed_content() {
                 value: None
             },
             Element::Text {
-                start: 33,
-                end: 39,
+                start: ScalarOffset(21),
+                end: ScalarOffset(27),
                 content: " World".to_string(),
                 segment_id: None,
             }
@@ -248,14 +248,14 @@ fn unicode_brackets_empty_tag() {
         parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![
             Element::Text {
-                start: 0,
-                end: 7,
+                start: ScalarOffset(0),
+                end: ScalarOffset(3),
                 content: "文本 ".to_string(),
                 segment_id: None,
             },
             Element::Block {
-                start: 7,
-                end: 32,
+                start: ScalarOffset(3),
+                end: ScalarOffset(12),
                 inner: vec![],
                 tag: "标签".to_string(),
                 value: None
@@ -271,11 +271,11 @@ fn unicode_brackets_multiline() {
     assert_eq!(
         parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![Element::Block {
-            start: 0,
-            end: 45,
+            start: ScalarOffset(0),
+            end: ScalarOffset(17),
             inner: vec![Element::Text {
-                start: 12,
-                end: 32,
+                start: ScalarOffset(4),
+                end: ScalarOffset(12),
                 content: "第一行\n第二行\n".to_string(),
                 segment_id: None,
             }],
@@ -292,8 +292,8 @@ fn unicode_brackets_quad_escape() {
     assert_eq!(
         parse_with::<'【', '】'>(&Segment::dummy(input)).unwrap(),
         vec![Element::Text {
-            start: 0,
-            end: 37,
+            start: ScalarOffset(0),
+            end: ScalarOffset(13),
             content: "显示 【【双层】】".to_string(),
             segment_id: None,
         }]

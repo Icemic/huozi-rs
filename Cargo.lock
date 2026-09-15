@@ -1249,7 +1249,7 @@ dependencies = [
  "lru",
  "nom",
  "nom-language",
- "nom_locate",
+ "nom_locate_usv",
  "pathfinder_geometry",
  "pollster",
  "rustybuzz",
@@ -1771,10 +1771,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "nom_locate"
-version = "5.0.0"
+name = "nom_locate_usv"
+version = "5.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b577e2d69827c4740cba2b52efaad1c4cc7c73042860b199710b3575c68438d"
+checksum = "769fcd7177396b95764bbf79844664ecfa3726b34317438d37ad4a80be044d0b"
 dependencies = [
  "bytecount",
  "memchr",

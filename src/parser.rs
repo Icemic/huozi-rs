@@ -16,15 +16,15 @@ pub use text_style::*;
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{parse_elements::*, Segment};
+    use crate::parser::{ScalarOffset, Segment, parse_elements::*};
 
     #[test]
     fn plain_text() {
         assert_eq!(
             parse(&Segment::dummy(" some text ")).unwrap(),
             vec![Element::Text {
-                start: 0,
-                end: 11,
+                start: ScalarOffset(0),
+                end: ScalarOffset(11),
                 content: " some text ".to_string(),
                 segment_id: None,
             }]
@@ -36,8 +36,8 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy(" some \n  text ")).unwrap(),
             vec![Element::Text {
-                start: 0,
-                end: 14,
+                start: ScalarOffset(0),
+                end: ScalarOffset(14),
                 content: " some \n  text ".to_string(),
                 segment_id: None,
             }]
@@ -49,8 +49,8 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy(r" some \n [[text")).unwrap(),
             vec![Element::Text {
-                start: 0,
-                end: 15,
+                start: ScalarOffset(0),
+                end: ScalarOffset(15),
                 content: r" some \n [text".to_string(),
                 segment_id: None,
             }]
@@ -62,8 +62,8 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy("[[bracket]]")).unwrap(),
             vec![Element::Text {
-                start: 0,
-                end: 11,
+                start: ScalarOffset(0),
+                end: ScalarOffset(11),
                 content: "[bracket]".to_string(),
                 segment_id: None,
             }]
@@ -75,8 +75,8 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy("text [[left]] more [[right]]")).unwrap(),
             vec![Element::Text {
-                start: 0,
-                end: 28,
+                start: ScalarOffset(0),
+                end: ScalarOffset(28),
                 content: "text [left] more [right]".to_string(),
                 segment_id: None,
             }]
@@ -88,8 +88,8 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy("[[[[double]]]]")).unwrap(),
             vec![Element::Text {
-                start: 0,
-                end: 14,
+                start: ScalarOffset(0),
+                end: ScalarOffset(14),
                 content: "[[double]]".to_string(),
                 segment_id: None,
             }]
@@ -102,17 +102,17 @@ mod tests {
             parse(&Segment::dummy("[[tag]] [real]content[/real]")).unwrap(),
             vec![
                 Element::Text {
-                    start: 0,
-                    end: 8,
+                    start: ScalarOffset(0),
+                    end: ScalarOffset(8),
                     content: "[tag] ".to_string(),
                     segment_id: None,
                 },
                 Element::Block {
-                    start: 8,
-                    end: 28,
+                    start: ScalarOffset(8),
+                    end: ScalarOffset(28),
                     inner: vec![Element::Text {
-                        start: 14,
-                        end: 21,
+                        start: ScalarOffset(14),
+                        end: ScalarOffset(21),
                         content: "content".to_string(),
                         segment_id: None,
                     }],
@@ -129,17 +129,17 @@ mod tests {
             parse(&Segment::dummy(" [real]content[/real]")).unwrap(),
             vec![
                 Element::Text {
-                    start: 0,
-                    end: 1,
+                    start: ScalarOffset(0),
+                    end: ScalarOffset(1),
                     content: " ".to_string(),
                     segment_id: None,
                 },
                 Element::Block {
-                    start: 1,
-                    end: 21,
+                    start: ScalarOffset(1),
+                    end: ScalarOffset(21),
                     inner: vec![Element::Text {
-                        start: 7,
-                        end: 14,
+                        start: ScalarOffset(7),
+                        end: ScalarOffset(14),
                         content: "content".to_string(),
                         segment_id: None,
                     }],
@@ -159,17 +159,17 @@ mod tests {
             .unwrap(),
             vec![
                 Element::Text {
-                    start: 0,
-                    end: 43,
+                    start: ScalarOffset(0),
+                    end: ScalarOffset(43),
                     content: "Show [bold]text[/bold] as literal, but ".to_string(),
                     segment_id: None,
                 },
                 Element::Block {
-                    start: 43,
-                    end: 60,
+                    start: ScalarOffset(43),
+                    end: ScalarOffset(60),
                     inner: vec![Element::Text {
-                        start: 49,
-                        end: 53,
+                        start: ScalarOffset(49),
+                        end: ScalarOffset(53),
                         content: "this".to_string(),
                         segment_id: None,
                     }],
@@ -177,8 +177,8 @@ mod tests {
                     value: None
                 },
                 Element::Text {
-                    start: 60,
-                    end: 68,
+                    start: ScalarOffset(60),
+                    end: ScalarOffset(68),
                     content: " is real".to_string(),
                     segment_id: None,
                 }
@@ -191,11 +191,11 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy(r"[foo]text[/foo]")).unwrap(),
             vec![Element::Block {
-                start: 0,
-                end: 15,
+                start: ScalarOffset(0),
+                end: ScalarOffset(15),
                 inner: vec![Element::Text {
-                    start: 5,
-                    end: 9,
+                    start: ScalarOffset(5),
+                    end: ScalarOffset(9),
                     content: "text".to_string(),
                     segment_id: None,
                 }],
@@ -210,11 +210,11 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy(r"[]text[/]")).unwrap(),
             vec![Element::Block {
-                start: 0,
-                end: 9,
+                start: ScalarOffset(0),
+                end: ScalarOffset(9),
                 inner: vec![Element::Text {
-                    start: 2,
-                    end: 6,
+                    start: ScalarOffset(2),
+                    end: ScalarOffset(6),
                     content: "text".to_string(),
                     segment_id: None,
                 }],
@@ -229,11 +229,11 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy(r"[foo=bar]text[/foo]")).unwrap(),
             vec![Element::Block {
-                start: 0,
-                end: 19,
+                start: ScalarOffset(0),
+                end: ScalarOffset(19),
                 inner: vec![Element::Text {
-                    start: 9,
-                    end: 13,
+                    start: ScalarOffset(9),
+                    end: ScalarOffset(13),
                     content: "text".to_string(),
                     segment_id: None,
                 }],
@@ -248,11 +248,11 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy(r#"[foo="bar "]text[/foo]"#)).unwrap(),
             vec![Element::Block {
-                start: 0,
-                end: 22,
+                start: ScalarOffset(0),
+                end: ScalarOffset(22),
                 inner: vec![Element::Text {
-                    start: 12,
-                    end: 16,
+                    start: ScalarOffset(12),
+                    end: ScalarOffset(16),
                     content: "text".to_string(),
                     segment_id: None,
                 }],
@@ -267,11 +267,11 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy(r#"[foo='bar ']text[/foo]"#)).unwrap(),
             vec![Element::Block {
-                start: 0,
-                end: 22,
+                start: ScalarOffset(0),
+                end: ScalarOffset(22),
                 inner: vec![Element::Text {
-                    start: 12,
-                    end: 16,
+                    start: ScalarOffset(12),
+                    end: ScalarOffset(16),
                     content: "text".to_string(),
                     segment_id: None,
                 }],
@@ -286,11 +286,11 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy("[foo=bar]\ntext\n  \n[/foo]")).unwrap(),
             vec![Element::Block {
-                start: 0,
-                end: 24,
+                start: ScalarOffset(0),
+                end: ScalarOffset(24),
                 inner: vec![Element::Text {
-                    start: 9,
-                    end: 18,
+                    start: ScalarOffset(9),
+                    end: ScalarOffset(18),
                     content: "\ntext\n  \n".to_string(),
                     segment_id: None,
                 }],
@@ -306,17 +306,17 @@ mod tests {
             parse(&Segment::dummy(r" some text [foo=bar]text[/foo]")).unwrap(),
             vec![
                 Element::Text {
-                    start: 0,
-                    end: 11,
+                    start: ScalarOffset(0),
+                    end: ScalarOffset(11),
                     content: " some text ".to_string(),
                     segment_id: None,
                 },
                 Element::Block {
-                    start: 11,
-                    end: 30,
+                    start: ScalarOffset(11),
+                    end: ScalarOffset(30),
                     inner: vec![Element::Text {
-                        start: 20,
-                        end: 24,
+                        start: ScalarOffset(20),
+                        end: ScalarOffset(24),
                         content: "text".to_string(),
                         segment_id: None,
                     }],
@@ -332,11 +332,11 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy(r"[foo=bar][xx=123][/xx][/foo]")).unwrap(),
             vec![Element::Block {
-                start: 0,
-                end: 28,
+                start: ScalarOffset(0),
+                end: ScalarOffset(28),
                 inner: vec![Element::Block {
-                    start: 9,
-                    end: 22,
+                    start: ScalarOffset(9),
+                    end: ScalarOffset(22),
                     inner: vec![],
                     tag: "xx".to_string(),
                     value: Some("123".to_string())
@@ -357,31 +357,31 @@ mod tests {
             .unwrap(),
             vec![
                 Element::Text {
-                    start: 0,
-                    end: 3,
+                    start: ScalarOffset(0),
+                    end: ScalarOffset(3),
                     content: r"a\n".to_string(),
                     segment_id: None,
                 },
                 Element::Block {
-                    start: 3,
-                    end: 33,
+                    start: ScalarOffset(3),
+                    end: ScalarOffset(33),
                     inner: vec![
                         Element::Text {
-                            start: 12,
-                            end: 13,
+                            start: ScalarOffset(12),
+                            end: ScalarOffset(13),
                             content: "q".to_string(),
                             segment_id: None,
                         },
                         Element::Block {
-                            start: 13,
-                            end: 26,
+                            start: ScalarOffset(13),
+                            end: ScalarOffset(26),
                             inner: vec![],
                             tag: "xx".to_string(),
                             value: Some("123".to_string())
                         },
                         Element::Text {
-                            start: 26,
-                            end: 27,
+                            start: ScalarOffset(26),
+                            end: ScalarOffset(27),
                             content: "x".to_string(),
                             segment_id: None,
                         }
@@ -390,8 +390,8 @@ mod tests {
                     value: Some("bar".to_string())
                 },
                 Element::Block {
-                    start: 33,
-                    end: 42,
+                    start: ScalarOffset(33),
+                    end: ScalarOffset(42),
                     inner: vec![],
                     tag: "yy".to_string(),
                     value: None
@@ -405,11 +405,11 @@ mod tests {
         assert_eq!(
             parse(&Segment::dummy(r#"[ foo = "bar " ]text[/ foo  ]"#)).unwrap(),
             vec![Element::Block {
-                start: 0,
-                end: 29,
+                start: ScalarOffset(0),
+                end: ScalarOffset(29),
                 inner: vec![Element::Text {
-                    start: 16,
-                    end: 20,
+                    start: ScalarOffset(16),
+                    end: ScalarOffset(20),
                     content: "text".to_string(),
                     segment_id: None,
                 }],

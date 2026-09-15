@@ -1,7 +1,7 @@
 use huozi::{
     Huozi,
     layout::{ColorSpace, LayoutStyle, PunctuationStyle},
-    parser::{Segment, SegmentId, SourceRange, TextRun, TextSpan, TextStyle},
+    parser::{ScalarOffset, Segment, SegmentId, SourceRange, TextRun, TextSpan, TextStyle},
 };
 
 const TEST_FONT: &[u8] = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
@@ -69,8 +69,8 @@ fn punctuation_compression_crosses_rich_text_runs_and_segments() {
                 style: style.clone(),
                 source_range: SourceRange {
                     segment_id: Some(SegmentId::Lite(1)),
-                    start: 0,
-                    end: 3,
+                    start: ScalarOffset(0),
+                    end: ScalarOffset(1),
                 },
             },
             TextRun {
@@ -78,8 +78,8 @@ fn punctuation_compression_crosses_rich_text_runs_and_segments() {
                 style,
                 source_range: SourceRange {
                     segment_id: Some(SegmentId::Lite(2)),
-                    start: 0,
-                    end: 3,
+                    start: ScalarOffset(0),
+                    end: ScalarOffset(1),
                 },
             },
         ],

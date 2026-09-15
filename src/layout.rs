@@ -100,8 +100,8 @@ impl Huozi {
                     style: initial_text_style.clone(),
                     source_range: SourceRange {
                         segment_id: segment.id.clone(),
-                        start: 0,
-                        end: segment.content.len(),
+                        start: ScalarOffset(0),
+                        end: ScalarOffset(segment.content.chars().count()),
                     },
                 }],
             })

@@ -28,7 +28,7 @@ log = "0.4"
 lru = "0.18.2"
 nom = {version = "8.0"}
 nom-language = {version = "0.1"}
-nom_locate = {version = "5.0.0", features = ["runtime-dispatch-simd"]}
+nom_locate_usv = {version = "5.1.0", features = ["runtime-dispatch-simd"]}
 pathfinder_geometry = {version = "0.5.1", optional = true}
 serde = {version = "1", features = ["derive"]}
 wgpu = {version = "30.0", optional = true}

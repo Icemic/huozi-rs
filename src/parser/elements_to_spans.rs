@@ -236,10 +236,10 @@ mod tests {
         assert_eq!(result[0].runs.len(), 1);
         assert_eq!(result[0].runs[0].text, "Hello, World!");
 
-        // Check source range byte positions
+        // Check source range scalar positions
         let source_range = &result[0].runs[0].source_range;
-        assert_eq!(source_range.start, 6); // After "[span]"
-        assert_eq!(source_range.end, 19); // Before "[/span]"
+        assert_eq!(source_range.start, ScalarOffset(6)); // After "[span]"
+        assert_eq!(source_range.end, ScalarOffset(19)); // Before "[/span]"
     }
 
     #[test]
@@ -257,22 +257,22 @@ mod tests {
         assert_eq!(result[0].runs[0].text, "Text with ");
         assert_eq!(result[0].runs[0].style.font_size, 32.0);
         let sr = &result[0].runs[0].source_range;
-        assert_eq!(sr.start, 6);
-        assert_eq!(sr.end, 16);
+        assert_eq!(sr.start, ScalarOffset(6));
+        assert_eq!(sr.end, ScalarOffset(16));
 
         // Second run: "large" with size=48
         assert_eq!(result[0].runs[1].text, "large");
         assert_eq!(result[0].runs[1].style.font_size, 48.0);
         let sr = &result[0].runs[1].source_range;
-        assert_eq!(sr.start, 25);
-        assert_eq!(sr.end, 30);
+        assert_eq!(sr.start, ScalarOffset(25));
+        assert_eq!(sr.end, ScalarOffset(30));
 
         // Third run: " size"
         assert_eq!(result[0].runs[2].text, " size");
         assert_eq!(result[0].runs[2].style.font_size, 32.0);
         let sr = &result[0].runs[2].source_range;
-        assert_eq!(sr.start, 37);
-        assert_eq!(sr.end, 42);
+        assert_eq!(sr.start, ScalarOffset(37));
+        assert_eq!(sr.end, ScalarOffset(42));
     }
 
     #[test]
@@ -419,8 +419,7 @@ mod tests {
 
     #[test]
     fn test_multiple_style_attributes() {
-        let input =
-        "[span][color=#ff0000][size=48][lineHeight=2.0]Styled[/lineHeight][/size][/color][/span]";
+        let input = "[span][color=#ff0000][size=48][lineHeight=2.0]Styled[/lineHeight][/size][/color][/span]";
         let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
@@ -467,8 +466,7 @@ mod tests {
 
     #[test]
     fn test_stroke_attributes() {
-        let input =
-        "[span][strokeColor=#0000ff][strokeWidth=2.5]Stroked[/strokeWidth][/strokeColor][/span]";
+        let input = "[span][strokeColor=#0000ff][strokeWidth=2.5]Stroked[/strokeWidth][/strokeColor][/span]";
         let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
         let result =
@@ -488,8 +486,8 @@ mod tests {
     }
 
     #[test]
-    fn test_byte_positions() {
-        // Test with multi-byte characters
+    fn test_scalar_positions() {
+        // Test with multi-scalar characters
         let input = "[span]你好[size=48]世界[/size]！[/span]";
         let elements = parse(&Segment::dummy(input)).expect("Failed to parse");
 
@@ -501,24 +499,24 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].runs.len(), 3);
 
-        // "你好" - 2 Chinese characters, each 3 bytes in UTF-8
+        // "你好" - 2 Chinese characters
         assert_eq!(result[0].runs[0].text, "你好");
         let sr = &result[0].runs[0].source_range;
-        assert_eq!(sr.start, 6);
-        assert_eq!(sr.end, 12);
+        assert_eq!(sr.start, ScalarOffset(6));
+        assert_eq!(sr.end, ScalarOffset(8));
 
         // "世界" with size=48
         assert_eq!(result[0].runs[1].text, "世界");
         assert_eq!(result[0].runs[1].style.font_size, 48.0);
         let sr = &result[0].runs[1].source_range;
-        assert_eq!(sr.start, 21);
-        assert_eq!(sr.end, 27);
+        assert_eq!(sr.start, ScalarOffset(17));
+        assert_eq!(sr.end, ScalarOffset(19));
 
         // "！"
         assert_eq!(result[0].runs[2].text, "！");
         let sr = &result[0].runs[2].source_range;
-        assert_eq!(sr.start, 34);
-        assert_eq!(sr.end, 37);
+        assert_eq!(sr.start, ScalarOffset(26));
+        assert_eq!(sr.end, ScalarOffset(27));
     }
 
     #[test]
