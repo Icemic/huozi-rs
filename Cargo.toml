@@ -8,29 +8,24 @@ repository = "https://github.com/Icemic/huozi-rs"
 version = "0.20.0"
 
 [features]
-ab_glyph = ["dep:ab_glyph"]
 charsets = []
-default = ["ab_glyph", "wgpu", "charsets", "sdf", "layout"]
-font_kit = ["dep:font-kit", "dep:pathfinder_geometry"]
-fontdue = ["dep:fontdue"]
-layout = []
-sdf = []
+default = ["wgpu", "charsets"]
 wgpu = ["dep:wgpu"]
 
 [dependencies]
-ab_glyph = {version = "0.2", optional = true}
+ab_glyph_rasterizer = "0.1"
 anyhow = "1"
 bytemuck = {version = "1.4", features = ["derive"]}
 csscolorparser = {version = "0.8.0", features = ["serde"]}
-font-kit = {version = "0.14", optional = true}
-fontdue = {version = "0.9.2", optional = true}
+harfrust = "0.13"
 log = "0.4"
 lru = "0.18.2"
 nom = {version = "8.0"}
 nom-language = {version = "0.1"}
 nom_locate_usv = {version = "5.1.0", features = ["runtime-dispatch-simd"]}
-pathfinder_geometry = {version = "0.5.1", optional = true}
 serde = {version = "1", features = ["derive"]}
+skrifa = "0.46"
+tiqian = "0.2.0"
 wgpu = {version = "30.0", optional = true}
 
 [dev-dependencies]
