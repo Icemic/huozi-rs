@@ -1,6 +1,7 @@
 use csscolorparser::Color;
 use log::warn;
 use std::collections::HashMap;
+use tiqian::core::geometry::TextRange;
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text_model::{RichTextLayerKind, RichTextPaint, TextStyle as TiqianTextStyle};
@@ -48,30 +49,80 @@ impl HuoziTiqianOutputAdapter {
         let mut text_style_cursor = 0;
         let mut rich_text_cursor = 0;
 
-        for positioned in positioned_clusters {
+        for (positioned_index, positioned) in positioned_clusters.iter().enumerate() {
             let line_index = positioned.line_index as usize;
             if line_index >= visible_line_count {
                 continue;
             }
+            let line_ends_after_cluster = positioned_clusters
+                .get(positioned_index + 1)
+                .is_none_or(|next| next.line_index != positioned.line_index);
             let cluster = &result.clusters[positioned.cluster_index as usize];
-            if cluster.synthetic_kind.is_some() {
+            if cluster.synthetic_kind.is_none()
+                && let Some(glyphs) = glyphs_by_cluster_range.get(&positioned.range)
+            {
+                let segment_id = source_segment_id(source_map, positioned.range, &mut source_map_cursor);
+                let style = text_style_for_range(result, positioned.range, &mut text_style_cursor);
+                let paints = text_paints_for_range(result, positioned.range, &mut rich_text_cursor);
+
+                for glyph in glyphs {
+                    if glyph.id != 0 && glyph.bounds.is_none() {
+                        continue;
+                    }
+                    let Some(face) = glyph.render_font_face.as_ref() else {
+                        warn!(
+                            "skip glyph {} without a replay FontFaceId for cluster {:?}",
+                            glyph.id, glyph.cluster_range
+                        );
+                        continue;
+                    };
+                    let atlas_glyph = huozi.get_glyph_by_id(face, glyph.id);
+                    let col = columns_by_line[line_index];
+                    columns_by_line[line_index] += 1;
+                    let glyph_vertices_item = glyph_vertices_for_glyph(
+                        glyph,
+                        &atlas_glyph,
+                        positioned.draw_x + glyph.x,
+                        positioned.baseline + glyph.y,
+                        positioned.line_index as u32,
+                        col,
+                        positioned.top,
+                        positioned.bottom,
+                        style,
+                        paints,
+                        color_space,
+                    );
+
+                    update_segment_glyph_spans(
+                        &mut segment_glyph_spans,
+                        &mut current_segment_id,
+                        &mut current_segment_start,
+                        segment_id.clone(),
+                        glyph_vertices.len(),
+                    );
+                    glyph_vertices.push(glyph_vertices_item);
+                }
+            }
+
+            if !line_ends_after_cluster {
                 continue;
             }
-            let Some(glyphs) = glyphs_by_cluster_range.get(&positioned.range) else {
+            let line = &result.lines[line_index];
+            if line.hyphen_glyphs.is_empty() || line.range.is_empty() {
                 continue;
-            };
-            let source_segment_id = source_segment_id(source_map, positioned.range, &mut source_map_cursor);
-            let style = text_style_for_range(result, positioned.range, &mut text_style_cursor);
-            let paints = text_paints_for_range(result, positioned.range, &mut rich_text_cursor);
-
-            for glyph in glyphs {
+            }
+            let hyphen_range = TextRange::new(line.range.end() - 1, line.range.end());
+            let hyphen_segment_id = source_segment_id(source_map, hyphen_range, &mut source_map_cursor);
+            let style = text_style_for_range(result, hyphen_range, &mut text_style_cursor);
+            let paints = text_paints_for_range(result, hyphen_range, &mut rich_text_cursor);
+            for glyph in &line.hyphen_glyphs {
                 if glyph.id != 0 && glyph.bounds.is_none() {
                     continue;
                 }
                 let Some(face) = glyph.render_font_face.as_ref() else {
                     warn!(
-                        "skip glyph {} without a replay FontFaceId for cluster {:?}",
-                        glyph.id, glyph.cluster_range
+                        "skip line-end hyphen glyph {} without a replay FontFaceId",
+                        glyph.id
                     );
                     continue;
                 };
@@ -81,12 +132,12 @@ impl HuoziTiqianOutputAdapter {
                 let glyph_vertices_item = glyph_vertices_for_glyph(
                     glyph,
                     &atlas_glyph,
-                    positioned.draw_x + glyph.x,
-                    positioned.baseline + glyph.y,
-                    positioned.line_index as u32,
+                    line.indent + line.visual_width + glyph.x,
+                    line.baseline + glyph.y,
+                    line_index as u32,
                     col,
-                    positioned.top,
-                    positioned.bottom,
+                    line.top,
+                    line.bottom,
                     style,
                     paints,
                     color_space,
@@ -96,7 +147,7 @@ impl HuoziTiqianOutputAdapter {
                     &mut segment_glyph_spans,
                     &mut current_segment_id,
                     &mut current_segment_start,
-                    source_segment_id.clone(),
+                    hyphen_segment_id.clone(),
                     glyph_vertices.len(),
                 );
                 glyph_vertices.push(glyph_vertices_item);

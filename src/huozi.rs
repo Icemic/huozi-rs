@@ -549,6 +549,92 @@ mod tests {
     }
 
     #[test]
+    fn tiqian_output_replays_line_end_hyphen_at_the_line_visual_end() {
+        let font = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+        let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
+        let style = HuoziTextStyle::default();
+        let input = HuoziTiqianInputAdapter::adapt(
+            &[TextSpan {
+                runs: vec![TextRun {
+                    text: "中".to_string(),
+                    style: style.clone(),
+                    source_range: SourceRange {
+                        segment_id: Some(SegmentId::Lite(10)),
+                        start: HuoziScalarOffset(0),
+                        end: HuoziScalarOffset(1),
+                    },
+                }],
+                span_id: None,
+            }],
+            &LayoutStyle::default(),
+            &style,
+        );
+        let crate::layout::tiqian_input::HuoziTiqianInput {
+            layout_input,
+            source_map,
+        } = input;
+        let text = layout_input.content.text.clone();
+        let request = FontBackendRequest::new(
+            text.clone(),
+            text_range(0, text.scalar_len().value()),
+            layout_input.text_style.clone(),
+            FontRole::CjkText,
+        );
+        let shaped = huozi.font_manager.shape(&request);
+        let hyphen = huozi.font_manager.shape(&FontBackendRequest::new(
+            Text::from("-"),
+            text_range(0, 1),
+            layout_input.text_style.clone(),
+            FontRole::LatinText,
+        ));
+        let hyphen_advance = hyphen.shaping.clusters[0].advance;
+        let hyphen_glyphs = hyphen
+            .shaping
+            .glyph_runs
+            .into_iter()
+            .flat_map(|run| run.glyphs)
+            .collect();
+        let layout_result = LayoutResult::new(
+            layout_input,
+            Size {
+                width: 48.0,
+                height: 48.0,
+            },
+            shaped.shaping.clusters,
+            shaped.shaping.glyph_runs,
+            vec![
+                LineBox::builder(
+                    text_range(0, 1),
+                    IntRange::new(0, 0),
+                    32.0,
+                    0.0,
+                    48.0,
+                    48.0,
+                    48.0,
+                    48.0,
+                )
+                .hyphen_advance(hyphen_advance)
+                .hyphen_glyphs(hyphen_glyphs)
+                .build(),
+            ],
+        );
+
+        let (glyphs, spans, _, _) = HuoziTiqianOutputAdapter::adapt(
+            &mut huozi,
+            &layout_result,
+            &source_map,
+            &ColorSpace::SRGB,
+        );
+
+        assert_eq!(glyphs.len(), 2);
+        assert_eq!(glyphs[1].x, 48);
+        assert_eq!(glyphs[1].row, 0);
+        assert_eq!(glyphs[1].col, 1);
+        assert_eq!(spans[0].segment_id, SegmentId::Lite(10));
+        assert_eq!(spans[0].glyph_range, 0..2);
+    }
+
+    #[test]
     fn tiqian_output_drops_a_line_that_exceeds_box_height() {
         let font = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
