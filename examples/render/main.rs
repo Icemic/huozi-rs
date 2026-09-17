@@ -723,10 +723,11 @@ impl ApplicationHandler for App {
     ) {
         // Let egui handle the event first
         if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref()) {
-            let need_redraw = state.egui_context.has_requested_repaint();
             let response = state.egui_state.on_window_event(window, &event);
 
-            if response.repaint || need_redraw {
+            if response.repaint {
+                window.request_redraw();
+            } else if state.egui_context.has_requested_repaint() {
                 self.queue_redraw();
             }
 
