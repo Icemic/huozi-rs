@@ -3,7 +3,6 @@ mod grid;
 mod switch;
 
 use egui::FullOutput;
-use huozi::layout::LayoutDirection;
 use winit::window::Window;
 
 use crate::State;
@@ -19,7 +18,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
         egui::Panel::bottom("text_input_panel")
             .resizable(false)
             .default_size(360.0)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 ui.add_space(6.);
 
                 ui.horizontal(|ui| {
@@ -35,6 +34,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                     ui.separator();
                     // Layout configuration
 
+                    let mut font_fallbacks_changed = false;
                     render_grid_ui("basic_grid", ui, |ui| {
                         ui.heading("🎨 Display");
                         ui.end_row();
@@ -52,48 +52,127 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                         }
                         ui.end_row();
 
-                        ui.label("Font:");
-                        egui::ComboBox::from_label("")
-                            .selected_text(state.current_font.clone())
-                            .show_ui(ui, |ui| {
-                                for (font_name, _) in get_builtin_fonts().iter() {
-                                    if ui
-                                        .selectable_value(
-                                            &mut state.current_font,
-                                            font_name.to_string(),
-                                            font_name.to_string(),
-                                        )
-                                        .changed()
-                                    {
-                                        let _ = state.huozi.take();
-                                    }
-                                }
-                            });
+                        ui.label("Fonts:");
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(236.0, 112.0),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                egui::Frame::group(ui.style())
+                                    .inner_margin(egui::Margin::same(4))
+                                    .show(ui, |ui| {
+                                        let mut move_font = None;
+                                        let mut remove_font = None;
+                                        egui::ScrollArea::vertical()
+                                            .max_height(58.0)
+                                            .show(ui, |ui| {
+                                                let last_index = state.font_fallbacks.len().saturating_sub(1);
+                                                for (index, font) in state.font_fallbacks.iter_mut().enumerate() {
+                                                    ui.horizontal(|ui| {
+                                                        ui.add_sized(
+                                                            [100.0, 18.0],
+                                                            egui::Label::new(&font.name).truncate(),
+                                                        )
+                                                        .on_hover_text(&font.name);
+                                                        if ui
+                                                            .add_sized(
+                                                                [32.0, 18.0],
+                                                                egui::Button::new(if font.enabled { "On" } else { "Off" }),
+                                                            )
+                                                            .on_hover_text("Enable or disable this font")
+                                                            .clicked()
+                                                        {
+                                                            font.enabled = !font.enabled;
+                                                            font_fallbacks_changed = true;
+                                                        }
+                                                        if ui
+                                                            .add_enabled(
+                                                                index > 0,
+                                                                egui::Button::new("↑").min_size(egui::vec2(18.0, 18.0)),
+                                                            )
+                                                            .clicked()
+                                                        {
+                                                            move_font = Some((index, index - 1));
+                                                        }
+                                                        if ui
+                                                            .add_enabled(
+                                                                index < last_index,
+                                                                egui::Button::new("↓").min_size(egui::vec2(18.0, 18.0)),
+                                                            )
+                                                            .clicked()
+                                                        {
+                                                            move_font = Some((index, index + 1));
+                                                        }
+                                                        if ui
+                                                            .add(
+                                                                egui::Button::new("×").min_size(egui::vec2(18.0, 18.0)),
+                                                            )
+                                                            .on_hover_text("Remove")
+                                                            .clicked()
+                                                        {
+                                                            remove_font = Some(index);
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        if let Some((from, to)) = move_font {
+                                            state.font_fallbacks.swap(from, to);
+                                            font_fallbacks_changed = true;
+                                        }
+                                        if let Some(index) = remove_font {
+                                            state.font_fallbacks.remove(index);
+                                            font_fallbacks_changed = true;
+                                        }
 
+                                        ui.separator();
+                                        ui.horizontal(|ui| {
+                                            let selected_text = state
+                                                .font_to_add
+                                                .as_deref()
+                                                .unwrap_or("Select a font");
+                                            egui::ComboBox::from_id_salt("add_font_fallback")
+                                                .width(182.0)
+                                                .selected_text(selected_text)
+                                                .show_ui(ui, |ui| {
+                                                    for (font_name, _) in get_builtin_fonts() {
+                                                        if !state
+                                                            .font_fallbacks
+                                                            .iter()
+                                                            .any(|font| font.name == font_name)
+                                                        {
+                                                            ui.selectable_value(
+                                                                &mut state.font_to_add,
+                                                                Some(font_name.to_string()),
+                                                                font_name,
+                                                            );
+                                                        }
+                                                    }
+                                                });
+                                            if ui
+                                                .add_enabled(
+                                                    state.font_to_add.is_some(),
+                                                    egui::Button::new("+").min_size(egui::vec2(18.0, 18.0)),
+                                                )
+                                                .clicked()
+                                            {
+                                                state.font_fallbacks.push(crate::FontFallback {
+                                                    name: state
+                                                        .font_to_add
+                                                        .take()
+                                                        .expect("add button requires a font"),
+                                                    enabled: true,
+                                                });
+                                                font_fallbacks_changed = true;
+                                            }
+                                        });
+                                    });
+                            },
+                        );
                         ui.end_row();
-                        // });
 
                         ui.add_space(10.);
                         ui.end_row();
 
                         ui.heading("⚙ Layout");
-                        ui.end_row();
-
-                        ui.label("Direction:").on_hover_text("Not supported by now");
-                        ui.add_enabled_ui(false, |ui| {
-                            ui.horizontal(|ui| {
-                                ui.radio_value(
-                                    &mut state.layout_config.direction,
-                                    LayoutDirection::Horizontal,
-                                    "Horizontal",
-                                );
-                                ui.radio_value(
-                                    &mut state.layout_config.direction,
-                                    LayoutDirection::Vertical,
-                                    "Vertical",
-                                );
-                            });
-                        });
                         ui.end_row();
 
                         ui.label("Box Width:");
@@ -110,32 +189,27 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                         ));
                         ui.end_row();
 
-                        ui.label("Glyph Grid Size:");
+                        ui.label("Line Height:");
                         ui.add(
-                            egui::DragValue::new(&mut state.layout_config.glyph_grid_size)
+                            egui::DragValue::new(&mut state.layout_config.line_height)
+                                .speed(0.1)
+                                .range(0.5..=3.0),
+                        );
+                        ui.end_row();
+
+                        ui.label("Indent:");
+                        ui.add(
+                            egui::DragValue::new(&mut state.layout_config.indent)
                                 .speed(1.0)
-                                .range(8.0..=128.0),
+                                .range(0.0..=200.0),
                         );
                         ui.end_row();
 
-                        ui.label("Compress CJK Punctuation:");
-                        ui.add(toggle(&mut state.layout_config.punctuation.compression));
-                        ui.end_row();
-
-                        ui.label("Hang Line-end Punctuation:");
-                        ui.add(toggle(&mut state.layout_config.punctuation.hanging));
-                        ui.end_row();
-
-                        ui.label("Hang Line-end Tolerance:");
-                        ui.add(
-                            egui::Slider::new(
-                                &mut state.layout_config.punctuation.hanging_tolerance,
-                                0.0..=1.0,
-                            )
-                            .step_by(0.1),
-                        );
-                        ui.end_row();
                     });
+                    if font_fallbacks_changed {
+                        state.huozi.take();
+                        state.config_changed = true;
+                    }
 
                     ui.separator();
 
@@ -149,22 +223,6 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                             egui::DragValue::new(&mut state.text_config.font_size)
                                 .speed(1.0)
                                 .range(8.0..=128.0),
-                        );
-                        ui.end_row();
-
-                        ui.label("Line Height:");
-                        ui.add(
-                            egui::DragValue::new(&mut state.text_config.line_height)
-                                .speed(0.1)
-                                .range(0.5..=3.0),
-                        );
-                        ui.end_row();
-
-                        ui.label("Indent:");
-                        ui.add(
-                            egui::DragValue::new(&mut state.text_config.indent)
-                                .speed(1.0)
-                                .range(0.0..=200.0),
                         );
                         ui.end_row();
 

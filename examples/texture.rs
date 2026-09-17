@@ -1,26 +1,33 @@
 use std::time::SystemTime;
 
 use huozi::charsets::{ASCII, CHS, CJK_SYMBOL};
+use huozi::layout::{ColorSpace, LayoutStyle};
+use huozi::parser::{Segment, TextStyle};
 use image::RgbaImage;
 
 fn main() {
     let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
-    let mut huozi = huozi::Huozi::new(font_data);
+    let mut huozi = huozi::Huozi::new(vec![huozi::FontSource::new(font_data)]).unwrap();
     // for this demo, just load the first 1024 characters, it will completely fill the red channel.
     let t = SystemTime::now();
 
-    huozi.preload(
-        &ASCII
-            .chars()
-            .into_iter()
-            .chain(CJK_SYMBOL.chars().into_iter())
-            .chain(CHS.chars().into_iter())
-            .take(1024)
-            .collect::<String>(),
-    );
+    let text = ASCII
+        .chars()
+        .chain(CJK_SYMBOL.chars())
+        .chain(CHS.chars())
+        .take(1024)
+        .collect::<String>();
+    huozi
+        .layout_plain(
+            &vec![Segment::dummy(&text)],
+            &LayoutStyle::default(),
+            &TextStyle::default(),
+            ColorSpace::SRGB,
+        )
+        .unwrap();
 
     println!(
-        "SDF texture preloaded 1024 characters in {}ms",
+        "SDF texture generated from 1024 shaped characters in {}ms",
         SystemTime::now().duration_since(t).unwrap().as_millis()
     );
 

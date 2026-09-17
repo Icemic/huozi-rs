@@ -2,7 +2,7 @@ use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
     Huozi,
     constant::TEXTURE_SIZE,
-    layout::{ColorSpace, LayoutDirection, LayoutStyle, Vertex},
+    layout::{ColorSpace, LayoutStyle, Vertex},
     parser::{Segment, TextStyle},
 };
 use log::{error, info};
@@ -47,6 +47,11 @@ const REDRAW_DELAY: Duration = Duration::from_millis(1);
 #[cfg(not(target_os = "windows"))]
 const REDRAW_DELAY: Duration = Duration::ZERO;
 
+struct FontFallback {
+    name: String,
+    enabled: bool,
+}
+
 pub struct State {
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
@@ -65,7 +70,8 @@ pub struct State {
     texture: texture::Texture,
     texture_bind_group: wgpu::BindGroup,
 
-    current_font: String,
+    font_fallbacks: Vec<FontFallback>,
+    font_to_add: Option<String>,
     huozi: Option<Huozi>,
 
     // egui integration
@@ -359,7 +365,11 @@ impl State {
             num_indices: None,
             texture,
             texture_bind_group,
-            current_font: get_builtin_fonts().get(0).unwrap().0.to_string(),
+            font_fallbacks: vec![FontFallback {
+                name: get_builtin_fonts()[0].0.to_string(),
+                enabled: true,
+            }],
+            font_to_add: None,
             huozi: None,
             egui_context,
             egui_state,
@@ -372,11 +382,10 @@ impl State {
                 a: 1.0,
             },
             layout_config: LayoutStyle {
-                direction: LayoutDirection::Horizontal,
                 box_width: Some(1280.),
                 box_height: Some(600.),
-                glyph_grid_size: 32.,
-                punctuation: Default::default(),
+                line_height: 1.5,
+                indent: 0.,
             },
             text_config: text_style_default(),
             stroke_enabled: true,
@@ -433,22 +442,44 @@ impl State {
         let t = SystemTime::now();
 
         if self.huozi.is_none() {
-            info!("load font: {}", self.current_font);
+            let enabled_fonts = self
+                .font_fallbacks
+                .iter()
+                .filter(|font| font.enabled)
+                .collect::<Vec<_>>();
+            if enabled_fonts.is_empty() {
+                self.vertex_buffer = None;
+                self.index_buffer = None;
+                self.num_indices = None;
+                return;
+            }
+
+            info!(
+                "load font fallbacks: {:?}",
+                enabled_fonts.iter().map(|font| &font.name).collect::<Vec<_>>()
+            );
             // initialize huozi instance
             let t = SystemTime::now();
 
-            let font_data = get_builtin_fonts()
+            let font_sources = enabled_fonts
                 .iter()
-                .find(|(name, _)| *name == &self.current_font)
-                .map(|(_, data)| *data)
-                .expect("Failed to find font data for the current font");
+                .map(|font_name| {
+                    let font_data = get_builtin_fonts()
+                        .iter()
+                        .find(|(name, _)| *name == font_name.name)
+                        .map(|(_, data)| *data)
+                        .expect("font fallback sequence contains an unknown built-in font");
+                    huozi::FontSource::with_alias(font_data.to_vec(), font_name.name.clone())
+                })
+                .collect();
 
             info!(
-                "font file loaded, {}ms",
+                "font files loaded, {}ms",
                 SystemTime::now().duration_since(t).unwrap().as_millis()
             );
 
-            let huozi = huozi::Huozi::new(font_data.to_vec());
+            let huozi = huozi::Huozi::new(font_sources)
+                .expect("Failed to initialize Huozi font manager");
             self.huozi = Some(huozi);
         }
 
@@ -482,24 +513,26 @@ impl State {
 
                 if self.text_config.shadow.is_some() {
                     for glyph in glyphs.iter() {
-                        vertices.extend(&glyph.shadow);
-                        indices.extend(glyph.indices.iter().map(|i| i + index_offset));
-
-                        index_offset += glyph.shadow.len() as u16;
+                        if let Some(shadow) = glyph.shadow {
+                            vertices.extend(shadow);
+                            indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+                            index_offset += shadow.len() as u16;
+                        }
                     }
                 }
 
                 if self.text_config.stroke.is_some() {
                     for glyph in glyphs.iter() {
-                        vertices.extend(&glyph.stroke);
-                        indices.extend(glyph.indices.iter().map(|i| i + index_offset));
-
-                        index_offset += glyph.stroke.len() as u16;
+                        if let Some(stroke) = glyph.stroke {
+                            vertices.extend(stroke);
+                            indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+                            index_offset += stroke.len() as u16;
+                        }
                     }
                 }
 
                 for glyph in glyphs.iter() {
-                    vertices.extend(&glyph.fill);
+                    vertices.extend(glyph.fill);
                     indices.extend(glyph.indices.iter().map(|i| i + index_offset));
 
                     index_offset += glyph.fill.len() as u16;
