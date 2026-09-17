@@ -79,13 +79,6 @@ pub(crate) fn to_spans(
                         "color" | "fillColor" => {
                             current_style.fill_color = parse_str(value, &current_style.fill_color);
                         }
-                        "lineHeight" => {
-                            current_style.line_height =
-                                parse_str(value, &current_style.line_height);
-                        }
-                        "indent" => {
-                            current_style.indent = parse_str(value, &current_style.indent);
-                        }
                         "stroke" => {
                             current_style.stroke =
                                 parse_str_optional(value, current_style.stroke.as_ref());
@@ -429,9 +422,8 @@ mod tests {
         assert_eq!(result[0].runs.len(), 1);
         assert_eq!(result[0].runs[0].text, "Styled");
 
-        // Check that all styles are applied
+        // Check that text styles are applied while paragraph tags are ignored.
         assert_eq!(result[0].runs[0].style.font_size, 48.0);
-        assert_eq!(result[0].runs[0].style.line_height, 2.0);
         let color = result[0].runs[0].style.fill_color.to_css_hex();
         assert!(color.contains("ff0000") || color.contains("FF0000"));
     }
@@ -529,6 +521,5 @@ mod tests {
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].runs[0].text, "Indented text");
-        assert_eq!(result[0].runs[0].style.indent, 2.5);
     }
 }

@@ -5,13 +5,13 @@ use crate::layout::Vertex;
 #[derive(Debug, Clone)]
 pub struct GlyphVertices {
     /// The vertices of the shadow layer.
-    pub shadow: Vec<Vertex>,
+    pub shadow: Option<[Vertex; 4]>,
     /// The vertices of the stroke layer.
-    pub stroke: Vec<Vertex>,
+    pub stroke: Option<[Vertex; 4]>,
     /// The vertices of the fill layer.
-    pub fill: Vec<Vertex>,
+    pub fill: [Vertex; 4],
     /// order to draw the layers (CCW)
-    pub indices: Vec<u16>,
+    pub indices: [u16; 6],
     /// position on the direction of text flow
     pub col: u32,
     /// position on the direction perpendicular to the text flow

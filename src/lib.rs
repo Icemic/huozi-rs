@@ -1,14 +1,14 @@
 #[cfg(feature = "charsets")]
 pub mod charsets;
 pub mod constant;
-pub mod font_extractor;
-#[cfg(feature = "layout")]
+pub mod font_backend;
+mod glyph_rasterizer;
+mod glyph_metrics;
 pub mod glyph_vertices;
 mod huozi;
-#[cfg(feature = "layout")]
 pub mod layout;
 pub mod parser;
-#[cfg(feature = "sdf")]
 pub mod sdf;
 
+pub use crate::font_backend::FontSource;
 pub use crate::huozi::*;

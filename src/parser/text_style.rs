@@ -9,8 +9,6 @@ pub struct TextStyle {
     // pub font_face: Font
     pub font_size: f64,
     pub fill_color: Color,
-    pub line_height: f64,
-    pub indent: f64,
     pub stroke: Option<StrokeStyle>,
     pub shadow: Option<ShadowStyle>,
 }
@@ -20,8 +18,6 @@ impl Default for TextStyle {
         Self {
             font_size: 32.,
             fill_color: Color::new(0., 0., 0., 1.),
-            line_height: 1.5,
-            indent: 0.,
             stroke: None,
             shadow: None,
         }
