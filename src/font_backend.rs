@@ -1,8 +1,8 @@
 use log::warn;
 use harfrust::{Direction, Feature, FontRef as HarfRustFontRef, ShaperData, Tag, UnicodeBuffer};
-use read_fonts::model::pen::ControlBoundsPen;
 use skrifa::attribute::{Attributes, Style};
 use skrifa::instance::{LocationRef, Size};
+use skrifa::outline::pen::ControlBoundsPen;
 use skrifa::outline::{DrawError, DrawSettings, OutlinePen};
 use skrifa::raw::TableProvider;
 use skrifa::{FontRef as SkrifaFontRef, GlyphId, MetadataProvider};
