@@ -583,8 +583,8 @@ mod tests {
                 0x44 as f32 / 255.0
             ]
         );
-        assert_eq!(shadow[0].position[0] - glyphs[0].fill[0].position[0], 0.5);
-        assert_eq!(shadow[0].position[1] - glyphs[0].fill[0].position[1], 1.0);
+        assert_eq!(shadow[0].position[0] - glyphs[0].fill[0].position[0], 0.25);
+        assert_eq!(shadow[0].position[1] - glyphs[0].fill[0].position[1], 0.5);
         assert!(shadow[0].gamma > glyphs[0].fill[0].gamma);
         assert_eq!(spans.len(), 1);
         assert_eq!(spans[0].segment_id, SegmentId::Lite(7));

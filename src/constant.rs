@@ -6,8 +6,3 @@ pub const CUTOFF: f32 = 0.25;
 pub const TEXTURE_SIZE: u32 = 2048;
 // 112 is just a magic number, may should be replaced by more reasonable algorithm
 pub const ASCENT: f32 = 112.;
-pub const GAMMA_COEFFICIENT: f32 = 0.06;
-
-// viewport_size: (width, height)
-pub const VIEWPORT_WIDTH: f32 = 1.;
-pub const VIEWPORT_HEIGHT: f32 = 1.;

@@ -19,8 +19,8 @@ pub fn stroke_default() -> StrokeStyle {
 
 pub fn shadow_default() -> ShadowStyle {
     ShadowStyle {
-        shadow_offset_x: 1.0,
-        shadow_offset_y: 1.0,
+        shadow_offset_x: 2.0,
+        shadow_offset_y: 2.0,
         shadow_blur: 0.0,
         shadow_width: 0.4,
         shadow_color: Color::new(1.0, 0.25, 0.6, 1.0),

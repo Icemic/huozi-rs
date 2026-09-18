@@ -7,7 +7,7 @@ use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text_model::{RichTextLayerKind, RichTextPaint, TextStyle as TiqianTextStyle};
 
 use crate::Huozi;
-use crate::constant::{FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
+use crate::constant::{FONT_SIZE, GRID_SIZE, RADIUS};
 use crate::glyph_vertices::GlyphVertices;
 use crate::huozi::Glyph;
 use crate::parser::SegmentId;
@@ -319,7 +319,7 @@ fn glyph_vertices_for_glyph(
         ColorSpace::SRGB => 0.735357,
     };
     let fill_buffer = 2.0;
-    let gamma = GAMMA_COEFFICIENT * 0.6 / 2.0 / scale_ratio;
+    let threshold_per_logical_pixel = x_scale / (RADIUS * scale_ratio);
     let fill = quad_vertices(
         quad_left,
         quad_top,
@@ -328,16 +328,11 @@ fn glyph_vertices_for_glyph(
         atlas_glyph,
         buffer,
         fill_buffer,
-        gamma,
+        0.0,
         fill_color,
     );
     let stroke = stroke_paint.map(|(argb, width)| {
-        let base_buffer = match color_space {
-            ColorSpace::Linear => 0.448,
-            ColorSpace::SRGB => 0.7,
-        };
-        let stroke_buffer =
-            (base_buffer - GAMMA_COEFFICIENT * width / 2.0 / scale_ratio * x_scale).max(gamma);
+        let stroke_buffer = buffer - width * threshold_per_logical_pixel;
         quad_vertices(
             quad_left,
             quad_top,
@@ -346,32 +341,21 @@ fn glyph_vertices_for_glyph(
             atlas_glyph,
             stroke_buffer,
             buffer,
-            gamma,
+            0.0,
             argb_color(argb, color_space),
         )
     });
     let shadow = shadow_paint.map(|(argb, offset_x, offset_y, blur, spread)| {
-        let base_buffer = match color_space {
-            ColorSpace::Linear => 0.448,
-            ColorSpace::SRGB => 0.7,
-        };
-        let shadow_gamma = GAMMA_COEFFICIENT * blur / 2.0 / (scale_ratio * 2.0) * x_scale;
-        let shadow_buffer = (base_buffer
-            - GAMMA_COEFFICIENT * spread / 2.0 / scale_ratio * x_scale)
-            .max(shadow_gamma);
-        let shadow_fill_buffer = if fill_color[3] > 0.0 {
-            fill_buffer
-        } else {
-            buffer
-        };
+        let shadow_buffer = buffer - spread * threshold_per_logical_pixel;
+        let shadow_gamma = blur * threshold_per_logical_pixel;
         quad_vertices(
-            quad_left + offset_x / VIEWPORT_WIDTH * 2.0,
-            quad_top + offset_y / VIEWPORT_HEIGHT * 2.0,
+            quad_left + offset_x,
+            quad_top + offset_y,
             quad_width,
             quad_height,
             atlas_glyph,
             shadow_buffer,
-            shadow_fill_buffer,
+            fill_buffer,
             shadow_gamma,
             argb_color(argb, color_space),
         )
