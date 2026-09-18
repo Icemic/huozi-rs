@@ -347,6 +347,7 @@ impl Huozi {
 mod tests {
     use super::*;
     use crate::FontSource;
+    use crate::constant::CUTOFF;
     use crate::layout::tiqian_input::HuoziTiqianInputAdapter;
     use crate::layout::tiqian_output::HuoziTiqianOutputAdapter;
     use crate::layout::{ColorSpace, LayoutStyle};
@@ -553,7 +554,7 @@ mod tests {
                 0x78 as f32 / 255.0
             ]
         );
-        assert_eq!(glyphs[0].fill[0].buffer, 0.735357);
+        assert_eq!(glyphs[0].fill[0].buffer, 1. - CUTOFF);
         assert_eq!(glyphs[0].fill[0].fill_buffer, 2.0);
         assert!(glyphs[0].fill.iter().all(|vertex| vertex.page >= 0));
         assert!(glyphs[0].fill.iter().all(|vertex| {
@@ -572,7 +573,7 @@ mod tests {
                 0xf0 as f32 / 255.0
             ]
         );
-        assert_eq!(stroke[0].fill_buffer, 0.735357);
+        assert_eq!(stroke[0].fill_buffer, 1. - CUTOFF);
         let shadow = glyphs[0].shadow.unwrap();
         assert_eq!(
             shadow[0].color,

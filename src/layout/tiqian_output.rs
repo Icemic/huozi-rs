@@ -7,7 +7,7 @@ use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text_model::{RichTextLayerKind, RichTextPaint, TextStyle as TiqianTextStyle};
 
 use crate::Huozi;
-use crate::constant::{FONT_SIZE, GRID_SIZE, RADIUS};
+use crate::constant::{CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS};
 use crate::glyph_vertices::GlyphVertices;
 use crate::huozi::Glyph;
 use crate::parser::SegmentId;
@@ -314,10 +314,7 @@ fn glyph_vertices_for_glyph(
     let fill_color = fill_paint
         .map(|argb| argb_color(argb, color_space))
         .unwrap_or_else(|| argb_color(0xFF1E_1E23_u32 as i32, color_space));
-    let buffer = match color_space {
-        ColorSpace::Linear => 0.5,
-        ColorSpace::SRGB => 0.735357,
-    };
+    let buffer = 1. - CUTOFF;
     let fill_buffer = 2.0;
     let threshold_per_logical_pixel = x_scale / (RADIUS * scale_ratio);
     let fill = quad_vertices(
