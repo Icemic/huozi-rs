@@ -267,15 +267,19 @@ fn glyph_vertices_for_glyph(
     let bitmap_height = atlas_glyph.metrics.height as f32 / y_scale;
     let scale_ratio = style.font_size / FONT_SIZE as f32;
     let quad_left = origin_x
-        - (GRID_SIZE as f32 * atlas_glyph.grid_count as f32 / 2.0 / x_scale
+        - (GRID_SIZE as f32 * atlas_glyph.grid_width as f32 / 2.0 / x_scale
             - bitmap_width / 2.0
             - atlas_glyph.metrics.x_min)
             * scale_ratio;
     let quad_top = origin_y
-        - (GRID_SIZE as f32 / 2.0 / y_scale - bitmap_height / 2.0 + atlas_glyph.metrics.y_max)
+        - (GRID_SIZE as f32 * atlas_glyph.grid_height as f32 / 2.0 / y_scale
+            - bitmap_height / 2.0
+            + atlas_glyph.metrics.y_max)
             * scale_ratio;
-    let quad_width = GRID_SIZE as f32 * atlas_glyph.grid_count as f32 * scale_ratio / x_scale;
-    let quad_height = GRID_SIZE as f32 * scale_ratio / y_scale;
+    let quad_width =
+        GRID_SIZE as f32 * atlas_glyph.grid_width as f32 * scale_ratio / x_scale;
+    let quad_height =
+        GRID_SIZE as f32 * atlas_glyph.grid_height as f32 * scale_ratio / y_scale;
     let fill_paint = paints.iter().find_map(|paint| match paint {
         RichTextPaint::Fill { argb } => Some(*argb),
         _ => None,

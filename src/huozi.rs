@@ -12,6 +12,8 @@ use tiqian::core::font_face::FontFaceId;
 
 pub use crate::layout::ColorSpace;
 
+const ATLAS_PAGE_COUNT: u32 = 4;
+
 #[derive(Debug, Clone, Default)]
 pub struct Glyph {
     pub ch: char,
@@ -20,7 +22,8 @@ pub struct Glyph {
     pub metrics: GlyphMetrics,
     pub page: i32,
     pub index: u32,
-    pub grid_count: u32,
+    pub grid_width: u32,
+    pub grid_height: u32,
     pub u_min: f32,
     pub u_max: f32,
     pub v_min: f32,
@@ -80,7 +83,7 @@ pub struct Huozi {
     texture: TextureAtlas,
     cache: lru::LruCache<AtlasKey, Glyph>,
     fallback_glyph_ids: LruCache<AtlasKey, u32>,
-    next_grid_index: u32,
+    occupied_grid_rows: Vec<u32>,
     /// increase this flag when the cache is changed
     image_version: u64,
 }
@@ -110,10 +113,12 @@ impl Huozi {
 
         let texture = TextureAtlas::new(TEXTURE_SIZE, TEXTURE_SIZE);
 
-        let tiny_sdf = TinySDF::new(GRID_SIZE as u32, BUFFER as u32, RADIUS, CUTOFF);
+        let tiny_sdf = TinySDF::new(BUFFER as u32, RADIUS, CUTOFF);
 
+        let grid_line_count = TEXTURE_SIZE / GRID_SIZE as u32;
+        assert!(grid_line_count <= u32::BITS);
         let cache_capacity =
-            NonZeroUsize::new((TEXTURE_SIZE / GRID_SIZE as u32).pow(2) as usize * 4).unwrap();
+            NonZeroUsize::new((grid_line_count * grid_line_count) as usize * 4).unwrap();
         let cache = LruCache::new(cache_capacity);
 
         Ok(Self {
@@ -123,7 +128,7 @@ impl Huozi {
             texture,
             cache,
             fallback_glyph_ids: LruCache::new(cache_capacity),
-            next_grid_index: 0,
+            occupied_grid_rows: vec![0; (grid_line_count * ATLAS_PAGE_COUNT) as usize],
             image_version: 0,
         })
     }
@@ -198,14 +203,11 @@ impl Huozi {
             y_max: bitmap.y_max,
             ..Default::default()
         };
-        let grid_count = if bitmap.width as f64 > FONT_SIZE {
-            ((bitmap.width as f64) / FONT_SIZE + 0.5) as u32
-        } else {
-            1
-        };
+        let grid_width = (bitmap.width + 2 * BUFFER as u32).div_ceil(GRID_SIZE as u32).max(1);
+        let grid_height = (bitmap.height + 2 * BUFFER as u32).div_ceil(GRID_SIZE as u32).max(1);
         let (bitmap, width, height) = self
             .tiny_sdf
-            .calculate(&bitmap.alpha, bitmap.width, bitmap.height, grid_count);
+            .calculate(&bitmap.alpha, bitmap.width, bitmap.height);
         let glyph = Glyph {
             ch: '\0',
             font_face: Some(face.clone()),
@@ -213,7 +215,8 @@ impl Huozi {
             metrics,
             page: 0,
             index: 0,
-            grid_count: 0,
+            grid_width: 0,
+            grid_height: 0,
             u_min: 0.0,
             u_max: 0.0,
             v_min: 0.0,
@@ -221,32 +224,34 @@ impl Huozi {
         };
         let grid_size = GRID_SIZE as i32;
         let line_count = self.texture.width() as i32 / grid_size;
-        let (page, index_in_page, overwrite) =
-            if let Some((_, expired_glyph)) = self.cache.push(key.clone(), glyph) {
-                (expired_glyph.page, expired_glyph.index, true)
-            } else {
-                let page = self.next_grid_index as i32 / (line_count * line_count);
-                let index_in_page = self.next_grid_index as i32 % (line_count * line_count);
-                self.next_grid_index += grid_count;
-                (page, index_in_page as u32, false)
-            };
+        let (page, index_in_page) = loop {
+            if let Some(grid_rect) = self.reserve_grid_rect(grid_width, grid_height) {
+                break grid_rect;
+            }
+            let (_, expired_glyph) = self
+                .cache
+                .pop_lru()
+                .expect("SDF atlas has no cached glyph available for eviction");
+            self.release_grid_rect(&expired_glyph);
+        };
+        if let Some((_, expired_glyph)) = self.cache.push(key.clone(), glyph) {
+            self.release_grid_rect(&expired_glyph);
+        }
         let grid_x = grid_size * (index_in_page as i32 % line_count);
         let grid_y = grid_size * (index_in_page as i32 / line_count);
-        if overwrite {
-            self.texture.clear_channel_rect(page as usize, grid_x, grid_y, grid_size, grid_size);
-        }
         let offset_x =
-            grid_x + ((GRID_SIZE * grid_count as f64) / 2.0 - width as f64 / 2.0).ceil() as i32;
-        let offset_y = grid_y + (GRID_SIZE / 2.0 - height as f64 / 2.0).ceil() as i32;
+            grid_x + ((GRID_SIZE * grid_width as f64) / 2.0 - width as f64 / 2.0).ceil() as i32;
+        let offset_y =
+            grid_y + ((GRID_SIZE * grid_height as f64) / 2.0 - height as f64 / 2.0).ceil() as i32;
         let source_x_start = (grid_x - offset_x).max(0) as usize;
-        let source_x_end = (grid_x + grid_size * grid_count as i32 - offset_x)
+        let source_x_end = (grid_x + grid_size * grid_width as i32 - offset_x)
             .min(width as i32)
             .max(0) as usize;
         let texture_width = self.texture.width as usize;
         let channel = page as usize;
         for (source_y, row) in bitmap.chunks_exact(width as usize).enumerate() {
             let y = source_y as i32 + offset_y;
-            if y <= grid_y || y >= grid_y + grid_size {
+            if y < grid_y || y >= grid_y + grid_size * grid_height as i32 {
                 continue;
             }
             let x = offset_x + source_x_start as i32;
@@ -259,12 +264,13 @@ impl Huozi {
         let texture_width = self.texture.width as f32;
         let glyph = self.cache.get_mut(&key).unwrap();
         glyph.page = page;
-        glyph.index = index_in_page;
-        glyph.grid_count = grid_count;
+        glyph.index = index_in_page as u32;
+        glyph.grid_width = grid_width;
+        glyph.grid_height = grid_height;
         glyph.u_min = grid_x as f32 / texture_width;
         glyph.v_min = grid_y as f32 / texture_width;
-        glyph.u_max = (grid_x + grid_size * grid_count as i32) as f32 / texture_width;
-        glyph.v_max = (grid_y + grid_size) as f32 / texture_width;
+        glyph.u_max = (grid_x + grid_size * grid_width as i32) as f32 / texture_width;
+        glyph.v_max = (grid_y + grid_size * grid_height as i32) as f32 / texture_width;
         let glyph = glyph.clone();
         self.image_version += 1;
         glyph
@@ -278,6 +284,57 @@ impl Huozi {
         let glyph = self.get_glyph_by_id(face, 0);
         self.fallback_glyph_ids.put(requested_key, 0);
         glyph
+    }
+
+    fn reserve_grid_rect(&mut self, width: u32, height: u32) -> Option<(i32, i32)> {
+        let line_count = self.texture.width() / GRID_SIZE as u32;
+        assert!(
+            width <= line_count && height <= line_count && line_count <= u32::BITS,
+            "glyph SDF exceeds atlas dimensions"
+        );
+        let available_columns = u32::MAX >> (u32::BITS - line_count);
+        let grid_mask = (u32::MAX >> (u32::BITS - width)) as u32;
+        for page in 0..ATLAS_PAGE_COUNT {
+            for y in 0..=line_count - height {
+                let row_index = (page * line_count + y) as usize;
+                let occupied_columns = self.occupied_grid_rows[row_index..row_index + height as usize]
+                    .iter()
+                    .fold(0, |occupied, row| occupied | row);
+                let available = !occupied_columns & available_columns;
+                let mut starts = available;
+                for offset in 1..width {
+                    starts &= available >> offset;
+                }
+                if starts != 0 {
+                    let x = starts.trailing_zeros();
+                    let occupied = grid_mask << x;
+                    for row in &mut self.occupied_grid_rows[row_index..row_index + height as usize] {
+                        *row |= occupied;
+                    }
+                    return Some((page as i32, (y * line_count + x) as i32));
+                }
+            }
+        }
+        None
+    }
+
+    fn release_grid_rect(&mut self, glyph: &Glyph) {
+        let line_count = self.texture.width() / GRID_SIZE as u32;
+        let page = glyph.page as u32;
+        let grid_x = glyph.index % line_count;
+        let grid_y = glyph.index / line_count;
+        let occupied = (u32::MAX >> (u32::BITS - glyph.grid_width)) << grid_x;
+        let row_index = (page * line_count + grid_y) as usize;
+        for row in &mut self.occupied_grid_rows[row_index..row_index + glyph.grid_height as usize] {
+            *row &= !occupied;
+        }
+        self.texture.clear_channel_rect(
+            glyph.page as usize,
+            (grid_x * GRID_SIZE as u32) as i32,
+            (grid_y * GRID_SIZE as u32) as i32,
+            (glyph.grid_width * GRID_SIZE as u32) as i32,
+            (glyph.grid_height * GRID_SIZE as u32) as i32,
+        );
     }
 
     pub fn image_version(&self) -> u64 {
@@ -296,7 +353,7 @@ mod tests {
     use crate::layout::tiqian_output::HuoziTiqianOutputAdapter;
     use crate::layout::{ColorSpace, LayoutStyle};
     use crate::parser::{
-        ScalarOffset as HuoziScalarOffset, SegmentId, ShadowStyle, SourceRange, StrokeStyle,
+        ScalarOffset as HuoziScalarOffset, Segment, SegmentId, ShadowStyle, SourceRange, StrokeStyle,
         TextRun, TextSpan, TextStyle as HuoziTextStyle,
     };
     use crate::FontSource;
@@ -314,6 +371,27 @@ mod tests {
         let result = Huozi::new(vec![FontSource::new(vec![0])]);
 
         assert!(matches!(result, Err(HuoziError::NoValidFontFaces { .. })));
+    }
+
+    #[test]
+    fn grid_rect_reservation_reuses_a_released_multi_row_region() {
+        let font = include_bytes!("../examples/assets/FiraCode-VF.ttf");
+        let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
+
+        let first = huozi.reserve_grid_rect(2, 2).unwrap();
+        let second = huozi.reserve_grid_rect(2, 2).unwrap();
+        assert_eq!(first, (0, 0));
+        assert_eq!(second, (0, 2));
+
+        huozi.release_grid_rect(&Glyph {
+            page: first.0,
+            index: first.1 as u32,
+            grid_width: 2,
+            grid_height: 2,
+            ..Glyph::default()
+        });
+
+        assert_eq!(huozi.reserve_grid_rect(2, 2), Some(first));
     }
 
     #[test]
@@ -344,6 +422,26 @@ mod tests {
         assert_eq!(cached_first.font_face.as_ref(), Some(&first_face));
         assert_eq!(cached_second.font_face.as_ref(), Some(&second_face));
         assert_eq!(huozi.image_version(), image_version);
+    }
+
+    #[test]
+    fn fira_code_long_ligature_uses_a_multi_grid_sdf_region() {
+        let font = include_bytes!("../examples/assets/FiraCode-VF.ttf");
+        let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
+        let style = HuoziTextStyle::default();
+        let (vertices, _, _, _) = huozi
+            .layout_parse(
+                &vec![Segment::dummy("!==")],
+                &LayoutStyle::default(),
+                &style,
+                ColorSpace::SRGB,
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(vertices.len(), 1);
+        let texture_width = vertices[0].fill[3].tex_coords[0] - vertices[0].fill[0].tex_coords[0];
+        assert!(texture_width > GRID_SIZE as f32 / TEXTURE_SIZE as f32);
     }
 
     #[test]

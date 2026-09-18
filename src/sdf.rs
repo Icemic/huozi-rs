@@ -12,28 +12,19 @@ pub struct TinySDF {
     f: Vec<f64>,
     z: Vec<f64>,
     v: Vec<u16>,
-    grid_size: u32,
     buffer: u32,
     radius: f64,
     cutoff: f64,
 }
 
 impl TinySDF {
-    pub fn new(grid_size: u32, buffer: u32, radius: f64, cutoff: f64) -> Self {
-        let grid_outer = vec![0.; (grid_size * grid_size) as usize];
-        let grid_inner = vec![0.; (grid_size * grid_size) as usize];
-        // multiply by 3 for glyph that larger than 1 grid
-        // 3 is just a magic number here, should be enough for most cases
-        let f = vec![0.; grid_size as usize * 3];
-        let z = vec![0.; grid_size as usize * 3 + 1];
-        let v = vec![0; grid_size as usize * 3];
+    pub fn new(buffer: u32, radius: f64, cutoff: f64) -> Self {
         Self {
-            grid_outer,
-            grid_inner,
-            f,
-            z,
-            v,
-            grid_size,
+            grid_outer: Vec::new(),
+            grid_inner: Vec::new(),
+            f: Vec::new(),
+            z: Vec::new(),
+            v: Vec::new(),
             buffer,
             radius,
             cutoff,
@@ -44,14 +35,18 @@ impl TinySDF {
         bitmap: &Vec<u8>,
         glyph_width: u32,
         glyph_height: u32,
-        grid_count: u32,
     ) -> (Vec<u8>, u32, u32) {
-        // Initialize grids outside the glyph range to alpha 0
-        self.grid_outer.fill(INF);
-        self.grid_inner.fill(0.);
-
-        let width = (glyph_width + 2 * self.buffer).min(self.grid_size * grid_count);
-        let height = (glyph_height + 2 * self.buffer).min(self.grid_size);
+        let width = glyph_width + 2 * self.buffer;
+        let height = glyph_height + 2 * self.buffer;
+        let grid_length = (width * height) as usize;
+        self.grid_outer.resize(grid_length, INF);
+        self.grid_inner.resize(grid_length, 0.);
+        self.grid_outer[..grid_length].fill(INF);
+        self.grid_inner[..grid_length].fill(0.);
+        let working_length = width.max(height) as usize;
+        self.f.resize(working_length, 0.);
+        self.z.resize(working_length + 1, 0.);
+        self.v.resize(working_length, 0);
 
         for y in 0..glyph_height {
             for x in 0..glyph_width {
@@ -100,7 +95,7 @@ impl TinySDF {
         );
 
         // Prevent INF zone from rupturing in interpolation
-        for val in self.grid_outer.iter_mut() {
+        for val in self.grid_outer[..grid_length].iter_mut() {
             if *val == INF {
                 *val = self.radius * self.radius;
             }
