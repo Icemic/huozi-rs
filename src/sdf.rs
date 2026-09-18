@@ -6,114 +6,89 @@
 
 const INF: f64 = 1e20;
 
-pub struct TinySDF {
-    grid_outer: Vec<f64>,
-    grid_inner: Vec<f64>,
-    f: Vec<f64>,
-    z: Vec<f64>,
-    v: Vec<u16>,
+pub fn calculate_sdf(
+    bitmap: &[u8],
+    glyph_width: u32,
+    glyph_height: u32,
     buffer: u32,
     radius: f64,
     cutoff: f64,
-}
+) -> (Vec<u8>, u32, u32) {
+    let width = glyph_width + 2 * buffer;
+    let height = glyph_height + 2 * buffer;
+    let grid_length = (width * height) as usize;
+    let mut grid_outer = vec![INF; grid_length];
+    let mut grid_inner = vec![0.; grid_length];
+    let working_length = width.max(height) as usize;
+    let mut f = vec![0.; working_length];
+    let mut z = vec![0.; working_length + 1];
+    let mut v = vec![0; working_length];
 
-impl TinySDF {
-    pub fn new(buffer: u32, radius: f64, cutoff: f64) -> Self {
-        Self {
-            grid_outer: Vec::new(),
-            grid_inner: Vec::new(),
-            f: Vec::new(),
-            z: Vec::new(),
-            v: Vec::new(),
-            buffer,
-            radius,
-            cutoff,
-        }
-    }
-    pub fn calculate(
-        &mut self,
-        bitmap: &Vec<u8>,
-        glyph_width: u32,
-        glyph_height: u32,
-    ) -> (Vec<u8>, u32, u32) {
-        let width = glyph_width + 2 * self.buffer;
-        let height = glyph_height + 2 * self.buffer;
-        let grid_length = (width * height) as usize;
-        self.grid_outer.resize(grid_length, INF);
-        self.grid_inner.resize(grid_length, 0.);
-        self.grid_outer[..grid_length].fill(INF);
-        self.grid_inner[..grid_length].fill(0.);
-        let working_length = width.max(height) as usize;
-        self.f.resize(working_length, 0.);
-        self.z.resize(working_length + 1, 0.);
-        self.v.resize(working_length, 0);
+    for y in 0..glyph_height {
+        for x in 0..glyph_width {
+            let a = bitmap[(y * glyph_width + x) as usize]; // alpha value
+            if a == 0 {
+                // empty pixels
+                continue;
+            }
 
-        for y in 0..glyph_height {
-            for x in 0..glyph_width {
-                let a = bitmap[(y * glyph_width + x) as usize]; // alpha value
-                if a == 0 {
-                    // empty pixels
-                    continue;
-                }
+            let j = ((y + buffer) * width + x + buffer) as usize;
 
-                let j = ((y + self.buffer) * width + x + self.buffer) as usize;
-
-                if a == 255 {
-                    // fully drawn pixels
-                    self.grid_outer[j] = 0.;
-                    self.grid_inner[j] = INF;
-                } else {
-                    // aliased pixels
-                    let d = 0.5 - a as f64 / 255.;
-                    self.grid_outer[j] = if d > 0. { d * d } else { 0. };
-                    self.grid_inner[j] = if d < 0. { d * d } else { 0. };
-                }
+            if a == 255 {
+                // fully drawn pixels
+                grid_outer[j] = 0.;
+                grid_inner[j] = INF;
+            } else {
+                // aliased pixels
+                let d = 0.5 - a as f64 / 255.;
+                grid_outer[j] = if d > 0. { d * d } else { 0. };
+                grid_inner[j] = if d < 0. { d * d } else { 0. };
             }
         }
-
-        edt(
-            &mut self.grid_outer,
-            0,
-            0,
-            width,
-            height,
-            width,
-            &mut self.f,
-            &mut self.v,
-            &mut self.z,
-        );
-        edt(
-            &mut self.grid_inner,
-            self.buffer,
-            self.buffer,
-            glyph_width,
-            glyph_height,
-            width,
-            &mut self.f,
-            &mut self.v,
-            &mut self.z,
-        );
-
-        // Prevent INF zone from rupturing in interpolation
-        for val in self.grid_outer[..grid_length].iter_mut() {
-            if *val == INF {
-                *val = self.radius * self.radius;
-            }
-        }
-
-        let len = (width * height) as usize;
-
-        let mut data = vec![0; len];
-
-        for i in 0..len {
-            let d = self.grid_outer[i].sqrt() - self.grid_inner[i].sqrt();
-            data[i] = (255. - 255. * (d / self.radius + self.cutoff))
-                .round()
-                .clamp(0., 255.) as u8;
-        }
-
-        (data, width, height)
     }
+
+    edt(
+        &mut grid_outer,
+        0,
+        0,
+        width,
+        height,
+        width,
+        &mut f,
+        &mut v,
+        &mut z,
+    );
+    edt(
+        &mut grid_inner,
+        buffer,
+        buffer,
+        glyph_width,
+        glyph_height,
+        width,
+        &mut f,
+        &mut v,
+        &mut z,
+    );
+
+    // Prevent INF zone from rupturing in interpolation
+    for val in grid_outer.iter_mut() {
+        if *val == INF {
+            *val = radius * radius;
+        }
+    }
+
+    let len = (width * height) as usize;
+
+    let mut data = vec![0; len];
+
+    for i in 0..len {
+        let d = grid_outer[i].sqrt() - grid_inner[i].sqrt();
+        data[i] = (255. - 255. * (d / radius + cutoff))
+            .round()
+            .clamp(0., 255.) as u8;
+    }
+
+    (data, width, height)
 }
 
 // 2D Euclidean squared distance transform by Felzenszwalb & Huttenlocher https://cs.brown.edu/~pff/papers/dt-final.pdf

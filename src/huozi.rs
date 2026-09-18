@@ -9,7 +9,7 @@ use crate::constant::{BUFFER, CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS, TEXTURE_SIZE
 use crate::font_backend::{FontSource, HuoziFontManager};
 use crate::glyph_metrics::GlyphMetrics;
 use crate::glyph_rasterizer::{GlyphBitmap, rasterize_outline};
-use crate::sdf::TinySDF;
+use crate::sdf::calculate_sdf;
 use tiqian::core::font_face::FontFaceId;
 
 pub use crate::layout::ColorSpace;
@@ -81,7 +81,6 @@ impl TextureAtlas {
 pub struct Huozi {
     pub(crate) font_manager: HuoziFontManager,
     pub(crate) layout_engine: ParagraphLayoutEngine,
-    tiny_sdf: TinySDF,
     texture: TextureAtlas,
     cache: lru::LruCache<AtlasKey, Glyph>,
     fallback_glyph_ids: LruCache<AtlasKey, u32>,
@@ -116,8 +115,6 @@ impl Huozi {
 
         let texture = TextureAtlas::new(TEXTURE_SIZE, TEXTURE_SIZE);
 
-        let tiny_sdf = TinySDF::new(BUFFER as u32, RADIUS, CUTOFF);
-
         let grid_line_count = TEXTURE_SIZE / GRID_SIZE as u32;
         assert!(grid_line_count <= u32::BITS);
         let cache_capacity =
@@ -127,7 +124,6 @@ impl Huozi {
         Ok(Self {
             font_manager,
             layout_engine,
-            tiny_sdf,
             texture,
             cache,
             fallback_glyph_ids: LruCache::new(cache_capacity),
@@ -210,9 +206,14 @@ impl Huozi {
         let grid_height = (bitmap.height + 2 * BUFFER as u32)
             .div_ceil(GRID_SIZE as u32)
             .max(1);
-        let (bitmap, width, height) =
-            self.tiny_sdf
-                .calculate(&bitmap.alpha, bitmap.width, bitmap.height);
+        let (bitmap, width, height) = calculate_sdf(
+            &bitmap.alpha,
+            bitmap.width,
+            bitmap.height,
+            BUFFER as u32,
+            RADIUS,
+            CUTOFF,
+        );
         let glyph = Glyph {
             ch: '\0',
             font_face: Some(face.clone()),
