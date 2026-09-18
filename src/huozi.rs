@@ -5,7 +5,7 @@ use tiqian::layout::paragraph_layout_engine::{
     ParagraphLayoutEngine, ParagraphLayoutEngineBuilder,
 };
 
-use crate::constant::{BUFFER, CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS, TEXTURE_SIZE};
+use crate::constant::{BUFFER, FONT_SIZE, GRID_SIZE, TEXTURE_SIZE};
 use crate::font_backend::{FontSource, HuoziFontManager};
 use crate::glyph_metrics::GlyphMetrics;
 use crate::glyph_rasterizer::{GlyphBitmap, rasterize_outline};
@@ -156,7 +156,7 @@ impl Huozi {
             return self.cache_fallback_glyph(face, key);
         }
 
-        let bitmap = match rasterize_outline(&self.font_manager, face, glyph_id, FONT_SIZE as f32) {
+        let bitmap = match rasterize_outline(&self.font_manager, face, glyph_id, FONT_SIZE) {
             Ok(Some(bitmap)) if !bitmap.alpha.is_empty() => bitmap,
             Ok(_) if glyph_id != 0 => {
                 warn!(
@@ -200,20 +200,13 @@ impl Huozi {
             y_max: bitmap.y_max,
             ..Default::default()
         };
-        let grid_width = (bitmap.width + 2 * BUFFER as u32)
+        let grid_width = (bitmap.width + 2 * BUFFER)
             .div_ceil(GRID_SIZE as u32)
             .max(1);
-        let grid_height = (bitmap.height + 2 * BUFFER as u32)
+        let grid_height = (bitmap.height + 2 * BUFFER)
             .div_ceil(GRID_SIZE as u32)
             .max(1);
-        let (bitmap, width, height) = calculate_sdf(
-            &bitmap.alpha,
-            bitmap.width,
-            bitmap.height,
-            BUFFER as u32,
-            RADIUS,
-            CUTOFF,
-        );
+        let (bitmap, width, height) = calculate_sdf(&bitmap.alpha, bitmap.width, bitmap.height);
         let glyph = Glyph {
             ch: '\0',
             font_face: Some(face.clone()),
@@ -246,9 +239,9 @@ impl Huozi {
         let grid_x = grid_size * (index_in_page % line_count);
         let grid_y = grid_size * (index_in_page / line_count);
         let offset_x =
-            grid_x + ((GRID_SIZE * grid_width as f64) / 2.0 - width as f64 / 2.0).ceil() as i32;
+            grid_x + ((GRID_SIZE * grid_width as f32) / 2.0 - width as f32 / 2.0).ceil() as i32;
         let offset_y =
-            grid_y + ((GRID_SIZE * grid_height as f64) / 2.0 - height as f64 / 2.0).ceil() as i32;
+            grid_y + ((GRID_SIZE * grid_height as f32) / 2.0 - height as f32 / 2.0).ceil() as i32;
         let source_x_start = (grid_x - offset_x).max(0) as usize;
         let source_x_end = (grid_x + grid_size * grid_width as i32 - offset_x)
             .min(width as i32)

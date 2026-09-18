@@ -281,18 +281,18 @@ fn glyph_vertices_for_glyph(
     let y_scale = atlas_glyph.metrics.y_scale.unwrap_or(1.0);
     let bitmap_width = atlas_glyph.metrics.width as f32 / x_scale;
     let bitmap_height = atlas_glyph.metrics.height as f32 / y_scale;
-    let scale_ratio = style.font_size / FONT_SIZE as f32;
+    let scale_ratio = style.font_size / FONT_SIZE;
     let quad_left = origin_x
-        - (GRID_SIZE as f32 * atlas_glyph.grid_width as f32 / 2.0 / x_scale
+        - (GRID_SIZE * atlas_glyph.grid_width as f32 / 2.0 / x_scale
             - bitmap_width / 2.0
             - atlas_glyph.metrics.x_min)
             * scale_ratio;
     let quad_top = origin_y
-        - (GRID_SIZE as f32 * atlas_glyph.grid_height as f32 / 2.0 / y_scale - bitmap_height / 2.0
+        - (GRID_SIZE * atlas_glyph.grid_height as f32 / 2.0 / y_scale - bitmap_height / 2.0
             + atlas_glyph.metrics.y_max)
             * scale_ratio;
-    let quad_width = GRID_SIZE as f32 * atlas_glyph.grid_width as f32 * scale_ratio / x_scale;
-    let quad_height = GRID_SIZE as f32 * atlas_glyph.grid_height as f32 * scale_ratio / y_scale;
+    let quad_width = GRID_SIZE * atlas_glyph.grid_width as f32 * scale_ratio / x_scale;
+    let quad_height = GRID_SIZE * atlas_glyph.grid_height as f32 * scale_ratio / y_scale;
     let fill_paint = paints.iter().find_map(|paint| match paint {
         RichTextPaint::Fill { argb } => Some(*argb),
         _ => None,
@@ -365,8 +365,8 @@ fn glyph_vertices_for_glyph(
             buffer
         };
         quad_vertices(
-            quad_left + offset_x / VIEWPORT_WIDTH as f32 * 2.0,
-            quad_top + offset_y / VIEWPORT_HEIGHT as f32 * 2.0,
+            quad_left + offset_x / VIEWPORT_WIDTH * 2.0,
+            quad_top + offset_y / VIEWPORT_HEIGHT * 2.0,
             quad_width,
             quad_height,
             atlas_glyph,

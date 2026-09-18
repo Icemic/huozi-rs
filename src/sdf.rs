@@ -1,21 +1,18 @@
+use crate::constant::{BUFFER, CUTOFF, RADIUS};
+
 /**
  * This implementation is ported from https://github.com/mapbox/tiny-sdf by Mapbox, which is licensed under the BSD 2-Clause license.
  * It's based directly on the algorithm published in the Felzenszwalb/Huttenlocher paper,
  * and is not a port of the existing C++ implementation provided by the paper's authors.
  */
 
-const INF: f64 = 1e20;
+const INF: f32 = 1e20;
 
-pub fn calculate_sdf(
-    bitmap: &[u8],
-    glyph_width: u32,
-    glyph_height: u32,
-    buffer: u32,
-    radius: f64,
-    cutoff: f64,
-) -> (Vec<u8>, u32, u32) {
-    let width = glyph_width + 2 * buffer;
-    let height = glyph_height + 2 * buffer;
+pub fn calculate_sdf(bitmap: &[u8], glyph_width: u32, glyph_height: u32) -> (Vec<u8>, u32, u32) {
+    let radius = RADIUS;
+    let cutoff = CUTOFF;
+    let width = glyph_width + 2 * BUFFER;
+    let height = glyph_height + 2 * BUFFER;
     let grid_length = (width * height) as usize;
     let mut grid_outer = vec![INF; grid_length];
     let mut grid_inner = vec![0.; grid_length];
@@ -32,7 +29,7 @@ pub fn calculate_sdf(
                 continue;
             }
 
-            let j = ((y + buffer) * width + x + buffer) as usize;
+            let j = ((y + BUFFER) * width + x + BUFFER) as usize;
 
             if a == 255 {
                 // fully drawn pixels
@@ -40,7 +37,7 @@ pub fn calculate_sdf(
                 grid_inner[j] = INF;
             } else {
                 // aliased pixels
-                let d = 0.5 - a as f64 / 255.;
+                let d = 0.5 - a as f32 / 255.;
                 grid_outer[j] = if d > 0. { d * d } else { 0. };
                 grid_inner[j] = if d < 0. { d * d } else { 0. };
             }
@@ -60,8 +57,8 @@ pub fn calculate_sdf(
     );
     edt(
         &mut grid_inner,
-        buffer,
-        buffer,
+        BUFFER,
+        BUFFER,
         glyph_width,
         glyph_height,
         width,
@@ -93,15 +90,15 @@ pub fn calculate_sdf(
 
 // 2D Euclidean squared distance transform by Felzenszwalb & Huttenlocher https://cs.brown.edu/~pff/papers/dt-final.pdf
 pub fn edt(
-    data: &mut [f64],
+    data: &mut [f32],
     x0: u32,
     y0: u32,
     width: u32,
     height: u32,
     grid_size: u32,
-    f: &mut [f64],
-    v: &mut Vec<u16>,
-    z: &mut [f64],
+    f: &mut [f32],
+    v: &mut [u16],
+    z: &mut [f32],
 ) {
     for x in x0..(x0 + width) {
         edt1d(
@@ -130,13 +127,13 @@ pub fn edt(
 
 // 1D squared distance transform
 pub fn edt1d(
-    grid: &mut [f64],
+    grid: &mut [f32],
     offset: usize,
     stride: usize,
     length: usize,
-    f: &mut [f64],
-    v: &mut Vec<u16>,
-    z: &mut [f64],
+    f: &mut [f32],
+    v: &mut [u16],
+    z: &mut [f32],
 ) {
     v[0] = 0;
     z[0] = -INF;
@@ -148,11 +145,11 @@ pub fn edt1d(
     for q in 1..length {
         f[q] = grid[offset + q * stride];
 
-        let q2 = (q * q) as f64;
+        let q2 = (q * q) as f32;
 
         loop {
             let r = v[k as usize] as usize;
-            s = (f[q] - f[r] + q2 - (r * r) as f64) / (q - r) as f64 / 2.;
+            s = (f[q] - f[r] + q2 - (r * r) as f32) / (q - r) as f32 / 2.;
             if s <= z[k as usize] {
                 k -= 1;
                 if k > -1 {
@@ -172,7 +169,7 @@ pub fn edt1d(
     let mut k = 0;
     for q in 0..length {
         loop {
-            if z[k + 1] < q as f64 {
+            if z[k + 1] < q as f32 {
                 k += 1;
                 continue;
             }
@@ -182,6 +179,6 @@ pub fn edt1d(
         let r = v[k];
         let qr = q as i16 - r as i16;
 
-        grid[offset + q * stride] = f[r as usize] + (qr * qr) as f64;
+        grid[offset + q * stride] = f[r as usize] + (qr * qr) as f32;
     }
 }
