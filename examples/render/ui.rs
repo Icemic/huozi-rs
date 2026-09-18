@@ -62,11 +62,14 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                     .show(ui, |ui| {
                                         let mut move_font = None;
                                         let mut remove_font = None;
-                                        egui::ScrollArea::vertical()
-                                            .max_height(58.0)
-                                            .show(ui, |ui| {
-                                                let last_index = state.font_fallbacks.len().saturating_sub(1);
-                                                for (index, font) in state.font_fallbacks.iter_mut().enumerate() {
+                                        egui::ScrollArea::vertical().max_height(58.0).show(
+                                            ui,
+                                            |ui| {
+                                                let last_index =
+                                                    state.font_fallbacks.len().saturating_sub(1);
+                                                for (index, font) in
+                                                    state.font_fallbacks.iter_mut().enumerate()
+                                                {
                                                     ui.horizontal(|ui| {
                                                         ui.add_sized(
                                                             [100.0, 18.0],
@@ -76,9 +79,17 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                                         if ui
                                                             .add_sized(
                                                                 [32.0, 18.0],
-                                                                egui::Button::new(if font.enabled { "On" } else { "Off" }),
+                                                                egui::Button::new(
+                                                                    if font.enabled {
+                                                                        "On"
+                                                                    } else {
+                                                                        "Off"
+                                                                    },
+                                                                ),
                                                             )
-                                                            .on_hover_text("Enable or disable this font")
+                                                            .on_hover_text(
+                                                                "Enable or disable this font",
+                                                            )
                                                             .clicked()
                                                         {
                                                             font.enabled = !font.enabled;
@@ -87,7 +98,9 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                                         if ui
                                                             .add_enabled(
                                                                 index > 0,
-                                                                egui::Button::new("↑").min_size(egui::vec2(18.0, 18.0)),
+                                                                egui::Button::new("↑").min_size(
+                                                                    egui::vec2(18.0, 18.0),
+                                                                ),
                                                             )
                                                             .clicked()
                                                         {
@@ -96,7 +109,9 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                                         if ui
                                                             .add_enabled(
                                                                 index < last_index,
-                                                                egui::Button::new("↓").min_size(egui::vec2(18.0, 18.0)),
+                                                                egui::Button::new("↓").min_size(
+                                                                    egui::vec2(18.0, 18.0),
+                                                                ),
                                                             )
                                                             .clicked()
                                                         {
@@ -104,7 +119,9 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                                         }
                                                         if ui
                                                             .add(
-                                                                egui::Button::new("×").min_size(egui::vec2(18.0, 18.0)),
+                                                                egui::Button::new("×").min_size(
+                                                                    egui::vec2(18.0, 18.0),
+                                                                ),
                                                             )
                                                             .on_hover_text("Remove")
                                                             .clicked()
@@ -113,7 +130,8 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                                         }
                                                     });
                                                 }
-                                            });
+                                            },
+                                        );
                                         if let Some((from, to)) = move_font {
                                             state.font_fallbacks.swap(from, to);
                                             font_fallbacks_changed = true;
@@ -150,7 +168,8 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                             if ui
                                                 .add_enabled(
                                                     state.font_to_add.is_some(),
-                                                    egui::Button::new("+").min_size(egui::vec2(18.0, 18.0)),
+                                                    egui::Button::new("+")
+                                                        .min_size(egui::vec2(18.0, 18.0)),
                                                 )
                                                 .clicked()
                                             {
@@ -204,7 +223,6 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                 .range(0.0..=200.0),
                         );
                         ui.end_row();
-
                     });
                     if font_fallbacks_changed {
                         state.huozi.take();

@@ -1,4 +1,4 @@
-use ab_glyph_rasterizer::{point, Rasterizer};
+use ab_glyph_rasterizer::{Rasterizer, point};
 use skrifa::outline::{DrawError, OutlinePen};
 use tiqian::core::font_face::FontFaceId;
 
@@ -188,15 +188,13 @@ mod tests {
     use tiqian::font::font_policy::FontRole;
     use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest};
 
-    const SOURCE_HAN_SANS: &[u8] =
-        include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+    const SOURCE_HAN_SANS: &[u8] = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
 
     #[test]
     fn bitmap_bounds_match_ink_bounds_in_baseline_coordinates() {
-        let manager = HuoziFontManager::from_sources(vec![FontSource::new(
-            SOURCE_HAN_SANS.to_vec(),
-        )])
-        .unwrap();
+        let manager =
+            HuoziFontManager::from_sources(vec![FontSource::new(SOURCE_HAN_SANS.to_vec())])
+                .unwrap();
         let text = Text::from("中");
         let shaped = manager.shape(&FontBackendRequest::new(
             text.clone(),

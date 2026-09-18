@@ -9,9 +9,11 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 
-use crate::glyph_vertices::GlyphVertices;
-use crate::parser::{parse, parse_with, to_spans, Segment, SourceRange, TextRun, TextSpan, TextStyle};
 use crate::Huozi;
+use crate::glyph_vertices::GlyphVertices;
+use crate::parser::{
+    Segment, SourceRange, TextRun, TextSpan, TextStyle, parse, parse_with, to_spans,
+};
 
 use self::tiqian_input::HuoziTiqianInputAdapter;
 use self::tiqian_output::HuoziTiqianOutputAdapter;
@@ -122,11 +124,8 @@ impl Huozi {
             .and_then(|span| span.runs.first())
             .map(|run| run.style.clone())
             .unwrap_or_default();
-        let input = HuoziTiqianInputAdapter::adapt(
-            text_spans.as_ref(),
-            layout_style,
-            &initial_text_style,
-        );
+        let input =
+            HuoziTiqianInputAdapter::adapt(text_spans.as_ref(), layout_style, &initial_text_style);
         let result = self.layout_engine.layout(input.layout_input);
         HuoziTiqianOutputAdapter::adapt(self, &result, &input.source_map, &color_space)
     }

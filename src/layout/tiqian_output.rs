@@ -6,13 +6,13 @@ use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::layout_queries::positioned_clusters;
 use tiqian::core::text_model::{RichTextLayerKind, RichTextPaint, TextStyle as TiqianTextStyle};
 
+use crate::Huozi;
 use crate::constant::{FONT_SIZE, GAMMA_COEFFICIENT, GRID_SIZE, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use crate::glyph_vertices::GlyphVertices;
 use crate::huozi::Glyph;
 use crate::parser::SegmentId;
-use crate::Huozi;
 
-use super::color_space::{get_color_value, ColorSpace};
+use super::color_space::{ColorSpace, get_color_value};
 use super::tiqian_input::HuoziSourceMap;
 use super::{SegmentGlyphSpan, Vertex};
 
@@ -61,7 +61,8 @@ impl HuoziTiqianOutputAdapter {
             if cluster.synthetic_kind.is_none()
                 && let Some(glyphs) = glyphs_by_cluster_range.get(&positioned.range)
             {
-                let segment_id = source_segment_id(source_map, positioned.range, &mut source_map_cursor);
+                let segment_id =
+                    source_segment_id(source_map, positioned.range, &mut source_map_cursor);
                 let style = text_style_for_range(result, positioned.range, &mut text_style_cursor);
                 let paints = text_paints_for_range(result, positioned.range, &mut rich_text_cursor);
 
@@ -112,7 +113,8 @@ impl HuoziTiqianOutputAdapter {
                 continue;
             }
             let hyphen_range = TextRange::new(line.range.end() - 1, line.range.end());
-            let hyphen_segment_id = source_segment_id(source_map, hyphen_range, &mut source_map_cursor);
+            let hyphen_segment_id =
+                source_segment_id(source_map, hyphen_range, &mut source_map_cursor);
             let style = text_style_for_range(result, hyphen_range, &mut text_style_cursor);
             let paints = text_paints_for_range(result, hyphen_range, &mut rich_text_cursor);
             for glyph in &line.hyphen_glyphs {
@@ -199,10 +201,15 @@ fn source_segment_id(
     {
         *cursor += 1;
     }
-    source_map.entries.get(*cursor).and_then(|entry| {
-        (entry.display_range.start() <= range.start() && entry.display_range.end() >= range.end())
+    source_map
+        .entries
+        .get(*cursor)
+        .and_then(|entry| {
+            (entry.display_range.start() <= range.start()
+                && entry.display_range.end() >= range.end())
             .then(|| entry.source_range.segment_id.clone())
-    }).flatten()
+        })
+        .flatten()
 }
 
 fn text_style_for_range<'a>(
@@ -219,9 +226,16 @@ fn text_style_for_range<'a>(
     {
         *cursor += 1;
     }
-    result.input.content.spans.get(*cursor).and_then(|span| {
-        (span.range.start() <= range.start() && span.range.end() >= range.end()).then_some(&span.style)
-    }).unwrap_or(&result.input.text_style)
+    result
+        .input
+        .content
+        .spans
+        .get(*cursor)
+        .and_then(|span| {
+            (span.range.start() <= range.start() && span.range.end() >= range.end())
+                .then_some(&span.style)
+        })
+        .unwrap_or(&result.input.text_style)
 }
 
 fn text_paints_for_range<'a>(
@@ -237,9 +251,11 @@ fn text_paints_for_range<'a>(
     {
         *cursor += 1;
     }
-    result.input.rich_text.get(*cursor).filter(|span| {
-        span.range.start() <= range.start() && span.range.end() >= range.end()
-    })
+    result
+        .input
+        .rich_text
+        .get(*cursor)
+        .filter(|span| span.range.start() <= range.start() && span.range.end() >= range.end())
         .and_then(|span| {
             span.layers
                 .iter()
@@ -272,14 +288,11 @@ fn glyph_vertices_for_glyph(
             - atlas_glyph.metrics.x_min)
             * scale_ratio;
     let quad_top = origin_y
-        - (GRID_SIZE as f32 * atlas_glyph.grid_height as f32 / 2.0 / y_scale
-            - bitmap_height / 2.0
+        - (GRID_SIZE as f32 * atlas_glyph.grid_height as f32 / 2.0 / y_scale - bitmap_height / 2.0
             + atlas_glyph.metrics.y_max)
             * scale_ratio;
-    let quad_width =
-        GRID_SIZE as f32 * atlas_glyph.grid_width as f32 * scale_ratio / x_scale;
-    let quad_height =
-        GRID_SIZE as f32 * atlas_glyph.grid_height as f32 * scale_ratio / y_scale;
+    let quad_width = GRID_SIZE as f32 * atlas_glyph.grid_width as f32 * scale_ratio / x_scale;
+    let quad_height = GRID_SIZE as f32 * atlas_glyph.grid_height as f32 * scale_ratio / y_scale;
     let fill_paint = paints.iter().find_map(|paint| match paint {
         RichTextPaint::Fill { argb } => Some(*argb),
         _ => None,
@@ -323,9 +336,8 @@ fn glyph_vertices_for_glyph(
             ColorSpace::Linear => 0.448,
             ColorSpace::SRGB => 0.7,
         };
-        let stroke_buffer = (base_buffer
-            - GAMMA_COEFFICIENT * width / 2.0 / scale_ratio * x_scale)
-            .max(gamma);
+        let stroke_buffer =
+            (base_buffer - GAMMA_COEFFICIENT * width / 2.0 / scale_ratio * x_scale).max(gamma);
         quad_vertices(
             quad_left,
             quad_top,
@@ -347,7 +359,11 @@ fn glyph_vertices_for_glyph(
         let shadow_buffer = (base_buffer
             - GAMMA_COEFFICIENT * spread / 2.0 / scale_ratio * x_scale)
             .max(shadow_gamma);
-        let shadow_fill_buffer = if fill_color[3] > 0.0 { fill_buffer } else { buffer };
+        let shadow_fill_buffer = if fill_color[3] > 0.0 {
+            fill_buffer
+        } else {
+            buffer
+        };
         quad_vertices(
             quad_left + offset_x / VIEWPORT_WIDTH as f32 * 2.0,
             quad_top + offset_y / VIEWPORT_HEIGHT as f32 * 2.0,
@@ -388,7 +404,17 @@ fn quad_vertices(
     color: [f32; 4],
 ) -> [Vertex; 4] {
     [
-        vertex(left, top, glyph.u_min, glyph.v_min, glyph.page, buffer, fill_buffer, gamma, color),
+        vertex(
+            left,
+            top,
+            glyph.u_min,
+            glyph.v_min,
+            glyph.page,
+            buffer,
+            fill_buffer,
+            gamma,
+            color,
+        ),
         vertex(
             left,
             top + height,

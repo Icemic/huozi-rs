@@ -161,7 +161,9 @@ fn parse_valid_f32(s: &str, name: &str) -> Result<f32, String> {
     }
 
     if value < 0.0 {
-        return Err(format!("invalid {name} `{s}`: expected a non-negative number"));
+        return Err(format!(
+            "invalid {name} `{s}`: expected a non-negative number"
+        ));
     }
 
     Ok(value)

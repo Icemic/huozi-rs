@@ -456,7 +456,10 @@ impl State {
 
             info!(
                 "load font fallbacks: {:?}",
-                enabled_fonts.iter().map(|font| &font.name).collect::<Vec<_>>()
+                enabled_fonts
+                    .iter()
+                    .map(|font| &font.name)
+                    .collect::<Vec<_>>()
             );
             // initialize huozi instance
             let t = SystemTime::now();
@@ -478,8 +481,8 @@ impl State {
                 SystemTime::now().duration_since(t).unwrap().as_millis()
             );
 
-            let huozi = huozi::Huozi::new(font_sources)
-                .expect("Failed to initialize Huozi font manager");
+            let huozi =
+                huozi::Huozi::new(font_sources).expect("Failed to initialize Huozi font manager");
             self.huozi = Some(huozi);
         }
 

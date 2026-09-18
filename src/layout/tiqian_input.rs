@@ -25,7 +25,9 @@ impl HuoziTiqianInputAdapter {
         let mut source_map_entries = Vec::new();
         let mut display_offset = 0_i32;
 
-        let max_width = layout_style.box_width.map_or(f32::INFINITY, |width| width as f32);
+        let max_width = layout_style
+            .box_width
+            .map_or(f32::INFINITY, |width| width as f32);
         let constraints = match layout_style.box_height {
             Some(max_height) => LayoutConstraints::with_max_height(max_width, max_height as f32),
             None => LayoutConstraints::with_defaults(max_width),
@@ -172,13 +174,34 @@ mod tests {
             input.source_map.entries[0].display_range,
             TextRange::new(ScalarOffset::new(0), ScalarOffset::new(1))
         );
-        assert_eq!(input.source_map.entries[1].display_range, TextRange::new(ScalarOffset::new(1), ScalarOffset::new(2)));
-        assert_eq!(input.source_map.entries[0].source_range.segment_id, Some(SegmentId::Lite(1)));
-        assert_eq!(input.source_map.entries[0].source_range.start, HuoziScalarOffset(3));
-        assert_eq!(input.source_map.entries[0].source_range.end, HuoziScalarOffset(4));
-        assert_eq!(input.source_map.entries[1].source_range.segment_id, Some(SegmentId::Lite(2)));
-        assert_eq!(input.source_map.entries[1].source_range.start, HuoziScalarOffset(5));
-        assert_eq!(input.source_map.entries[1].source_range.end, HuoziScalarOffset(6));
+        assert_eq!(
+            input.source_map.entries[1].display_range,
+            TextRange::new(ScalarOffset::new(1), ScalarOffset::new(2))
+        );
+        assert_eq!(
+            input.source_map.entries[0].source_range.segment_id,
+            Some(SegmentId::Lite(1))
+        );
+        assert_eq!(
+            input.source_map.entries[0].source_range.start,
+            HuoziScalarOffset(3)
+        );
+        assert_eq!(
+            input.source_map.entries[0].source_range.end,
+            HuoziScalarOffset(4)
+        );
+        assert_eq!(
+            input.source_map.entries[1].source_range.segment_id,
+            Some(SegmentId::Lite(2))
+        );
+        assert_eq!(
+            input.source_map.entries[1].source_range.start,
+            HuoziScalarOffset(5)
+        );
+        assert_eq!(
+            input.source_map.entries[1].source_range.end,
+            HuoziScalarOffset(6)
+        );
         assert_eq!(
             input.layout_input.rich_text[1].range,
             TextRange::new(ScalarOffset::new(1), ScalarOffset::new(2))
@@ -241,6 +264,9 @@ mod tests {
 
     #[test]
     fn converts_colors_to_argb() {
-        assert_eq!(color_to_argb(&Color::from_rgba8(0x12, 0x34, 0x56, 0x78)), 0x7812_3456_u32 as i32);
+        assert_eq!(
+            color_to_argb(&Color::from_rgba8(0x12, 0x34, 0x56, 0x78)),
+            0x7812_3456_u32 as i32
+        );
     }
 }

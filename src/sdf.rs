@@ -118,15 +118,15 @@ impl TinySDF {
 
 // 2D Euclidean squared distance transform by Felzenszwalb & Huttenlocher https://cs.brown.edu/~pff/papers/dt-final.pdf
 pub fn edt(
-    data: &mut Vec<f64>,
+    data: &mut [f64],
     x0: u32,
     y0: u32,
     width: u32,
     height: u32,
     grid_size: u32,
-    f: &mut Vec<f64>,
+    f: &mut [f64],
     v: &mut Vec<u16>,
-    z: &mut Vec<f64>,
+    z: &mut [f64],
 ) {
     for x in x0..(x0 + width) {
         edt1d(
@@ -155,13 +155,13 @@ pub fn edt(
 
 // 1D squared distance transform
 pub fn edt1d(
-    grid: &mut Vec<f64>,
+    grid: &mut [f64],
     offset: usize,
     stride: usize,
     length: usize,
-    f: &mut Vec<f64>,
+    f: &mut [f64],
     v: &mut Vec<u16>,
-    z: &mut Vec<f64>,
+    z: &mut [f64],
 ) {
     v[0] = 0;
     z[0] = -INF;

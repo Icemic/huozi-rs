@@ -2,8 +2,8 @@
 pub mod charsets;
 pub mod constant;
 pub mod font_backend;
-mod glyph_rasterizer;
 mod glyph_metrics;
+mod glyph_rasterizer;
 pub mod glyph_vertices;
 mod huozi;
 pub mod layout;

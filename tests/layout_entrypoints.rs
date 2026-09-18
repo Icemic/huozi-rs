@@ -51,4 +51,3 @@ fn layout_plain_does_not_draw_notdef_for_space() {
 
     assert_eq!(glyphs.len(), 2);
 }
-

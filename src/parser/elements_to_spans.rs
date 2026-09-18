@@ -27,7 +27,7 @@ pub(crate) fn to_spans(
                 current_style = next_style;
 
                 if is_span && !current_runs.is_empty() {
-                    let runs = current_runs.drain(..).collect();
+                    let runs = std::mem::take(&mut current_runs);
                     let span = TextSpan {
                         runs,
                         span_id: Some(SpanId::Lite(0)),
@@ -141,22 +141,21 @@ pub(crate) fn to_spans(
                         }
                     };
                 } else {
-                    if let Some(style_prefabs) = style_prefabs {
-                        if let Some(style_prefab) = style_prefabs.get(&tag) {
+                    if let Some(style_prefabs) = style_prefabs
+                        && let Some(style_prefab) = style_prefabs.get(&tag) {
                             stack.push((elements.clone(), current_style.clone(), false));
                             elements = Rc::new(RefCell::new(inner.into_iter()));
 
                             current_style = style_prefab.clone();
                             continue;
                         }
-                    }
 
                     if tag.as_str() != "span" && !tag.is_empty() {
                         log::warn!("unrecognized prefab tag `{}`, treated as normal span", tag);
                     }
 
                     if !current_runs.is_empty() {
-                        let runs = current_runs.drain(..).collect();
+                        let runs = std::mem::take(&mut current_runs);
                         let span = TextSpan {
                             runs,
                             span_id: Some(SpanId::Lite(0)),
@@ -172,7 +171,7 @@ pub(crate) fn to_spans(
     }
 
     if !current_runs.is_empty() {
-        let runs = current_runs.drain(..).collect();
+        let runs = std::mem::take(&mut current_runs);
         let span = TextSpan {
             runs,
             span_id: Some(SpanId::Lite(0)),
@@ -195,8 +194,7 @@ fn parse_str<T: FromStr + Clone>(str: &str, fallback: &T) -> T {
 }
 
 fn parse_str_optional<T: FromStr + Clone>(str: &str, fallback: Option<&T>) -> Option<T> {
-    str.parse::<T>()
-        .and_then(|v| Ok(Some(v)))
+    str.parse::<T>().map(|v| Some(v))
         .unwrap_or_else(|_| {
             log::warn!(
                 "cannot parse string value `{}` to type `{}`.",

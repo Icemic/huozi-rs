@@ -1,12 +1,14 @@
 use log::warn;
 use lru::LruCache;
 use std::num::NonZeroUsize;
-use tiqian::layout::paragraph_layout_engine::{ParagraphLayoutEngine, ParagraphLayoutEngineBuilder};
+use tiqian::layout::paragraph_layout_engine::{
+    ParagraphLayoutEngine, ParagraphLayoutEngineBuilder,
+};
 
 use crate::constant::{BUFFER, CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS, TEXTURE_SIZE};
 use crate::font_backend::{FontSource, HuoziFontManager};
-use crate::glyph_rasterizer::{rasterize_outline, GlyphBitmap};
 use crate::glyph_metrics::GlyphMetrics;
+use crate::glyph_rasterizer::{GlyphBitmap, rasterize_outline};
 use crate::sdf::TinySDF;
 use tiqian::core::font_face::FontFaceId;
 
@@ -109,7 +111,8 @@ impl Huozi {
     pub fn new(font_sources: Vec<FontSource>) -> Result<Self, HuoziError> {
         let font_manager = HuoziFontManager::from_sources(font_sources)
             .map_err(|detail| HuoziError::NoValidFontFaces { detail })?;
-        let layout_engine = ParagraphLayoutEngineBuilder::new(Box::new(font_manager.clone())).build();
+        let layout_engine =
+            ParagraphLayoutEngineBuilder::new(Box::new(font_manager.clone())).build();
 
         let texture = TextureAtlas::new(TEXTURE_SIZE, TEXTURE_SIZE);
 
@@ -153,9 +156,7 @@ impl Huozi {
         }
 
         if self.font_manager.has_color_glyph(face, glyph_id) {
-            warn!(
-                "color glyph {glyph_id} from {face} uses the same-face glyph 0 SDF fallback"
-            );
+            warn!("color glyph {glyph_id} from {face} uses the same-face glyph 0 SDF fallback");
             return self.cache_fallback_glyph(face, key);
         }
 
@@ -203,11 +204,15 @@ impl Huozi {
             y_max: bitmap.y_max,
             ..Default::default()
         };
-        let grid_width = (bitmap.width + 2 * BUFFER as u32).div_ceil(GRID_SIZE as u32).max(1);
-        let grid_height = (bitmap.height + 2 * BUFFER as u32).div_ceil(GRID_SIZE as u32).max(1);
-        let (bitmap, width, height) = self
-            .tiny_sdf
-            .calculate(&bitmap.alpha, bitmap.width, bitmap.height);
+        let grid_width = (bitmap.width + 2 * BUFFER as u32)
+            .div_ceil(GRID_SIZE as u32)
+            .max(1);
+        let grid_height = (bitmap.height + 2 * BUFFER as u32)
+            .div_ceil(GRID_SIZE as u32)
+            .max(1);
+        let (bitmap, width, height) =
+            self.tiny_sdf
+                .calculate(&bitmap.alpha, bitmap.width, bitmap.height);
         let glyph = Glyph {
             ch: '\0',
             font_face: Some(face.clone()),
@@ -237,8 +242,8 @@ impl Huozi {
         if let Some((_, expired_glyph)) = self.cache.push(key.clone(), glyph) {
             self.release_grid_rect(&expired_glyph);
         }
-        let grid_x = grid_size * (index_in_page as i32 % line_count);
-        let grid_y = grid_size * (index_in_page as i32 / line_count);
+        let grid_x = grid_size * (index_in_page % line_count);
+        let grid_y = grid_size * (index_in_page / line_count);
         let offset_x =
             grid_x + ((GRID_SIZE * grid_width as f64) / 2.0 - width as f64 / 2.0).ceil() as i32;
         let offset_y =
@@ -276,11 +281,7 @@ impl Huozi {
         glyph
     }
 
-    fn cache_fallback_glyph(
-        &mut self,
-        face: &FontFaceId,
-        requested_key: AtlasKey,
-    ) -> Glyph {
+    fn cache_fallback_glyph(&mut self, face: &FontFaceId, requested_key: AtlasKey) -> Glyph {
         let glyph = self.get_glyph_by_id(face, 0);
         self.fallback_glyph_ids.put(requested_key, 0);
         glyph
@@ -293,11 +294,12 @@ impl Huozi {
             "glyph SDF exceeds atlas dimensions"
         );
         let available_columns = u32::MAX >> (u32::BITS - line_count);
-        let grid_mask = (u32::MAX >> (u32::BITS - width)) as u32;
+        let grid_mask = u32::MAX >> (u32::BITS - width);
         for page in 0..ATLAS_PAGE_COUNT {
             for y in 0..=line_count - height {
                 let row_index = (page * line_count + y) as usize;
-                let occupied_columns = self.occupied_grid_rows[row_index..row_index + height as usize]
+                let occupied_columns = self.occupied_grid_rows
+                    [row_index..row_index + height as usize]
                     .iter()
                     .fold(0, |occupied, row| occupied | row);
                 let available = !occupied_columns & available_columns;
@@ -308,7 +310,8 @@ impl Huozi {
                 if starts != 0 {
                     let x = starts.trailing_zeros();
                     let occupied = grid_mask << x;
-                    for row in &mut self.occupied_grid_rows[row_index..row_index + height as usize] {
+                    for row in &mut self.occupied_grid_rows[row_index..row_index + height as usize]
+                    {
                         *row |= occupied;
                     }
                     return Some((page as i32, (y * line_count + x) as i32));
@@ -349,14 +352,14 @@ impl Huozi {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::FontSource;
     use crate::layout::tiqian_input::HuoziTiqianInputAdapter;
     use crate::layout::tiqian_output::HuoziTiqianOutputAdapter;
     use crate::layout::{ColorSpace, LayoutStyle};
     use crate::parser::{
-        ScalarOffset as HuoziScalarOffset, Segment, SegmentId, ShadowStyle, SourceRange, StrokeStyle,
-        TextRun, TextSpan, TextStyle as HuoziTextStyle,
+        ScalarOffset as HuoziScalarOffset, Segment, SegmentId, ShadowStyle, SourceRange,
+        StrokeStyle, TextRun, TextSpan, TextStyle as HuoziTextStyle,
     };
-    use crate::FontSource;
     use tiqian::core::geometry::{Size, text_range};
     use tiqian::core::int_range::IntRange;
     use tiqian::core::layout_model::{LayoutResult, LineBox};
@@ -547,7 +550,15 @@ mod tests {
 
         assert_eq!(glyphs.len(), 1);
         assert_eq!(glyphs[0].fill.len(), 4);
-        assert_eq!(glyphs[0].fill[0].color, [0x12 as f32 / 255.0, 0x34 as f32 / 255.0, 0x56 as f32 / 255.0, 0x78 as f32 / 255.0]);
+        assert_eq!(
+            glyphs[0].fill[0].color,
+            [
+                0x12 as f32 / 255.0,
+                0x34 as f32 / 255.0,
+                0x56 as f32 / 255.0,
+                0x78 as f32 / 255.0
+            ]
+        );
         assert_eq!(glyphs[0].fill[0].buffer, 0.735357);
         assert_eq!(glyphs[0].fill[0].fill_buffer, 2.0);
         assert!(glyphs[0].fill.iter().all(|vertex| vertex.page >= 0));
@@ -558,10 +569,26 @@ mod tests {
                 && vertex.tex_coords[1] <= 1.0
         }));
         let stroke = glyphs[0].stroke.unwrap();
-        assert_eq!(stroke[0].color, [0x9a as f32 / 255.0, 0xbc as f32 / 255.0, 0xde as f32 / 255.0, 0xf0 as f32 / 255.0]);
+        assert_eq!(
+            stroke[0].color,
+            [
+                0x9a as f32 / 255.0,
+                0xbc as f32 / 255.0,
+                0xde as f32 / 255.0,
+                0xf0 as f32 / 255.0
+            ]
+        );
         assert_eq!(stroke[0].fill_buffer, 0.735357);
         let shadow = glyphs[0].shadow.unwrap();
-        assert_eq!(shadow[0].color, [0x11 as f32 / 255.0, 0x22 as f32 / 255.0, 0x33 as f32 / 255.0, 0x44 as f32 / 255.0]);
+        assert_eq!(
+            shadow[0].color,
+            [
+                0x11 as f32 / 255.0,
+                0x22 as f32 / 255.0,
+                0x33 as f32 / 255.0,
+                0x44 as f32 / 255.0
+            ]
+        );
         assert_eq!(shadow[0].position[0] - glyphs[0].fill[0].position[0], 0.5);
         assert_eq!(shadow[0].position[1] - glyphs[0].fill[0].position[1], 1.0);
         assert!(shadow[0].gamma > glyphs[0].fill[0].gamma);

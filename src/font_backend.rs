@@ -1,5 +1,5 @@
-use log::warn;
 use harfrust::{Direction, Feature, FontRef as HarfRustFontRef, ShaperData, Tag, UnicodeBuffer};
+use log::warn;
 use skrifa::attribute::{Attributes, Style};
 use skrifa::instance::{LocationRef, Size};
 use skrifa::outline::pen::ControlBoundsPen;
@@ -20,8 +20,7 @@ use tiqian::shaping::font_backend::{
     FontBackend, FontBackendRequest, FontBackendShapingResult, FontCandidateAttempt,
 };
 use tiqian::shaping::replayable_font_backend::{
-    FontBackendCapabilityReport, ReplayableFontFaceDescriptor,
-    ReplayableFontCatalog,
+    FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
 };
 use tiqian::shaping::text_shaper::{ShapingResult, ShapingSource};
 
@@ -257,12 +256,11 @@ impl HuoziFontManager {
         let features: Vec<_> = request
             .open_type_features
             .iter()
-            .map(|feature| Feature::new(Tag::new(&feature_tag(feature)), feature_value(feature), ..))
+            .map(|feature| {
+                Feature::new(Tag::new(&feature_tag(feature)), feature_value(feature), ..)
+            })
             .collect();
-        let output = shaper.shape(
-            buffer,
-            harfrust::ShapeOptions::new().features(&features),
-        );
+        let output = shaper.shape(buffer, harfrust::ShapeOptions::new().features(&features));
         let scale = request.style.font_size / face.units_per_em as f32;
         let mut pen_x = 0_i64;
         let glyphs: Vec<_> = output
@@ -270,11 +268,15 @@ impl HuoziFontManager {
             .iter()
             .zip(output.glyph_positions())
             .map(|(info, position)| {
-                let glyph = Glyph::builder(info.glyph_id, request.range, position.x_advance as f32 * scale)
-                    .x((pen_x + i64::from(position.x_offset)) as f32 * scale)
-                    .y(-position.y_offset as f32 * scale)
-                    .render_font_face(Some(face.id.clone()))
-                    .build();
+                let glyph = Glyph::builder(
+                    info.glyph_id,
+                    request.range,
+                    position.x_advance as f32 * scale,
+                )
+                .x((pen_x + i64::from(position.x_offset)) as f32 * scale)
+                .y(-position.y_offset as f32 * scale)
+                .render_font_face(Some(face.id.clone()))
+                .build();
                 pen_x += i64::from(position.x_advance);
                 glyph
             })
@@ -295,9 +297,9 @@ impl HuoziFontManager {
         .glyphs_without_ink_bounds(glyphs.len() as i32)
         .missing_glyphs(missing_glyphs as i32)
         .language(Some(request.style.locale.clone()))
-        .feature_evidence((!request.open_type_features.is_empty()).then(|| {
-            request.open_type_features.join(",")
-        }))
+        .feature_evidence(
+            (!request.open_type_features.is_empty()).then(|| request.open_type_features.join(",")),
+        )
         .build();
         let cluster = Cluster::with_display_text(
             request.range,
@@ -313,7 +315,10 @@ impl HuoziFontManager {
             advance,
             request.open_type_features.clone(),
         );
-        (ShapingResult::with_decisions(vec![cluster], vec![run], vec![decision]), missing_glyphs)
+        (
+            ShapingResult::with_decisions(vec![cluster], vec![run], vec![decision]),
+            missing_glyphs,
+        )
     }
 
     fn add_ink_bounds(&self, shaping: &mut ShapingResult, face: &FontFaceRecord, font_size: f32) {
@@ -321,7 +326,11 @@ impl HuoziFontManager {
             .expect("registered face must remain readable by SkRifa");
         let scale = font_size / face.units_per_em as f32;
         let mut glyphs_without_ink_bounds = 0;
-        for glyph in shaping.glyph_runs.iter_mut().flat_map(|run| &mut run.glyphs) {
+        for glyph in shaping
+            .glyph_runs
+            .iter_mut()
+            .flat_map(|run| &mut run.glyphs)
+        {
             glyph.bounds = glyph_ink_bounds(&font, glyph.id, scale);
             glyphs_without_ink_bounds += i32::from(glyph.bounds.is_none());
         }
@@ -367,7 +376,8 @@ impl FontBackend for HuoziFontManager {
                 continue;
             }
         }
-        let (face, mut shaping) = preferred.expect("HuoziFontManager must contain at least one face");
+        let (face, mut shaping) =
+            preferred.expect("HuoziFontManager must contain at least one face");
         self.add_ink_bounds(
             &mut shaping,
             self.face_for_id(&face),
@@ -432,14 +442,16 @@ mod tests {
         assert_eq!(result.attempts.len(), 1);
         assert_eq!(result.selected_attempt().candidate_key, "source-0#0");
         assert_eq!(result.selected_attempt().missing_glyphs, 0);
-        assert!(result
-            .shaping
-            .glyph_runs
-            .iter()
-            .flat_map(|run| &run.glyphs)
-            .all(|glyph| {
-                glyph.render_font_face.as_ref() == Some(&result.face) && glyph.bounds.is_some()
-            }));
+        assert!(
+            result
+                .shaping
+                .glyph_runs
+                .iter()
+                .flat_map(|run| &run.glyphs)
+                .all(|glyph| {
+                    glyph.render_font_face.as_ref() == Some(&result.face) && glyph.bounds.is_some()
+                })
+        );
     }
 
     #[test]
@@ -457,16 +469,18 @@ mod tests {
         assert!(result.attempts[0].has_missing_glyphs());
         assert_eq!(result.selected_attempt().candidate_key, "source-1#0");
         assert_eq!(result.selected_attempt().missing_glyphs, 0);
-        assert!(result
-            .shaping
-            .glyph_runs
-            .iter()
-            .flat_map(|run| &run.glyphs)
-            .all(|glyph| {
-                glyph.id != 0
-                    && glyph.render_font_face.as_ref() == Some(&result.face)
-                    && glyph.bounds.is_some()
-            }));
+        assert!(
+            result
+                .shaping
+                .glyph_runs
+                .iter()
+                .flat_map(|run| &run.glyphs)
+                .all(|glyph| {
+                    glyph.id != 0
+                        && glyph.render_font_face.as_ref() == Some(&result.face)
+                        && glyph.bounds.is_some()
+                })
+        );
     }
 
     #[test]
@@ -480,27 +494,32 @@ mod tests {
         let result = manager.shape(&request("\u{10ffff}"));
 
         assert_eq!(result.attempts.len(), 2);
-        assert!(result.attempts.iter().all(FontCandidateAttempt::has_missing_glyphs));
+        assert!(
+            result
+                .attempts
+                .iter()
+                .all(FontCandidateAttempt::has_missing_glyphs)
+        );
         assert_eq!(result.selected_attempt().candidate_key, "source-0#0");
         assert_eq!(result.face, result.attempts[0].face);
-        assert!(result
-            .shaping
-            .glyph_runs
-            .iter()
-            .flat_map(|run| &run.glyphs)
-            .all(|glyph| {
-                glyph.id == 0 && glyph.render_font_face.as_ref() == Some(&result.face)
-            }));
+        assert!(
+            result
+                .shaping
+                .glyph_runs
+                .iter()
+                .flat_map(|run| &run.glyphs)
+                .all(|glyph| {
+                    glyph.id == 0 && glyph.render_font_face.as_ref() == Some(&result.face)
+                })
+        );
     }
 }
 
 fn glyph_ink_bounds(font: &SkrifaFontRef<'_>, glyph_id: u32, scale: f32) -> Option<Rect> {
     let location = font.axes().location(Vec::<(&str, f32)>::new());
     if let Some(color_glyph) = font.color_glyphs().get(GlyphId::new(glyph_id))
-        && let Some(bounds) = color_glyph.bounding_box(
-            LocationRef::new(location.coords()),
-            Size::unscaled(),
-        )
+        && let Some(bounds) =
+            color_glyph.bounding_box(LocationRef::new(location.coords()), Size::unscaled())
     {
         return Some(Rect {
             left: bounds.x_min * scale,
