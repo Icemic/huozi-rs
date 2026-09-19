@@ -12,7 +12,8 @@ use anyhow::Result;
 use crate::Huozi;
 use crate::glyph_vertices::GlyphVertices;
 use crate::parser::{
-    Segment, SourceRange, TextRun, TextSpan, TextStyle, parse, parse_with, to_spans,
+    ParsedText, Segment, SourceRange, TextRun, TextSpan, TextStyle, lower_elements, parse,
+    parse_with,
 };
 
 use self::tiqian_input::HuoziTiqianInputAdapter;
@@ -30,7 +31,7 @@ impl Huozi {
         segments: &Vec<Segment>,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<Vec<TextSpan>, String> {
+    ) -> Result<ParsedText, String> {
         let elements = segments
             .iter()
             .map(|segment| parse(segment))
@@ -38,7 +39,7 @@ impl Huozi {
             .into_iter()
             .flatten()
             .collect();
-        to_spans(elements, initial_text_style, style_prefabs)
+        Ok(lower_elements(elements, initial_text_style, style_prefabs))
     }
 
     /// Parse the text with custom open and close tag characters.
@@ -47,7 +48,7 @@ impl Huozi {
         segments: &Vec<Segment>,
         initial_text_style: &TextStyle,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<Vec<TextSpan>, String> {
+    ) -> Result<ParsedText, String> {
         let elements = segments
             .iter()
             .map(|segment| parse_with::<OPEN, CLOSE>(segment))
@@ -55,7 +56,7 @@ impl Huozi {
             .into_iter()
             .flatten()
             .collect();
-        to_spans(elements, initial_text_style, style_prefabs)
+        Ok(lower_elements(elements, initial_text_style, style_prefabs))
     }
 
     /// Parse the text into text spans, then layout it into glyph vertices.
@@ -67,8 +68,8 @@ impl Huozi {
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32), String> {
-        let text_spans = self.parse_text(segments, initial_text_style, style_prefabs)?;
-        Ok(self.layout(layout_style, &text_spans, color_space))
+        let text = self.parse_text(segments, initial_text_style, style_prefabs)?;
+        Ok(self.layout_parsed_text(layout_style, &text, initial_text_style, color_space))
     }
 
     /// Parse text with custom tag symbols, then layout it into glyph vertices.
@@ -80,9 +81,9 @@ impl Huozi {
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
     ) -> Result<(Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32), String> {
-        let text_spans =
+        let text =
             self.parse_text_with::<OPEN, CLOSE>(segments, initial_text_style, style_prefabs)?;
-        Ok(self.layout(layout_style, &text_spans, color_space))
+        Ok(self.layout_parsed_text(layout_style, &text, initial_text_style, color_space))
     }
 
     /// Layout source segments without interpreting rich-text tags.
@@ -126,6 +127,27 @@ impl Huozi {
             .unwrap_or_default();
         let input =
             HuoziTiqianInputAdapter::adapt(text_spans.as_ref(), layout_style, &initial_text_style);
+        let result = self.layout_engine.layout(input.layout_input);
+        HuoziTiqianOutputAdapter::adapt(self, &result, &input.source_map, &color_space)
+    }
+
+    fn layout_parsed_text(
+        &mut self,
+        layout_style: &LayoutStyle,
+        text: &ParsedText,
+        initial_text_style: &TextStyle,
+        color_space: ColorSpace,
+    ) -> (Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32) {
+        let Some(paragraph) = text.paragraphs.first() else {
+            return self.layout(layout_style, Vec::<TextSpan>::new(), color_space);
+        };
+        if text.paragraphs.len() > 1 {
+            log::warn!(
+                "[br /] parsed multiple paragraphs; current layout consumes only the first paragraph"
+            );
+        }
+        let input =
+            HuoziTiqianInputAdapter::adapt_paragraph(paragraph, layout_style, initial_text_style);
         let result = self.layout_engine.layout(input.layout_input);
         HuoziTiqianOutputAdapter::adapt(self, &result, &input.source_map, &color_space)
     }

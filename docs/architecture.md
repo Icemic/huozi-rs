@@ -27,7 +27,7 @@
 | 字体解析、度量与轮廓 | `skrifa`                                                         |
 | OpenType shaping     | `harfrust`                                                       |
 | 轮廓栅格化           | `ab_glyph_rasterizer`                                            |
-| 富文本标签解析       | `nom`、`nom-language`、`nom_locate_usv`                          |
+| 富文本标签解析       | 手写 Unicode scalar scanner 与显式 frame 栈恢复                  |
 | SDF 缓存             | `lru` 与 CPU 距离变换                                            |
 | 颜色与数据序列化     | `csscolorparser`、`serde`                                        |
 | 顶点二进制布局       | `bytemuck`                                                       |
@@ -40,7 +40,7 @@
 ```mermaid
 flowchart TD
     A[用户输入\nVec Segment 或 TextSpan] --> B[富文本层\nparser]
-    B --> C[结构化文本\nTextSpan / TextRun]
+    B --> C[结构化文本\nParsedText / TextSpan]
     C --> D[输入适配\nHuoziTiqianInputAdapter]
     D --> E[tiqian LayoutInput]
     F[有序 FontSource] --> G[字体层\nHuoziFontManager]
@@ -78,14 +78,17 @@ flowchart TD
 | ---------- | --------------------------------------------------------------- |
 | `Segment`  | 调用方的原始文本分片，包含可选 `SegmentId` 与 `Cow<str>` 内容。 |
 | `Element`  | 标签解析结果，表示原始文本或带标签、参数及子元素的块。          |
-| `TextSpan` | 解析后的富文本结构容器，顺序持有多个 `TextRun`。                |
+| `ParsedText` | 标签 parser 的结构化结果，顺序持有逻辑段落。                  |
+| `ParsedParagraph` | 一个逻辑段落的行内节点和段落样式覆盖。                         |
+| `InlineNode` | 文本叶子、富文本范围或行内对象。                               |
+| `TextSpan` | 直接布局 API 使用的手工文本结构，顺序持有多个 `TextRun`。     |
 | `TextRun`  | 同一份生效样式的一段显示文本，附带原始输入中的 `SourceRange`。  |
 
-默认标签形式为 `[tag]...[/tag]`，也可通过带 const 泛型符号的入口使用其他开闭符号。双开闭符号用于输出字面量标签符号，例如 `[[` 输出 `[`。
+默认标签形式为 `[tag]...[/tag]`，支持旧单值、命名属性和自闭合标签。手写 Unicode scalar scanner 负责标签头、属性和引号值；显式 frame 栈负责嵌套、未闭合标签和错误恢复。也可通过带 const 泛型符号的入口使用其他开闭符号。双开闭符号用于输出字面量标签符号，例如 `[[` 输出 `[`。
 
 `SourceRange` 以 Unicode scalar value 为单位，使用半开范围 `[start, end)` 指向单个原始 `Segment.content`。它可以包含标签和转义符号的位置，不等同于 tiqian 拼接后显示文本的范围。
 
-`TextStyle` 表示 run 级字号、填充色、描边和阴影。`LayoutStyle` 表示整个段落的宽高约束、相对基础字号的行高倍率和以 CJK 字宽表示的首行缩进。两者分别进入 tiqian 的文字样式、绘制层和段落约束，避免将段落属性混入局部文字样式。
+`TextStyle` 表示 run 级字体族、字号、locale、字重、斜体、基线偏移、附着方式、填充色、描边和阴影。`InlineScopeKind` 保存背景、线条、注音、装饰、链接、技术文本、行内代码、自动间距和行内盒等范围语义。`LayoutStyle` 表示整个布局调用的宽高约束、相对基础字号的行高倍率和以 CJK 字宽表示的首行缩进；`ParagraphStyleOverride` 保存 `[br /]` 对后续段落的覆盖字段。
 
 ### 3. 字体、fallback 与 shaping 层
 
@@ -106,11 +109,12 @@ flowchart TD
 
 相关文件：`src/layout.rs`、`src/layout/tiqian_input.rs`。
 
-`HuoziTiqianInputAdapter` 将顺序 `TextSpan` / `TextRun` 写入一个 tiqian 段落：
+`HuoziTiqianInputAdapter` 具有两个单段入口：直接 `TextSpan` / `TextRun` 布局入口，以及 `ParsedParagraph` 输入入口。两者都会写入一个 tiqian 段落：
 
 - 将显示文本顺序拼接为 `LayoutInput`；
-- 将每个 run 的字号写入 tiqian 文字样式覆盖；
+- 将每个 run 的完整局部文字样式写入 tiqian 文字样式覆盖；
 - 将填充、描边、阴影写入 tiqian `RichTextPaint`；
+- 将背景、线条、注音、装饰、链接、技术文本、行内代码、自动间距、行内盒和对象写入对应的 Tiqian builder scope；
 - 将 `LayoutStyle` 转为段落行高、首行缩进和宽高约束；
 - 同时建立私有 `HuoziSourceMap`，关联显示文本 scalar range 与原始 `SourceRange`。
 
@@ -149,7 +153,7 @@ shadow → stroke → fill
 
 `Vertex` 包含位置、UV、atlas page、SDF 阈值与过渡参数、RGBA 颜色。渲染器根据 `page` 从 atlas 的 R/G/B/A 通道取样。描边宽度、阴影扩张与偏移按逻辑像素转换为顶点参数；fragment shader 负责 SDF coverage、抗锯齿和阴影平滑。
 
-普通文本 glyph 是当前唯一转出的几何。tiqian 的 ruby、注音、着重号、下划线和删除线等 annotation 或装饰信息会被记录警告，但当前不生成 Huozi 顶点。
+普通文本 glyph 是当前唯一转出的几何。背景、线条、ruby、注音、CLREQ 装饰、链接语义、行内盒和行内对象已传入 Tiqian，但当前不生成对应的 Huozi 顶点。
 
 ## 核心数据与来源映射
 
@@ -159,7 +163,8 @@ shadow → stroke → fill
 Vec<Segment>
   → parse / parse_with
   → Vec<Element>
-  → Vec<TextSpan> / Vec<TextRun>
+  → ParsedText { paragraphs }
+  → ParsedParagraph { nodes, paragraph_style }
   → LayoutInput + HuoziSourceMap
   → tiqian LayoutResult
   → glyph-id SDF atlas
@@ -199,8 +204,8 @@ Segment.id
 
 | API                        | 输入语义                              | 结果                            |
 | -------------------------- | ------------------------------------- | ------------------------------- |
-| `Huozi::parse_text`        | 解析默认标签符号的 `Vec<Segment>`。   | `Result<Vec<TextSpan>, String>` |
-| `Huozi::parse_text_with`   | 解析自定义开闭标签符号。              | `Result<Vec<TextSpan>, String>` |
+| `Huozi::parse_text`        | 解析默认标签符号的 `Vec<Segment>`。   | `Result<ParsedText, String>`    |
+| `Huozi::parse_text_with`   | 解析自定义开闭标签符号。              | `Result<ParsedText, String>`    |
 | `Huozi::layout_parse`      | 解析默认富文本并布局。                | `Result<LayoutOutput, String>`  |
 | `Huozi::layout_parse_with` | 解析自定义符号富文本并布局。          | `Result<LayoutOutput, String>`  |
 | `Huozi::layout_plain`      | 不解释标签，将每个 segment 原样布局。 | `Result<LayoutOutput, String>`  |
@@ -219,7 +224,8 @@ Segment.id
 | 类型                              | 主要字段或语义                            |
 | --------------------------------- | ----------------------------------------- |
 | `Segment` / `SegmentId`           | 输入文本分片及用户身份。                  |
-| `TextSpan` / `SpanId` / `TextRun` | 富文本结构、样式运行与来源范围。          |
+| `ParsedText` / `ParsedParagraph` | 标签解析后的段落和行内节点。             |
+| `TextSpan` / `SpanId` / `TextRun` | 直接布局文本、样式运行与来源范围。       |
 | `SourceRange` / `ScalarOffset`    | 原始 segment 内的 scalar 半开范围。       |
 | `TextStyle`                       | 字号、填充、描边、阴影。                  |
 | `StrokeStyle` / `ShadowStyle`     | 描边与阴影参数。                          |
@@ -230,6 +236,8 @@ Segment.id
 | `Glyph` / `TextureAtlas`          | 图集项元数据和 RGBA atlas 像素。          |
 
 `Vertex::desc()` 仅在启用 `wgpu` feature 时可用。`sdf` 模块公开了 `calculate_sdf`、`edt` 与 `edt1d` 以供底层算法使用；一般用户集成不需要直接调用它们。
+
+`[br /]` 会在 `ParsedText` 中保留多个逻辑段落及后续段落样式。当前 `layout_parse` 和 `layout_parse_with` 只布局第一段，并对额外段落记录固定 `warn`；多段输出尚未提供。直接 `layout(Vec<TextSpan>)` 与 `layout_plain` 仍是单段入口。
 
 ## 用户接入约定
 
@@ -251,7 +259,7 @@ Segment.id
 | `src/huozi.rs`            | `Huozi` 生命周期、SDF atlas、LRU 缓存和 glyph 查询。             |
 | `src/layout.rs`           | `Huozi` 的解析与布局公开入口。                                   |
 | `src/layout/`             | tiqian 输入输出适配、布局样式、顶点、颜色和来源映射。            |
-| `src/parser/`             | 标签解析、元素到 run/span 的样式展开、来源范围模型。             |
+| `src/parser/`             | 标签头解析、显式栈恢复、元素到结构化段落的 lowering、来源范围模型。 |
 | `src/font_backend.rs`     | 字体目录、fallback、HarfRust shaping 与 SkRifa metrics/outline。 |
 | `src/glyph_rasterizer.rs` | 字体轮廓到 alpha bitmap 的 CPU 栅格化。                          |
 | `src/sdf.rs`              | 带符号距离场及距离变换实现。                                     |

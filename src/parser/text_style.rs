@@ -7,7 +7,13 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase", default)]
 pub struct TextStyle {
     // pub font_face: Font
+    pub font_families: Vec<String>,
     pub font_size: f64,
+    pub locale: String,
+    pub font_weight: i32,
+    pub italic: bool,
+    pub baseline_shift: f32,
+    pub inline_attachment: InlineAttachment,
     pub fill_color: Color,
     pub stroke: Option<StrokeStyle>,
     pub shadow: Option<ShadowStyle>,
@@ -16,12 +22,27 @@ pub struct TextStyle {
 impl Default for TextStyle {
     fn default() -> Self {
         Self {
+            font_families: Vec::new(),
             font_size: 32.,
+            locale: "zh-Hans".to_string(),
+            font_weight: 400,
+            italic: false,
+            baseline_shift: 0.0,
+            inline_attachment: InlineAttachment::None,
             fill_color: Color::new(0., 0., 0., 1.),
             stroke: None,
             shadow: None,
         }
     }
+}
+
+/// 行内范围与前一个文字边界的归属关系。
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum InlineAttachment {
+    #[default]
+    None,
+    Previous,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

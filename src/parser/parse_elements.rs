@@ -1,53 +1,4 @@
-use nom::{
-    IResult, Parser,
-    branch::alt,
-    bytes::complete::{is_not, tag},
-    character::complete::{char, multispace0},
-    combinator::{cut, eof, map, not, value, verify},
-    error::context,
-    multi::{fold_many0, many_till, many0},
-    sequence::{preceded, separated_pair, terminated},
-};
-use nom_language::error::{VerboseError, convert_error};
-use nom_locate_usv::LocatedSpan;
-use std::sync::OnceLock;
-
 use crate::parser::{ScalarOffset, Segment, SegmentId};
-
-// Type alias for input with location tracking.
-type Span<'a> = LocatedSpan<&'a str, Option<SegmentId>>;
-
-// Global caches for tag symbols
-// Note: These are shared across all generic parameter combinations.
-// Convention: Use only ONE symbol combination throughout the program's lifetime.
-static DOUBLE_OPEN: OnceLock<String> = OnceLock::new();
-static DOUBLE_CLOSE: OnceLock<String> = OnceLock::new();
-static END_PREFIX: OnceLock<String> = OnceLock::new();
-static EXCLUDED_CHARS: OnceLock<String> = OnceLock::new();
-
-/// Get the double open tag string (e.g., "[[" for '[')
-/// Initialized on first call and cached for subsequent calls.
-fn get_double_open<const OPEN: char>() -> &'static str {
-    DOUBLE_OPEN.get_or_init(|| format!("{}{}", OPEN, OPEN))
-}
-
-/// Get the double close tag string (e.g., "]]" for ']')
-/// Initialized on first call and cached for subsequent calls.
-fn get_double_close<const CLOSE: char>() -> &'static str {
-    DOUBLE_CLOSE.get_or_init(|| format!("{}{}", CLOSE, CLOSE))
-}
-
-/// Get the end tag prefix string (e.g., "[/" for '[')
-/// Initialized on first call and cached for subsequent calls.
-fn get_end_prefix<const OPEN: char>() -> &'static str {
-    END_PREFIX.get_or_init(|| format!("{}/", OPEN))
-}
-
-/// Get the excluded characters for string parsing
-/// Initialized on first call and cached for subsequent calls.
-fn get_excluded_chars<const OPEN: char, const CLOSE: char>() -> &'static str {
-    EXCLUDED_CHARS.get_or_init(|| format!("\"\'{}{}{}= \t\n\r", OPEN, CLOSE, '/'))
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Element {
@@ -62,225 +13,425 @@ pub enum Element {
         end: ScalarOffset,
         inner: Vec<Element>,
         tag: String,
-        value: Option<String>,
+        attributes: Vec<Attribute>,
+        segment_id: Option<SegmentId>,
+    },
+    SelfClosing {
+        start: ScalarOffset,
+        end: ScalarOffset,
+        tag: String,
+        attributes: Vec<Attribute>,
+        segment_id: Option<SegmentId>,
     },
 }
 
-type ParseResult<'a, T, E = VerboseError<Span<'a>>> = IResult<Span<'a>, T, E>;
-
-/// Parse plain text with support for [[ and ]] escape sequences
-/// [[ -> [
-/// ]] -> ]
-/// Single [ or ] will stop the parser (not consume them)
-fn plain_text_content<const OPEN: char, const CLOSE: char>(
-    input: Span<'_>,
-) -> ParseResult<'_, String> {
-    use nom::bytes::complete::take_while1;
-
-    let double_open = get_double_open::<OPEN>();
-    let double_close = get_double_close::<CLOSE>();
-
-    context(
-        "PlainTextContent",
-        fold_many0(
-            alt((
-                // [[ -> [
-                value(OPEN.to_string(), tag(double_open)),
-                // ]] -> ]
-                value(CLOSE.to_string(), tag(double_close)),
-                // Regular text (not starting with [ or ])
-                map(take_while1(|c| c != OPEN && c != CLOSE), |s: Span| {
-                    s.fragment().to_string()
-                }),
-            )),
-            String::new,
-            |mut acc, item| {
-                acc.push_str(&item);
-                acc
-            },
-        ),
-    )
-    .parse(input)
+/// 标签头中按原始书写顺序保存的属性。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Attribute {
+    pub name: String,
+    pub value: String,
+    pub value_start: ScalarOffset,
+    pub value_end: ScalarOffset,
+    pub segment_id: Option<SegmentId>,
 }
 
-fn string_quoted_single(input: Span<'_>) -> ParseResult<'_, String> {
-    context(
-        "String Quoted Single",
-        preceded(
-            char('\''),
-            cut(terminated(
-                map(is_not("\'"), |s: Span| s.fragment().to_string()),
-                char('\''),
-            )),
-        ),
-    )
-    .parse(input)
+struct TagHead {
+    start: usize,
+    tag: String,
+    attributes: Vec<Attribute>,
+    end: usize,
+    self_closing: bool,
 }
 
-fn string_quoted_double(input: Span<'_>) -> ParseResult<'_, String> {
-    context(
-        "String Quoted",
-        preceded(
-            char('\"'),
-            cut(terminated(
-                map(is_not("\""), |s: Span| s.fragment().to_string()),
-                char('\"'),
-            )),
-        ),
-    )
-    .parse(input)
+enum TagHeadResult {
+    Valid(TagHead),
+    Malformed { end: usize },
+    NotTag,
 }
 
-fn string_quoted(input: Span<'_>) -> ParseResult<'_, String> {
-    context(
-        "String Quoted",
-        alt((string_quoted_double, string_quoted_single)),
-    )
-    .parse(input)
+struct Frame {
+    start: usize,
+    open_end: usize,
+    tag: String,
+    attributes: Vec<Attribute>,
+    nodes: Vec<Element>,
+    text: String,
+    text_start: Option<usize>,
 }
 
-fn string_without_space<const OPEN: char, const CLOSE: char>(
-    input: Span<'_>,
-) -> ParseResult<'_, String> {
-    let chars = get_excluded_chars::<OPEN, CLOSE>();
-    context(
-        "String without Space",
-        map(preceded(multispace0, is_not(chars)), |s: Span| {
-            s.fragment().to_string()
-        }),
-    )
-    .parse(input)
+impl Frame {
+    fn root() -> Self {
+        Self {
+            start: 0,
+            open_end: 0,
+            tag: String::new(),
+            attributes: Vec::new(),
+            nodes: Vec::new(),
+            text: String::new(),
+            text_start: None,
+        }
+    }
+
+    fn tag(head: TagHead) -> Self {
+        Self {
+            start: head.start,
+            open_end: head.end,
+            tag: head.tag,
+            attributes: head.attributes,
+            nodes: Vec::new(),
+            text: String::new(),
+            text_start: None,
+        }
+    }
+
+    fn append_char(&mut self, start: usize, value: char) {
+        self.text_start.get_or_insert(start);
+        self.text.push(value);
+    }
+
+    fn append_raw(&mut self, start: usize, raw: &[char]) {
+        self.text_start.get_or_insert(start);
+        self.text.extend(raw);
+    }
+
+    fn flush_text(&mut self, end: usize, segment_id: &Option<SegmentId>) {
+        if let Some(start) = self.text_start.take()
+            && !self.text.is_empty()
+        {
+            self.nodes.push(Element::Text {
+                start: ScalarOffset(start),
+                end: ScalarOffset(end),
+                content: std::mem::take(&mut self.text),
+                segment_id: segment_id.clone(),
+            });
+        }
+    }
 }
 
-fn plain_text<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<'_, Element> {
-    let start = ScalarOffset(input.location_char_offset());
-    let segment_id = input.extra.clone();
+fn is_space(value: char) -> bool {
+    matches!(value, ' ' | '\t' | '\r' | '\n')
+}
 
-    let (remaining, content) = context(
-        "PlainText",
-        verify(plain_text_content::<OPEN, CLOSE>, |s: &String| {
-            !s.is_empty()
-        }),
-    )
-    .parse(input)?;
+fn skip_space(chars: &[char], mut index: usize) -> usize {
+    while chars.get(index).is_some_and(|value| is_space(*value)) {
+        index += 1;
+    }
+    index
+}
 
-    let end = ScalarOffset(remaining.location_char_offset());
+fn is_token_char<const OPEN: char, const CLOSE: char>(value: char) -> bool {
+    !is_space(value) && value != OPEN && value != CLOSE && !matches!(value, '=' | '/' | '\'' | '\"')
+}
 
-    Ok((
-        remaining,
-        Element::Text {
+fn parse_token<const OPEN: char, const CLOSE: char>(
+    chars: &[char],
+    index: usize,
+) -> Option<(String, usize)> {
+    let end = chars[index..]
+        .iter()
+        .position(|value| !is_token_char::<OPEN, CLOSE>(*value))
+        .map_or(chars.len(), |offset| index + offset);
+    (end > index).then(|| (chars[index..end].iter().collect(), end))
+}
+
+fn primary_attribute(tag: &str) -> &str {
+    match tag {
+        "ruby" | "bopomofo" => "text",
+        "link" => "target",
+        "background" | "underline" | "lineThrough" | "color" | "fillColor" => "color",
+        "font" => "family",
+        "weight" => "weight",
+        "locale" => "locale",
+        "baseline" => "baseline",
+        "attach" => "attach",
+        "size" => "size",
+        "stroke" => "stroke",
+        "strokeColor" => "strokeColor",
+        "strokeWidth" => "width",
+        "shadow" => "shadow",
+        "shadowOffsetX" => "offsetX",
+        "shadowOffsetY" => "offsetY",
+        "shadowBlur" => "blur",
+        "shadowWidth" => "width",
+        "shadowColor" => "shadowColor",
+        _ => tag,
+    }
+}
+
+fn parse_value<const OPEN: char, const CLOSE: char>(
+    chars: &[char],
+    mut index: usize,
+) -> Option<(String, usize, usize, usize)> {
+    index = skip_space(chars, index);
+    let start = index;
+    let quote = *chars.get(index)?;
+    if matches!(quote, '\'' | '\"') {
+        index += 1;
+        let value_start = index;
+        let mut value = String::new();
+        while let Some(current) = chars.get(index) {
+            if *current == quote {
+                return Some((value, value_start, index, index + 1));
+            }
+            if *current == '\\' {
+                let escaped = *chars.get(index + 1)?;
+                if escaped == quote || escaped == '\\' {
+                    value.push(escaped);
+                    index += 2;
+                    continue;
+                }
+                return None;
+            }
+            if matches!(current, '\r' | '\n') {
+                return None;
+            }
+            value.push(*current);
+            index += 1;
+        }
+        return None;
+    }
+
+    let (value, end) = parse_token::<OPEN, CLOSE>(chars, index)?;
+    Some((value, start, end, end))
+}
+
+fn malformed_tag_end<const OPEN: char, const CLOSE: char>(chars: &[char], start: usize) -> usize {
+    chars[start + 1..]
+        .iter()
+        .position(|value| *value == CLOSE || *value == OPEN)
+        .map_or(chars.len(), |offset| {
+            let boundary = start + offset + 1;
+            if chars[boundary] == CLOSE {
+                boundary + 1
+            } else {
+                boundary
+            }
+        })
+}
+
+fn parse_tag_head<const OPEN: char, const CLOSE: char>(
+    chars: &[char],
+    start: usize,
+    segment_id: &Option<SegmentId>,
+) -> TagHeadResult {
+    if chars.get(start) != Some(&OPEN) || chars.get(start + 1) == Some(&'/') {
+        return TagHeadResult::NotTag;
+    }
+    let mut index = skip_space(chars, start + 1);
+    let Some((tag, tag_end)) = parse_token::<OPEN, CLOSE>(chars, index) else {
+        return TagHeadResult::Malformed {
+            end: malformed_tag_end::<OPEN, CLOSE>(chars, start),
+        };
+    };
+    index = tag_end;
+    let mut attributes = Vec::new();
+
+    loop {
+        index = skip_space(chars, index);
+        match chars.get(index) {
+            Some(value) if *value == CLOSE => {
+                return TagHeadResult::Valid(TagHead {
+                    start,
+                    tag,
+                    attributes,
+                    end: index + 1,
+                    self_closing: false,
+                });
+            }
+            Some('/') => {
+                let end = skip_space(chars, index + 1);
+                if chars.get(end) == Some(&CLOSE) {
+                    return TagHeadResult::Valid(TagHead {
+                        start,
+                        tag,
+                        attributes,
+                        end: end + 1,
+                        self_closing: true,
+                    });
+                }
+                return TagHeadResult::Malformed {
+                    end: malformed_tag_end::<OPEN, CLOSE>(chars, start),
+                };
+            }
+            Some('=') if attributes.is_empty() => {
+                let Some((value, value_start, value_end, next)) =
+                    parse_value::<OPEN, CLOSE>(chars, index + 1)
+                else {
+                    return TagHeadResult::Malformed { end: chars.len() };
+                };
+                attributes.push(Attribute {
+                    name: primary_attribute(&tag).to_string(),
+                    value,
+                    value_start: ScalarOffset(value_start),
+                    value_end: ScalarOffset(value_end),
+                    segment_id: segment_id.clone(),
+                });
+                index = next;
+            }
+            Some(_) => {
+                let Some((name, name_end)) = parse_token::<OPEN, CLOSE>(chars, index) else {
+                    return TagHeadResult::Malformed {
+                        end: malformed_tag_end::<OPEN, CLOSE>(chars, start),
+                    };
+                };
+                let equals = skip_space(chars, name_end);
+                if chars.get(equals) != Some(&'=') {
+                    return TagHeadResult::Malformed {
+                        end: malformed_tag_end::<OPEN, CLOSE>(chars, start),
+                    };
+                }
+                let Some((value, value_start, value_end, next)) =
+                    parse_value::<OPEN, CLOSE>(chars, equals + 1)
+                else {
+                    return TagHeadResult::Malformed { end: chars.len() };
+                };
+                attributes.push(Attribute {
+                    name,
+                    value,
+                    value_start: ScalarOffset(value_start),
+                    value_end: ScalarOffset(value_end),
+                    segment_id: segment_id.clone(),
+                });
+                index = next;
+            }
+            None => return TagHeadResult::Malformed { end: chars.len() },
+        }
+    }
+}
+
+fn parse_end_tag<const OPEN: char, const CLOSE: char>(
+    chars: &[char],
+    start: usize,
+) -> Option<(String, usize)> {
+    if chars.get(start) != Some(&OPEN) || chars.get(start + 1) != Some(&'/') {
+        return None;
+    }
+    let index = skip_space(chars, start + 2);
+    let (tag, end) = parse_token::<OPEN, CLOSE>(chars, index)?;
+    let end = skip_space(chars, end);
+    (chars.get(end) == Some(&CLOSE)).then_some((tag, end + 1))
+}
+
+fn parse_elements<const OPEN: char, const CLOSE: char>(
+    chars: &[char],
+    segment_id: &Option<SegmentId>,
+) -> Vec<Element> {
+    let mut frames = vec![Frame::root()];
+    let mut index = 0;
+
+    while index < chars.len() {
+        if chars[index] == OPEN && chars.get(index + 1) == Some(&OPEN) {
+            frames
+                .last_mut()
+                .expect("root frame is always present")
+                .append_char(index, OPEN);
+            index += 2;
+            continue;
+        }
+        if chars[index] == CLOSE && chars.get(index + 1) == Some(&CLOSE) {
+            frames
+                .last_mut()
+                .expect("root frame is always present")
+                .append_char(index, CLOSE);
+            index += 2;
+            continue;
+        }
+        if chars[index] == OPEN {
+            if let Some((tag, end)) = parse_end_tag::<OPEN, CLOSE>(chars, index) {
+                let closes_current_frame =
+                    frames.len() > 1 && frames.last().is_some_and(|frame| frame.tag == tag);
+                let current = frames.last_mut().expect("root frame is always present");
+                if closes_current_frame {
+                    current.flush_text(index, segment_id);
+                    let frame = frames.pop().expect("non-root frame was checked");
+                    frames
+                        .last_mut()
+                        .expect("root frame is always present")
+                        .nodes
+                        .push(Element::Block {
+                            start: ScalarOffset(frame.start),
+                            end: ScalarOffset(end),
+                            inner: frame.nodes,
+                            tag: frame.tag,
+                            attributes: frame.attributes,
+                            segment_id: segment_id.clone(),
+                        });
+                } else {
+                    current.append_raw(index, &chars[index..end]);
+                }
+                index = end;
+                continue;
+            }
+            match parse_tag_head::<OPEN, CLOSE>(chars, index, segment_id) {
+                TagHeadResult::Valid(head) => {
+                    let head_end = head.end;
+                    if head.self_closing {
+                        let current = frames.last_mut().expect("root frame is always present");
+                        current.flush_text(index, segment_id);
+                        current.nodes.push(Element::SelfClosing {
+                            start: ScalarOffset(head.start),
+                            end: ScalarOffset(head.end),
+                            tag: head.tag,
+                            attributes: head.attributes,
+                            segment_id: segment_id.clone(),
+                        });
+                    } else {
+                        frames
+                            .last_mut()
+                            .expect("root frame is always present")
+                            .flush_text(index, segment_id);
+                        frames.push(Frame::tag(head));
+                    }
+                    index = head_end;
+                    continue;
+                }
+                TagHeadResult::Malformed { end } => {
+                    frames
+                        .last_mut()
+                        .expect("root frame is always present")
+                        .append_raw(index, &chars[index..end]);
+                    index = end;
+                    continue;
+                }
+                TagHeadResult::NotTag => {}
+            }
+        }
+
+        frames
+            .last_mut()
+            .expect("root frame is always present")
+            .append_char(index, chars[index]);
+        index += 1;
+    }
+
+    while frames.len() > 1 {
+        let mut frame = frames.pop().expect("non-root frame was checked");
+        frame.flush_text(chars.len(), segment_id);
+        let parent = frames.last_mut().expect("root frame is always present");
+        let raw_open = chars[frame.start..frame.open_end]
+            .iter()
+            .collect::<String>();
+        if let Some(Element::Text {
             start,
             end,
             content,
-            segment_id,
-        },
-    ))
-}
+            ..
+        }) = frame.nodes.first_mut()
+            && *start == ScalarOffset(frame.open_end)
+        {
+            content.insert_str(0, &raw_open);
+            *start = ScalarOffset(frame.start);
+            *end = ScalarOffset((*end).0);
+        } else {
+            parent.append_raw(frame.start, &chars[frame.start..frame.open_end]);
+            parent.flush_text(frame.open_end, segment_id);
+        }
+        parent.nodes.extend(frame.nodes);
+    }
 
-fn tag_head_keypair<const OPEN: char, const CLOSE: char>(
-    input: Span<'_>,
-) -> ParseResult<'_, (String, Option<String>)> {
-    context(
-        "TagHeadKeyPair",
-        alt((
-            map(
-                separated_pair(
-                    preceded(multispace0, tag_key::<OPEN, CLOSE>),
-                    preceded(multispace0, char('=')),
-                    preceded(multispace0, tag_value::<OPEN, CLOSE>),
-                ),
-                |(k, v)| (k, Some(v)),
-            ),
-            map(preceded(multispace0, tag_key::<OPEN, CLOSE>), |s| (s, None)),
-            value(("".to_string(), None), multispace0),
-        )),
-    )
-    .parse(input)
-}
-
-fn tag_key<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<'_, String> {
-    context("TagKey", string_without_space::<OPEN, CLOSE>).parse(input)
-}
-
-fn tag_value<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<'_, String> {
-    context(
-        "TagValue",
-        alt((string_without_space::<OPEN, CLOSE>, string_quoted)),
-    )
-    .parse(input)
-}
-
-fn tag_head<const OPEN: char, const CLOSE: char>(
-    input: Span<'_>,
-) -> ParseResult<'_, (String, Option<String>)> {
-    context(
-        "TagHead",
-        preceded(
-            (char(OPEN), not(char('/'))),
-            cut(terminated(
-                tag_head_keypair::<OPEN, CLOSE>,
-                preceded(multispace0, char(CLOSE)),
-            )),
-        ),
-    )
-    .parse(input)
-}
-
-fn tag_end<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<'_, String> {
-    let end_prefix = get_end_prefix::<OPEN>();
-    context(
-        "TagEnd",
-        preceded(
-            tag(end_prefix),
-            cut(terminated(
-                alt((tag_key::<OPEN, CLOSE>, value("".to_string(), multispace0))),
-                preceded(multispace0, char(CLOSE)),
-            )),
-        ),
-    )
-    .parse(input)
-}
-
-fn closed_tag<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<'_, Element> {
-    let start = ScalarOffset(input.location_char_offset());
-
-    let (remaining, ((key, value), inner, _)) = context(
-        "Tag",
-        verify(
-            (
-                tag_head::<OPEN, CLOSE>,
-                elements::<OPEN, CLOSE>,
-                tag_end::<OPEN, CLOSE>,
-            ),
-            |&((ref head_key, _), _, ref end_key)| head_key == end_key,
-        ),
-    )
-    .parse(input)?;
-
-    let end = ScalarOffset(remaining.location_char_offset());
-
-    Ok((
-        remaining,
-        Element::Block {
-            start,
-            end,
-            inner,
-            tag: key.to_string(),
-            value: value.map(|s| s.to_string()),
-        },
-    ))
-}
-
-fn element<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<'_, Element> {
-    context(
-        "Element",
-        alt((plain_text::<OPEN, CLOSE>, closed_tag::<OPEN, CLOSE>)),
-    )
-    .parse(input)
-}
-
-fn elements<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult<'_, Vec<Element>> {
-    context("Element[]", many0(element::<OPEN, CLOSE>)).parse(input)
+    let mut root = frames.pop().expect("root frame is always present");
+    root.flush_text(chars.len(), segment_id);
+    root.nodes
 }
 
 /// Parse input with custom tag symbols.
@@ -307,24 +458,8 @@ fn elements<const OPEN: char, const CLOSE: char>(input: Span<'_>) -> ParseResult
 pub fn parse_with<const OPEN: char, const CLOSE: char>(
     input: &Segment<'_>,
 ) -> Result<Vec<Element>, String> {
-    let span = Span::new_extra(&input.content, input.id.clone());
-    match context("Root", many_till(element::<OPEN, CLOSE>, eof)).parse(span) {
-        Ok((_, (elements, _))) => Ok(elements),
-        Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
-            // Convert Span-based error to str-based error for convert_error
-            let converted_error: VerboseError<&str> = VerboseError {
-                errors: e
-                    .errors
-                    .into_iter()
-                    .map(|(span, kind)| (*span.fragment(), kind))
-                    .collect(),
-            };
-            Err(convert_error(input.content.as_ref(), converted_error))
-        }
-        Err(nom::Err::Incomplete(_)) => {
-            unreachable!("it should not reach this branch, may be a bug.");
-        }
-    }
+    let chars = input.content.chars().collect::<Vec<_>>();
+    Ok(parse_elements::<OPEN, CLOSE>(&chars, &input.id))
 }
 
 /// Parse input with default square bracket tags `[]`.
