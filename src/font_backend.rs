@@ -440,8 +440,11 @@ mod tests {
         let result = manager.shape(&request("A"));
 
         assert_eq!(result.attempts.len(), 1);
-        assert_eq!(result.selected_attempt().candidate_key, "source-0#0");
-        assert_eq!(result.selected_attempt().missing_glyphs, 0);
+        assert_eq!(
+            result.selected_attempt().unwrap().candidate_key,
+            "source-0#0"
+        );
+        assert_eq!(result.selected_attempt().unwrap().missing_glyphs, 0);
         assert!(
             result
                 .shaping
@@ -467,8 +470,11 @@ mod tests {
         assert_eq!(result.attempts.len(), 2);
         assert_eq!(result.attempts[0].candidate_key, "source-0#0");
         assert!(result.attempts[0].has_missing_glyphs());
-        assert_eq!(result.selected_attempt().candidate_key, "source-1#0");
-        assert_eq!(result.selected_attempt().missing_glyphs, 0);
+        assert_eq!(
+            result.selected_attempt().unwrap().candidate_key,
+            "source-1#0"
+        );
+        assert_eq!(result.selected_attempt().unwrap().missing_glyphs, 0);
         assert!(
             result
                 .shaping
@@ -500,7 +506,10 @@ mod tests {
                 .iter()
                 .all(FontCandidateAttempt::has_missing_glyphs)
         );
-        assert_eq!(result.selected_attempt().candidate_key, "source-0#0");
+        assert_eq!(
+            result.selected_attempt().unwrap().candidate_key,
+            "source-0#0"
+        );
         assert_eq!(result.face, result.attempts[0].face);
         assert!(
             result
