@@ -63,9 +63,7 @@ impl HuoziTiqianInputAdapter {
                     ScalarOffset::new(display_offset),
                     ScalarOffset::new(display_offset + run_length),
                 );
-                let style = TextStyleOverride::builder()
-                    .font_size(text_run.style.font_size as f32)
-                    .build();
+                let style = tiqian_text_style_override(&text_run.style);
                 let paints = tiqian_paints(&text_run.style);
 
                 builder.with_text_style(style, |builder| {
