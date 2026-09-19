@@ -5,7 +5,7 @@ exclude = ["examples"]
 license = "Apache-2.0"
 name = "huozi"
 repository = "https://github.com/Icemic/huozi-rs"
-version = "0.20.0"
+version = "0.21.0"
 
 include = ["src/**/*", "Cargo.toml", "./README.md", "./README_EN.md", "LICENSE"]
 

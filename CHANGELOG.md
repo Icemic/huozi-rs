@@ -5,7 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.21.0 (2026-09-19)
+
+### Documentation
+
+ - <csr-id-051186c0cd906fcf41c173b45280037ec526d94a/> document graceful degradation policy
+ - <csr-id-2755fb1e29f2f629a68f517bb4db4937890e31f7/> add project architecture and agent guidelines
+ - <csr-id-dc5cabc4190de9b86ba7d737d96d249fb96c1d1f/> update readme
+
+### New Features
+
+ - <csr-id-7c9710c33282ffa9f7b394657ca46899b7d1a703/> add configurable font fallback controls to render example
+
+### Bug Fixes
+
+ - <csr-id-a7acb238604503fd1500d9129c46ed67e9bbb713/> restore Huozi Send and Sync support with tiqian 0.3
+ - <csr-id-15b60841ef7289ac9d045d6a929b78e835a2983a/> align glyph buffer with the SDF cutoff
+ - <csr-id-fa5c38e3c9f147f4cc4febfd2def28381a74b872/> improve SDF rendering for strokes and shadows
+ - <csr-id-118ba9f24a594568da78eb625686b5194f2316ee/> fmt & clippy
+ - <csr-id-71d730806e9047850a787255ecd89a78e291bc43/> support multi-grid glyphs in the SDF atlas
+ - <csr-id-662a2a9cd58de38d811f0f3a087cca751c044692/> use skrifa ControlBoundsPen import
+ - <csr-id-dc81491e0fe043478a44c21985e9f4b5df00f69f/> replay line-end hyphens at visual line ends
+ - <csr-id-f0c1cd60b68a24c9c7131ec4ba1ae6f62ad5a441/> schedule redraws after egui event handling
+ - <csr-id-cdd795569e75e1a05f741a9f9b0e8cbd78ee83f2/> use Unicode scalar offsets for parser source ranges
+
+### Other
+
+ - <csr-id-8f652e341287185be3deb01585d242cd241332ed/> include source and documentation in package
+
+### Performance
+
+ - <csr-id-d31c962cbf930ebd2765511054f04743172cbe62/> use f32 for SDF calculations and improve benchmark diagnostics
+
+### Refactor
+
+ - <csr-id-693b3210979db9ee0804fa6f4382d246c7bb5b1a/> make SDF calculation stateless
+ - <csr-id-7d045eb038b39dce7688178f60fa2bebfd3b10bd/> replace legacy font dependencies
+ - <csr-id-5bc1dfad9c73d17090a104081dcc77dcf570bd38/> migrate font extraction and layout to tiqian
+
+### Test
+
+ - <csr-id-a5388160a57e0e942413bba0cea9ed87dd9d8b12/> unwrap selected font attempts in assertions
+ - <csr-id-665361884a59f82d3a527c4476290f0bd5e76e62/> cover layout entrypoints and drop obsolete punctuation tests
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 20 commits contributed to the release over the course of 3 calendar days.
+ - 19 days passed between releases.
+ - 20 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Include source and documentation in package ([`8f652e3`](https://github.com/Icemic/huozi-rs/commit/8f652e341287185be3deb01585d242cd241332ed))
+    - Unwrap selected font attempts in assertions ([`a538816`](https://github.com/Icemic/huozi-rs/commit/a5388160a57e0e942413bba0cea9ed87dd9d8b12))
+    - Document graceful degradation policy ([`051186c`](https://github.com/Icemic/huozi-rs/commit/051186c0cd906fcf41c173b45280037ec526d94a))
+    - Restore Huozi Send and Sync support with tiqian 0.3 ([`a7acb23`](https://github.com/Icemic/huozi-rs/commit/a7acb238604503fd1500d9129c46ed67e9bbb713))
+    - Add project architecture and agent guidelines ([`2755fb1`](https://github.com/Icemic/huozi-rs/commit/2755fb1e29f2f629a68f517bb4db4937890e31f7))
+    - Update readme ([`dc5cabc`](https://github.com/Icemic/huozi-rs/commit/dc5cabc4190de9b86ba7d737d96d249fb96c1d1f))
+    - Align glyph buffer with the SDF cutoff ([`15b6084`](https://github.com/Icemic/huozi-rs/commit/15b60841ef7289ac9d045d6a929b78e835a2983a))
+    - Improve SDF rendering for strokes and shadows ([`fa5c38e`](https://github.com/Icemic/huozi-rs/commit/fa5c38e3c9f147f4cc4febfd2def28381a74b872))
+    - Use f32 for SDF calculations and improve benchmark diagnostics ([`d31c962`](https://github.com/Icemic/huozi-rs/commit/d31c962cbf930ebd2765511054f04743172cbe62))
+    - Make SDF calculation stateless ([`693b321`](https://github.com/Icemic/huozi-rs/commit/693b3210979db9ee0804fa6f4382d246c7bb5b1a))
+    - Fmt & clippy ([`118ba9f`](https://github.com/Icemic/huozi-rs/commit/118ba9f24a594568da78eb625686b5194f2316ee))
+    - Support multi-grid glyphs in the SDF atlas ([`71d7308`](https://github.com/Icemic/huozi-rs/commit/71d730806e9047850a787255ecd89a78e291bc43))
+    - Replace legacy font dependencies ([`7d045eb`](https://github.com/Icemic/huozi-rs/commit/7d045eb038b39dce7688178f60fa2bebfd3b10bd))
+    - Use skrifa ControlBoundsPen import ([`662a2a9`](https://github.com/Icemic/huozi-rs/commit/662a2a9cd58de38d811f0f3a087cca751c044692))
+    - Add configurable font fallback controls to render example ([`7c9710c`](https://github.com/Icemic/huozi-rs/commit/7c9710c33282ffa9f7b394657ca46899b7d1a703))
+    - Replay line-end hyphens at visual line ends ([`dc81491`](https://github.com/Icemic/huozi-rs/commit/dc81491e0fe043478a44c21985e9f4b5df00f69f))
+    - Schedule redraws after egui event handling ([`f0c1cd6`](https://github.com/Icemic/huozi-rs/commit/f0c1cd60b68a24c9c7131ec4ba1ae6f62ad5a441))
+    - Cover layout entrypoints and drop obsolete punctuation tests ([`6653618`](https://github.com/Icemic/huozi-rs/commit/665361884a59f82d3a527c4476290f0bd5e76e62))
+    - Migrate font extraction and layout to tiqian ([`5bc1dfa`](https://github.com/Icemic/huozi-rs/commit/5bc1dfad9c73d17090a104081dcc77dcf570bd38))
+    - Use Unicode scalar offsets for parser source ranges ([`cdd7955`](https://github.com/Icemic/huozi-rs/commit/cdd795569e75e1a05f741a9f9b0e8cbd78ee83f2))
+</details>
+
 ## v0.20.0 (2026-08-30)
+
+<csr-id-4ae221f1c2522e27cb100e5b2dde63c632993a0d/>
+<csr-id-a40f9eb280979677a8cd05558b2af1adeeb65634/>
+<csr-id-910adf79b11336c335e25ba86674fb36da6cd134/>
 
 ### Refactor
 
@@ -17,7 +102,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 6 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -29,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.20.0 ([`fc5b6b7`](https://github.com/Icemic/huozi-rs/commit/fc5b6b70a9a568e56641ad43998a2c90727be2f2))
     - Write glyph pixels directly to texture atlas ([`4ae221f`](https://github.com/Icemic/huozi-rs/commit/4ae221f1c2522e27cb100e5b2dde63c632993a0d))
     - Write texture data from raw pixels ([`a40f9eb`](https://github.com/Icemic/huozi-rs/commit/a40f9eb280979677a8cd05558b2af1adeeb65634))
     - Replace image dependency with custom texture atlas ([`910adf7`](https://github.com/Icemic/huozi-rs/commit/910adf79b11336c335e25ba86674fb36da6cd134))
