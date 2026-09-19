@@ -365,6 +365,13 @@ mod tests {
     use tiqian::shaping::replayable_font_backend::ReplayableFontCatalog;
 
     #[test]
+    fn huozi_is_send_and_sync() {
+        fn assert_send_and_sync<T: Send + Sync>() {}
+
+        assert_send_and_sync::<Huozi>();
+    }
+
+    #[test]
     fn reports_a_structured_error_when_no_font_source_is_valid() {
         let result = Huozi::new(vec![FontSource::new(vec![0])]);
 

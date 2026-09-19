@@ -25,7 +25,7 @@ nom-language = {version = "0.1"}
 nom_locate_usv = {version = "5.1.0", features = ["runtime-dispatch-simd"]}
 serde = {version = "1", features = ["derive"]}
 skrifa = "0.46"
-tiqian = "0.2.0"
+tiqian = "0.3"
 wgpu = {version = "30.0", optional = true}
 
 [dev-dependencies]
@@ -61,3 +61,6 @@ path = "examples/render/main.rs"
 crate-type = ["cdylib"]
 name = "render-lib"
 path = "examples/render/main.rs"
+
+# [patch.crates-io]
+# tiqian = {path = "../tiqian-rs"}
