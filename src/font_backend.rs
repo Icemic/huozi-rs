@@ -740,14 +740,14 @@ mod tests {
     use tiqian::core::text::Text;
     use tiqian::core::text_model::TextStyle;
 
-    const FIRA_CODE: &[u8] = include_bytes!("../examples/assets/FiraCode-VF.ttf");
-    const INTER: &[u8] = include_bytes!("../examples/assets/InterVariable.ttf");
-    const INTER_ITALIC: &[u8] = include_bytes!("../examples/assets/InterVariable-Italic.ttf");
-    const SOURCE_HAN_SANS: &[u8] = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+    const FIRA_CODE: &[u8] = include_bytes!("../resources/fonts/FiraCode-VF.ttf");
+    const INTER: &[u8] = include_bytes!("../resources/fonts/InterVariable.ttf");
+    const INTER_ITALIC: &[u8] = include_bytes!("../resources/fonts/InterVariable-Italic.ttf");
+    const SOURCE_HAN_SANS: &[u8] = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
     const SOURCE_HAN_SERIF_REGULAR: &[u8] =
-        include_bytes!("../examples/assets/SourceHanSerifSC-Regular.otf");
+        include_bytes!("../resources/fonts/SourceHanSerifCN-Regular.otf");
     const SOURCE_HAN_SERIF_SEMIBOLD: &[u8] =
-        include_bytes!("../examples/assets/SourceHanSerifCN-SemiBold.otf");
+        include_bytes!("../resources/fonts/SourceHanSerifCN-SemiBold.otf");
 
     fn request(text: &str) -> FontBackendRequest {
         request_with_style(text, TextStyle::default())

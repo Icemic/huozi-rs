@@ -4,7 +4,7 @@ use huozi::{
     parser::{Segment, TextStyle},
 };
 
-const TEST_FONT: &[u8] = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+const TEST_FONT: &[u8] = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
 
 #[test]
 fn layout_parse_with_uses_custom_tag_symbols() {

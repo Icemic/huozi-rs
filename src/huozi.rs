@@ -380,7 +380,7 @@ mod tests {
 
     #[test]
     fn grid_rect_reservation_reuses_a_released_multi_row_region() {
-        let font = include_bytes!("../examples/assets/FiraCode-VF.ttf");
+        let font = include_bytes!("../resources/fonts/FiraCode-VF.ttf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
 
         let first = huozi.reserve_grid_rect(2, 2).unwrap();
@@ -401,8 +401,8 @@ mod tests {
 
     #[test]
     fn glyph_id_atlas_preserves_the_selected_font_face_and_glyph_id() {
-        let fira_code = include_bytes!("../examples/assets/FiraCode-VF.ttf");
-        let source_han_sans = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+        let fira_code = include_bytes!("../resources/fonts/FiraCode-VF.ttf");
+        let source_han_sans = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
         let mut huozi = Huozi::new(vec![
             FontSource::with_alias(fira_code.to_vec(), "fira".to_owned()),
             FontSource::with_alias(source_han_sans.to_vec(), "source-han".to_owned()),
@@ -431,7 +431,7 @@ mod tests {
 
     #[test]
     fn fira_code_long_ligature_uses_a_multi_grid_sdf_region() {
-        let font = include_bytes!("../examples/assets/FiraCode-VF.ttf");
+        let font = include_bytes!("../resources/fonts/FiraCode-VF.ttf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
         let style = HuoziTextStyle::default();
         let (vertices, _, _, _) = huozi
@@ -451,7 +451,7 @@ mod tests {
 
     #[test]
     fn glyph_id_atlas_uses_same_face_notdef_when_outline_is_absent() {
-        let font = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+        let font = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
         let text = Text::from("中");
         let request = FontBackendRequest::new(
@@ -475,7 +475,7 @@ mod tests {
 
     #[test]
     fn tiqian_output_replays_glyphs_paints_and_segment_identity() {
-        let font = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+        let font = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
         let style = HuoziTextStyle {
             fill_color: csscolorparser::Color::from_rgba8(0x12, 0x34, 0x56, 0x78),
@@ -603,7 +603,7 @@ mod tests {
 
     #[test]
     fn tiqian_output_keeps_all_glyphs_in_a_shaping_cluster() {
-        let font = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+        let font = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
         let style = HuoziTextStyle::default();
         let input = HuoziTiqianInputAdapter::adapt(
@@ -677,7 +677,7 @@ mod tests {
 
     #[test]
     fn tiqian_output_replays_line_end_hyphen_at_the_line_visual_end() {
-        let font = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+        let font = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
         let style = HuoziTextStyle::default();
         let input = HuoziTiqianInputAdapter::adapt(
@@ -763,7 +763,7 @@ mod tests {
 
     #[test]
     fn tiqian_output_drops_a_line_that_exceeds_box_height() {
-        let font = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+        let font = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
         let style = HuoziTextStyle::default();
         let layout_style = LayoutStyle {

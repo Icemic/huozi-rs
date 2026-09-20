@@ -8,7 +8,7 @@ use image::RgbaImage;
 const BENCHMARK_SAMPLES: usize = 10;
 
 fn main() {
-    let font_data = std::fs::read("examples/assets/SourceHanSansSC-Regular.otf").unwrap();
+    let font_data = std::fs::read("resources/fonts/SourceHanSansSC-VF.otf").unwrap();
     let text = ASCII
         .chars()
         .chain(CJK_SYMBOL.chars())
@@ -57,9 +57,7 @@ fn main() {
         (hash ^ *byte as u64).wrapping_mul(0x100000001b3)
     });
     let non_zero_pixels = pixels.iter().filter(|&&value| value != 0).count();
-    println!(
-        "SDF texture checksum: {checksum:016x}, non-zero bytes: {non_zero_pixels}",
-    );
+    println!("SDF texture checksum: {checksum:016x}, non-zero bytes: {non_zero_pixels}",);
     pixels.chunks_exact_mut(4).for_each(|chunk| {
         chunk[1] = chunk[0];
         chunk[2] = chunk[0];

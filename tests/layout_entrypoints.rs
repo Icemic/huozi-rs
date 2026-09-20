@@ -4,7 +4,7 @@ use huozi::{
     parser::{Segment, SegmentId, TextStyle},
 };
 
-const TEST_FONT: &[u8] = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+const TEST_FONT: &[u8] = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
 
 fn engine() -> Huozi {
     Huozi::new(vec![FontSource::new(TEST_FONT.to_vec())]).unwrap()

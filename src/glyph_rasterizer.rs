@@ -188,7 +188,7 @@ mod tests {
     use tiqian::font::font_policy::FontRole;
     use tiqian::shaping::font_backend::{FontBackend, FontBackendRequest};
 
-    const SOURCE_HAN_SANS: &[u8] = include_bytes!("../examples/assets/SourceHanSansSC-Regular.otf");
+    const SOURCE_HAN_SANS: &[u8] = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
 
     #[test]
     fn bitmap_bounds_match_ink_bounds_in_baseline_coordinates() {
