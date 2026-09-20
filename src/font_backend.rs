@@ -27,22 +27,39 @@ use tiqian::shaping::replayable_font_backend::{
 };
 use tiqian::shaping::text_shaper::{ShapingResult, ShapingSource};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FontSourceKind {
+    Cjk,
+    Latin,
+}
+
 #[derive(Clone, Debug)]
 pub struct FontSource {
     pub bytes: Vec<u8>,
     pub alias: Option<String>,
+    pub kind: Option<FontSourceKind>,
 }
 
 impl FontSource {
     pub fn new(bytes: Vec<u8>) -> Self {
-        Self { bytes, alias: None }
+        Self {
+            bytes,
+            alias: None,
+            kind: None,
+        }
     }
 
     pub fn with_alias(bytes: Vec<u8>, alias: String) -> Self {
         Self {
             bytes,
             alias: Some(alias),
+            kind: None,
         }
+    }
+
+    pub fn with_kind(mut self, kind: FontSourceKind) -> Self {
+        self.kind = Some(kind);
+        self
     }
 }
 
@@ -82,6 +99,7 @@ struct FontFaceRecord {
     id: FontFaceId,
     source_index: usize,
     collection_index: u32,
+    kind: Option<FontSourceKind>,
     bytes: Arc<[u8]>,
     family_names: Vec<String>,
     weight: i32,
@@ -135,6 +153,7 @@ impl HuoziFontManager {
                 }
             };
             let source_alias = source.alias;
+            let source_kind = source.kind;
             let source_label = source_alias
                 .clone()
                 .unwrap_or_else(|| format!("font-source-{source_index}"));
@@ -172,6 +191,7 @@ impl HuoziFontManager {
                     id: id.clone(),
                     source_index,
                     collection_index,
+                    kind: source_kind,
                     bytes: bytes.clone(),
                     family_names: family_names.clone(),
                     weight,
@@ -286,20 +306,33 @@ impl HuoziFontManager {
             ]
         };
         let mut candidates = Vec::new();
-        for group in family_groups {
-            let mut style_buckets: [Vec<FontCandidate<'_>>; 3] =
-                std::array::from_fn(|_| Vec::new());
-            for index in group {
-                let candidate =
-                    font_candidate(&self.faces[index], requested_weight, request.style.italic);
-                let style_index = style_order
-                    .iter()
-                    .position(|style| *style == candidate.style)
-                    .expect("candidate style must belong to a style tier");
-                style_buckets[style_index].push(candidate);
-            }
-            for bucket in style_buckets {
-                append_candidates_by_weight(&mut candidates, bucket, requested_weight);
+        let target_kind = match request.role {
+            FontRole::CjkText | FontRole::CjkPunctuation => Some(FontSourceKind::Cjk),
+            FontRole::LatinText => Some(FontSourceKind::Latin),
+            FontRole::Symbol | FontRole::Emoji | FontRole::Unknown => None,
+        };
+
+        for pass in 0..if target_kind.is_some() { 2 } else { 1 } {
+            for group in &family_groups {
+                let mut style_buckets: [Vec<FontCandidate<'_>>; 3] =
+                    std::array::from_fn(|_| Vec::new());
+                for &index in group {
+                    let face = &self.faces[index];
+                    if let Some(kind) = target_kind
+                        && (pass == 0) != (face.kind == Some(kind))
+                    {
+                        continue;
+                    }
+                    let candidate = font_candidate(face, requested_weight, request.style.italic);
+                    let style_index = style_order
+                        .iter()
+                        .position(|style| *style == candidate.style)
+                        .expect("candidate style must belong to a style tier");
+                    style_buckets[style_index].push(candidate);
+                }
+                for bucket in style_buckets {
+                    append_candidates_by_weight(&mut candidates, bucket, requested_weight);
+                }
             }
         }
         candidates
@@ -777,12 +810,24 @@ mod tests {
     }
 
     fn request_with_style(text: &str, style: TextStyle) -> FontBackendRequest {
+        request_with_role_and_style(text, FontRole::CjkText, style)
+    }
+
+    fn request_with_role(text: &str, role: FontRole) -> FontBackendRequest {
+        request_with_role_and_style(text, role, TextStyle::default())
+    }
+
+    fn request_with_role_and_style(
+        text: &str,
+        role: FontRole,
+        style: TextStyle,
+    ) -> FontBackendRequest {
         let text = Text::from(text);
         FontBackendRequest::new(
             text.clone(),
             text_range(0, text.scalar_len().value()),
             style,
-            FontRole::CjkText,
+            role,
         )
     }
 
@@ -962,6 +1007,126 @@ mod tests {
     }
 
     #[test]
+    fn prioritizes_cjk_kind_for_cjk_text_and_punctuation() {
+        let manager = HuoziFontManager::from_sources(vec![
+            FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
+                .with_kind(FontSourceKind::Latin),
+            FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned())
+                .with_kind(FontSourceKind::Cjk),
+        ])
+        .unwrap();
+
+        let text = manager.shape(&request_with_role("A", FontRole::CjkText));
+        let punctuation = manager.shape(&request_with_role("“", FontRole::CjkPunctuation));
+
+        assert_eq!(text.face.resource_id(), "source-han:1");
+        assert_eq!(punctuation.face.resource_id(), "source-han:1");
+        assert_eq!(text.attempts.len(), 1);
+        assert_eq!(punctuation.attempts.len(), 1);
+    }
+
+    #[test]
+    fn prioritizes_latin_kind_for_latin_text() {
+        let manager = HuoziFontManager::from_sources(vec![
+            FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned())
+                .with_kind(FontSourceKind::Cjk),
+            FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
+                .with_kind(FontSourceKind::Latin),
+        ])
+        .unwrap();
+
+        let result = manager.shape(&request_with_role("A", FontRole::LatinText));
+
+        assert_eq!(result.face.resource_id(), "fira:1");
+        assert_eq!(result.attempts.len(), 1);
+    }
+
+    #[test]
+    fn prioritizes_kind_within_explicit_family_list() {
+        let manager = HuoziFontManager::from_sources(vec![
+            FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
+                .with_kind(FontSourceKind::Latin),
+            FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned())
+                .with_kind(FontSourceKind::Cjk),
+        ])
+        .unwrap();
+        let cjk_style = TextStyle::builder()
+            .font_families(vec!["fira".to_owned(), "source-han".to_owned()])
+            .build();
+        let latin_style = TextStyle::builder()
+            .font_families(vec!["source-han".to_owned(), "fira".to_owned()])
+            .build();
+
+        let cjk = manager.shape(&request_with_role_and_style(
+            "A",
+            FontRole::CjkText,
+            cjk_style,
+        ));
+        let latin = manager.shape(&request_with_role_and_style(
+            "A",
+            FontRole::LatinText,
+            latin_style,
+        ));
+
+        assert_eq!(cjk.face.resource_id(), "source-han:1");
+        assert_eq!(latin.face.resource_id(), "fira:0");
+    }
+
+    #[test]
+    fn keeps_explicit_single_family_from_leaking_to_other_families() {
+        let manager = HuoziFontManager::from_sources(vec![
+            FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
+                .with_kind(FontSourceKind::Latin),
+            FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned())
+                .with_kind(FontSourceKind::Cjk),
+        ])
+        .unwrap();
+        let style = TextStyle::builder()
+            .font_families(vec!["fira".to_owned()])
+            .build();
+
+        let result = manager.shape(&request_with_role_and_style("中", FontRole::CjkText, style));
+
+        assert_eq!(result.face.resource_id(), "fira:0");
+        assert_eq!(result.attempts.len(), 1);
+        assert!(result.attempts[0].has_missing_glyphs());
+    }
+
+    #[test]
+    fn keeps_base_order_for_roles_without_a_target_kind() {
+        let manager = HuoziFontManager::from_sources(vec![
+            FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
+                .with_kind(FontSourceKind::Latin),
+            FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned())
+                .with_kind(FontSourceKind::Cjk),
+        ])
+        .unwrap();
+
+        let result = manager.shape(&request_with_role("A", FontRole::Emoji));
+
+        assert_eq!(result.face.resource_id(), "fira:0");
+        assert_eq!(result.attempts.len(), 1);
+    }
+
+    #[test]
+    fn falls_back_once_after_preferred_kind_is_missing() {
+        let manager = HuoziFontManager::from_sources(vec![
+            FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
+                .with_kind(FontSourceKind::Cjk),
+            FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned()),
+        ])
+        .unwrap();
+
+        let result = manager.shape(&request_with_role("中", FontRole::CjkText));
+
+        assert_eq!(result.face.resource_id(), "source-han:1");
+        assert_eq!(result.attempts.len(), 2);
+        assert!(result.attempts[0].candidate_key.starts_with("source-0#0@"));
+        assert!(result.attempts[0].has_missing_glyphs());
+        assert!(result.attempts[1].candidate_key.starts_with("source-1#0@"));
+    }
+
+    #[test]
     fn selects_static_face_by_css_weight_order() {
         let manager = HuoziFontManager::from_sources(vec![
             FontSource::with_alias(SOURCE_HAN_SERIF_REGULAR.to_vec(), "serif".to_owned()),
@@ -1088,6 +1253,7 @@ mod tests {
             id: FontFaceId::with_resource_id("test-face"),
             source_index: 0,
             collection_index: 0,
+            kind: None,
             bytes: Arc::from([]),
             family_names: vec!["test".to_owned()],
             weight: 400,

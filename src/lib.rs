@@ -10,5 +10,5 @@ pub mod layout;
 pub mod parser;
 pub mod sdf;
 
-pub use crate::font_backend::FontSource;
+pub use crate::font_backend::{FontSource, FontSourceKind};
 pub use crate::huozi::*;

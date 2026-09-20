@@ -742,6 +742,23 @@ mod tests {
     }
 
     #[test]
+    fn font_tag_preserves_declared_family_order() {
+        let document = lower_elements(
+            parse(&Segment::dummy("[font=\"latin, cjk\"]A[/font]")).unwrap(),
+            &TextStyle::default(),
+            None,
+        );
+        let InlineNode::Text(run) = &document.paragraphs[0].nodes[0] else {
+            panic!("expected text node");
+        };
+
+        assert_eq!(
+            run.style.font_families,
+            vec!["latin".to_owned(), "cjk".to_owned()]
+        );
+    }
+
+    #[test]
     fn br_splits_paragraphs_and_continues_enclosing_scope() {
         let document = lower_elements(
             parse(&Segment::dummy(

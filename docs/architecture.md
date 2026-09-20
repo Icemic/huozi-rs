@@ -2,7 +2,7 @@
 
 本文档描述当前 `huozi` crate 的实现与对外边界。
 
-**最后更新**：2026-09-19
+**最后更新**：2026-09-21
 **状态**：持续维护文档，随功能迭代同步更新
 
 ## 项目定位
@@ -64,7 +64,7 @@ flowchart TD
 
 `Huozi` 是单个排版与图集状态实例。它持有字体目录、可复用的 tiqian 段落引擎、一个 SDF `TextureAtlas`、glyph LRU 缓存和图集网格占用状态。
 
-创建实例时，`Huozi::new(font_sources)` 按输入顺序读取字体。单个无效字体来源会被记录并跳过；没有任何可用 face 时返回 `HuoziError::NoValidFontFaces`。字体目录在此时读取 family、weight、normal/italic/oblique style 和标准可变轴元数据。未指定字体族或请求的字体族均未注册时，字体来源顺序是 family fallback 优先级；需要改变该顺序时应新建 `Huozi`，以同时重建字体目录和 SDF 图集。
+创建实例时，`Huozi::new(font_sources)` 按输入顺序读取字体。单个无效字体来源会被记录并跳过；没有任何可用 face 时返回 `HuoziError::NoValidFontFaces`。字体目录在此时读取 family、weight、normal/italic/oblique style 和标准可变轴元数据。`FontSource` 可选声明 `FontSourceKind::Cjk` 或 `FontSourceKind::Latin`；未声明的来源保留通用 fallback 用途。未指定字体族或请求的字体族均未注册时，字体来源顺序是基础 family fallback 优先级；需要改变该顺序时应新建 `Huozi`，以同时重建字体目录和 SDF 图集。
 
 `Huozi` 实现 `Send + Sync`，可安全跨线程转移或置于外部同步容器。布局和 atlas 查询仍需要可变借用；一次布局可能生成新的 SDF 条目、淘汰旧条目并修改 atlas 像素，因此同一实例的实际并发访问需要由调用方串行化。渲染器应在 `image_version()` 变化后重新上传纹理内容。
 
@@ -101,7 +101,7 @@ flowchart TD
 
 内部 `HuoziFontManager` 是唯一的生产字体入口。它同时实现 tiqian 的 `FontBackend` 与 `ReplayableFontCatalog`，并管理字体度量、glyph ink bounds、轮廓查询和 SDF 所需的字体身份。family 名称来自字体的 typographic family、family、兼容 family 和调用方提供的 alias，匹配时去除首尾空白并忽略 ASCII 大小写。
 
-对 tiqian 发出的一个 shaping 请求，字体后端先按请求的 family 顺序构造候选；family 内先按 normal、italic、oblique 的请求顺序选择 style 档，再按 CSS Fonts weight 规则排列 face。没有 family 命中时按注册 family 顺序退化。字体后端依次对候选完整执行 HarfRust shaping，第一个不含 glyph id `0` 的候选被选中；所有候选均缺字时，保留第一个候选的 shaping 结果和 `.notdef` glyph。
+对 tiqian 发出的一个 shaping 请求，字体后端先按请求的 family 顺序构造候选域；没有 family 命中时按注册 family 顺序退化。`CjkText` 与 `CjkPunctuation` 会在该域内优先尝试 `FontSourceKind::Cjk`，`LatinText` 会优先尝试 `FontSourceKind::Latin`；`Symbol`、`Emoji` 与 `Unknown` 保持基础顺序。显式 `[font]` 列表只定义候选域，角色优先级不会选择列表外的 family。每个候选部分内先按 normal、italic、oblique 的请求顺序选择 style 档，再按 CSS Fonts weight 规则排列 face。字体后端依次对候选完整执行 HarfRust shaping，第一个不含 glyph id `0` 的候选被选中；所有候选均缺字时，保留第一个候选的 shaping 结果和 `.notdef` glyph。
 
 variable font 会根据文字样式设置 `wght`，斜体请求优先设置 `ital=1`，没有 `ital` 时设置 `slnt=-14`，所有值均限制在字体声明的轴范围内。没有合适静态 face 或标准轴时退化到最近的非合成 face，不生成软件加粗或软件倾斜。每个输出 glyph 都携带包含实际 variation instance 的 `FontFaceId`；HarfRust shaping、SkRifa metrics、glyph bounds、轮廓回放和 SDF 图集使用同一实例。库当前不向调用方开放任意字体轴配置。
 
@@ -193,6 +193,7 @@ Segment.id
 | ---------------------------------------- | -------------------------------------------------------------- |
 | `FontSource::new(bytes)`                 | 创建无别名字体来源。                                           |
 | `FontSource::with_alias(bytes, alias)`   | 创建带稳定可读别名的字体来源。                                 |
+| `FontSource::with_kind(kind)`            | 为字体来源声明 CJK 或 Latin 候选优先用途。                     |
 | `Huozi::new(font_sources)`               | 建立字体目录、布局引擎和空 SDF 图集。                          |
 | `Huozi::get_glyph_by_id(face, glyph_id)` | 按已注册字体身份查询或生成 SDF glyph。通常由布局输出路径使用。 |
 | `Huozi::texture_pixels()`                | 读取 atlas 尺寸和 RGBA 像素。                                  |
@@ -243,7 +244,7 @@ Segment.id
 
 典型用户流程如下：
 
-1. 将首选字体和 fallback 字体按优先级构造为 `Vec<FontSource>`，创建一个 `Huozi`。
+1. 将首选字体和 fallback 字体按优先级构造为 `Vec<FontSource>`；需要角色优先级时，为来源设置 `FontSourceKind`，再创建一个 `Huozi`。
 2. 使用 `layout_parse`、`layout_plain` 或 `layout` 获得 glyph 顶点、来源映射和布局尺寸。
 3. 收集每个 glyph 的 shadow、stroke、fill quad，按 `shadow → stroke → fill` 顺序写入 vertex/index buffer。
 4. 比较 `image_version()`；版本改变时将 `texture_pixels().pixels()` 上传为 RGBA atlas。

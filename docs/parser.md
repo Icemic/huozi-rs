@@ -162,10 +162,10 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 | `shadowOffsetY` | 单值/`offsetY` | 创建或覆盖阴影纵向偏移。 |
 | `shadowBlur` | 单值/`blur` | 创建或覆盖阴影 blur 半径。 |
 | `shadowWidth` | 单值/`width` | 创建或覆盖阴影扩张半径。 |
-| `font` | 单值 `family`；`font`、`family` | 逗号分隔字体族列表，空项忽略。 |
-| `weight` | 单值 `weight`；`weight` | `i32` 字重。 |
-| `bold` | 可选 `weight` | 无属性时设为 `700`；带属性时仅处理 `weight`。 |
-| `italic` | 可选 `italic` 或 `enabled` | 无属性时设为 `true`；带属性时解析 `bool`。 |
+| `font` | 单值 `family`；`font`、`family` | 逗号分隔字体族列表，空项忽略；已注册 family 构成候选域。CJK 与 Latin 文本角色会在该列表内部优先尝试调用方声明的对应 `FontSourceKind`，不会选择列表外 family。 |
+| `weight` | 单值 `weight`；`weight` | `i32` 字重；布局时限制到 `1..=1000`，匹配静态 face 或 variable `wght`。 |
+| `bold` | 可选 `weight` | 无属性时设为 `700`；带属性时仅处理 `weight`，后续选择规则与 `weight` 相同。 |
+| `italic` | 可选 `italic` 或 `enabled` | 无属性时设为 `true`；带属性时解析 `bool`，匹配 italic/oblique face 或标准斜体轴。 |
 | `locale` | 单值 `locale`；`locale` | 设置 locale。 |
 | `baseline` | 单值 `baseline`；`baseline` | `f32` 基线偏移；负值向上。 |
 | `attach` | 单值 `attach`；`attach` | `none` 或 `previous`。 |
