@@ -7,7 +7,7 @@ pub fn text_style_default() -> TextStyle {
         fill_color: Color::new(1.0, 1.0, 1.0, 1.0),
         font_weight: 400,
         stroke: Some(stroke_default()),
-        shadow: Some(shadow_default()),
+        shadow: None,
         ..TextStyle::default()
     }
 }

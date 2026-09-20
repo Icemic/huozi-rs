@@ -37,13 +37,13 @@ mod mvp;
 mod texture;
 mod ui;
 
-const DEFAULT_TEXT: &str = r#"一个简单的中日韩文字排印引擎，为游戏富文本特别设计。
-A simple typography engine for CJK languages, especially designed for game rich-text.
+const DEFAULT_TEXT: &str = r#"一个功能完善的中日韩文字排印引擎，为[shadow offsetX=1.5 offsetY=1.5 blur=0 width=0.4 color="rgba(255, 64, 153, 1.0)"]游戏富文本[/shadow]特别设计。
+A fully functional typography engine for CJK languages, especially designed for game rich-text.
 huózì 活字 gM 123.!""?;:-_/+=<>==
 CJK 标点——⸺，。：；“”？、《》「」【】
-中文“引号”与western “quote”虽然是同一个字符，但需要渲染成不同的样子。
+中文[color=yellow]“[/color]引号[color=yellow]”[/color]与western [color=yellow]“[/color]quote[color=yellow]”[/color]虽然是同一个字符，但需要渲染成不同的样子。
 [locale=zh-hans]骨直肩示[/locale] [locale=zh-hant]骨直肩示[/locale] [locale=zh-hk]骨直肩示[/locale] [locale=ja-jp]骨直肩示[/locale] [locale=ko-kr]骨直肩示[/locale]
-[font="思源黑体 VF"]思源黑体[/font] / [font="思源宋体 VF"]思源宋体[/font]
+[font="思源黑体 VF"]思源黑体[/font] / [font="Source Han Serif VF"]思源宋体[/font]
 [font="思源黑体 VF"][weight=400]常规[/weight] / [bold]粗体[/bold][/font]
 [font="Inter Variable"]Inter Normal / [italic]Inter Italic[/italic][/font]
 "#;
@@ -427,7 +427,7 @@ impl State {
             },
             text_config: text_style_default(),
             stroke_enabled: true,
-            shadow_enabled: true,
+            shadow_enabled: false,
             config_changed: false,
             egui_paint_jobs: Vec::new(),
             egui_textures_delta: Default::default(),
@@ -550,23 +550,19 @@ impl State {
 
                 let mut index_offset = 0;
 
-                if self.text_config.shadow.is_some() {
-                    for glyph in glyphs.iter() {
-                        if let Some(shadow) = glyph.shadow {
-                            vertices.extend(shadow);
-                            indices.extend(glyph.indices.iter().map(|i| i + index_offset));
-                            index_offset += shadow.len() as u16;
-                        }
+                for glyph in glyphs.iter() {
+                    if let Some(shadow) = glyph.shadow {
+                        vertices.extend(shadow);
+                        indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+                        index_offset += shadow.len() as u16;
                     }
                 }
 
-                if self.text_config.stroke.is_some() {
-                    for glyph in glyphs.iter() {
-                        if let Some(stroke) = glyph.stroke {
-                            vertices.extend(stroke);
-                            indices.extend(glyph.indices.iter().map(|i| i + index_offset));
-                            index_offset += stroke.len() as u16;
-                        }
+                for glyph in glyphs.iter() {
+                    if let Some(stroke) = glyph.stroke {
+                        vertices.extend(stroke);
+                        indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+                        index_offset += stroke.len() as u16;
                     }
                 }
 
