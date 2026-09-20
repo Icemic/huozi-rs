@@ -1,6 +1,6 @@
 use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
-    Huozi,
+    FontSourceKind, Huozi,
     constant::TEXTURE_SIZE,
     layout::{ColorSpace, LayoutStyle, Vertex},
     parser::{Segment, TextStyle},
@@ -41,9 +41,10 @@ const DEFAULT_TEXT: &str = r#"一个简单的中日韩文字排印引擎，为�
 A simple typography engine for CJK languages, especially designed for game rich-text.
 huózì 活字 gM 123.!""?;:-_/+=<>==
 CJK 标点——⸺，。：；“”？、《》「」【】
+中文“引号”与western “quote”虽然是同一个字符，但需要渲染成不同的样子。
 [locale=zh-hans]骨直肩示[/locale] [locale=zh-hant]骨直肩示[/locale] [locale=zh-hk]骨直肩示[/locale] [locale=ja-jp]骨直肩示[/locale] [locale=ko-kr]骨直肩示[/locale]
-[font="Source Han Sans SC"]思源黑体[/font] / [font="Source Han Serif SC"]思源宋体[/font]
-[font="Source Han Sans SC"][weight=400]常规[/weight] / [bold]粗体[/bold][/font]
+[font="思源黑体 VF"]思源黑体[/font] / [font="思源宋体 VF"]思源宋体[/font]
+[font="思源黑体 VF"][weight=400]常规[/weight] / [bold]粗体[/bold][/font]
 [font="Inter Variable"]Inter Normal / [italic]Inter Italic[/italic][/font]
 "#;
 
@@ -62,6 +63,7 @@ const REDRAW_DELAY: Duration = Duration::ZERO;
 
 struct FontFallback {
     name: String,
+    kind: Option<FontSourceKind>,
     enabled: bool,
 }
 
@@ -389,9 +391,19 @@ impl State {
                         .iter()
                         .find(|font| font.name.eq_ignore_ascii_case(name))
                 })
-                .map(|font| FontFallback {
-                    name: font.name.clone(),
-                    enabled: true,
+                .map(|font| {
+                    let kind = match font.name.as_str() {
+                        "InterVariable.ttf" | "InterVariable-Italic.ttf" => FontSourceKind::Latin,
+                        "SourceHanSansSC-VF.otf" | "SourceHanSerif-VF.otf.woff2" => {
+                            FontSourceKind::Cjk
+                        }
+                        _ => unreachable!("default font fallback has an unknown source"),
+                    };
+                    FontFallback {
+                        name: font.name.clone(),
+                        kind: Some(kind),
+                        enabled: true,
+                    }
                 })
                 .collect(),
             font_files,
@@ -498,7 +510,11 @@ impl State {
                         .iter()
                         .find(|font| font.name == font_fallback.name)
                         .expect("font fallback sequence contains an unknown font file");
-                    huozi::FontSource::new(font.data.clone())
+                    let source = huozi::FontSource::new(font.data.clone());
+                    match font_fallback.kind {
+                        Some(kind) => source.with_kind(kind),
+                        None => source,
+                    }
                 })
                 .collect();
 

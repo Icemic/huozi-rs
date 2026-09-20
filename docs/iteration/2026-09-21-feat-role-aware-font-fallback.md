@@ -314,7 +314,7 @@ Huozi 继续遵守 Tiqian ADR R0003：一次 request 只选择一个最终 face�
 - `CjkText`、`CjkPunctuation`、`LatinText` 的候选重排；
 - 显式 `[font]` family 列表内的用途重排；
 - 没有目标用途、用途未声明和优先候选缺字时的回归验证；
-- `examples/render` 的字体注册用途声明与可视化人工验证；
+- `examples/render` 的字体注册用途声明、用途切换控件与可视化人工验证；
 - `docs/architecture.md`、`docs/parser.md` 和本迭代文档的同步更新。
 
 ### 不包含
@@ -354,7 +354,7 @@ Huozi 继续遵守 Tiqian ADR R0003：一次 request 只选择一个最终 face�
 1. 在 `src/font_backend.rs` 单元测试中直接构造各 `FontRole` request，验证最终 face、尝试顺序与缺字退化。
 2. 在 parser/布局入口测试中验证 `[font="family-a, family-b"]` 的列表顺序进入 role-aware 候选选择。
 3. 更新 `examples/render` 的受控字体注册，声明其 CJK 或 Latin 用途。
-4. 在示例中人工检查中文正文、CJK 标点、Latin 正文在混排文本中选择预期字体；同时检查显式 `[font]` 列表不使用列表外 family。
+4. 在示例中人工检查中文正文、CJK 标点、Latin 正文在混排文本中选择预期字体；同时检查显式 `[font]` 列表不使用列表外 family。字体行的 `On/Off` 后提供用途按钮，显示 `*`、`C` 或 `L`，每次点击按 `* → C → L → *` 循环，且切换后重建字体来源。
 5. 复查 glyph bounds、SDF 和 atlas identity 没有因候选重排而出现不同 face 的 measure/draw 不一致。
 
 阶段产出：最终代码、测试、示例和文档一致描述并证明用途优先级行为。
@@ -449,7 +449,7 @@ git diff --check
 2. Latin 正文优先使用声明为 `Latin` 的字体；
 3. 显式 `[font]` 列表内的 CJK/Latin family 会按 role 重排；
 4. 单 family `[font]` 不会落到列表外字体；
-5. 所有用途不匹配或未声明时仍可按照原有 fallback 完成布局。
+5. 每个字体行的用途按钮按 `* → C → L → *` 循环，切换后立即按新用途完成布局。
 
 ## 相关文件
 

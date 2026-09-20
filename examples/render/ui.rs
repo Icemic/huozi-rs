@@ -103,6 +103,40 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                                             font.enabled = !font.enabled;
                                                             font_fallbacks_changed = true;
                                                         }
+                                                        let kind_label = match font.kind {
+                                                            None => "*",
+                                                            Some(huozi::FontSourceKind::Cjk) => "C",
+                                                            Some(huozi::FontSourceKind::Latin) => {
+                                                                "L"
+                                                            }
+                                                        };
+                                                        if ui
+                                                            .add(
+                                                                egui::Button::new(kind_label)
+                                                                    .min_size(egui::vec2(
+                                                                        18.0, 18.0,
+                                                                    )),
+                                                            )
+                                                            .on_hover_text(
+                                                                "Cycle kind: unset, CJK, Latin",
+                                                            )
+                                                            .clicked()
+                                                        {
+                                                            font.kind = match font.kind {
+                                                                None => {
+                                                                    Some(huozi::FontSourceKind::Cjk)
+                                                                }
+                                                                Some(
+                                                                    huozi::FontSourceKind::Cjk,
+                                                                ) => Some(
+                                                                    huozi::FontSourceKind::Latin,
+                                                                ),
+                                                                Some(
+                                                                    huozi::FontSourceKind::Latin,
+                                                                ) => None,
+                                                            };
+                                                            font_fallbacks_changed = true;
+                                                        }
                                                         if ui
                                                             .add_enabled(
                                                                 index > 0,
@@ -191,6 +225,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                                         .font_to_add
                                                         .take()
                                                         .expect("add button requires a font"),
+                                                    kind: None,
                                                     enabled: true,
                                                 });
                                                 font_fallbacks_changed = true;
