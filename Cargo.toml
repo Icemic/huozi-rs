@@ -1,5 +1,5 @@
 [package]
-description = "A simple typography engine for CJK languages, especially designed for game rich-text."
+description = "A fully functional typography engine for CJK languages, especially designed for game rich-text."
 edition = "2024"
 exclude = ["examples"]
 license = "Apache-2.0"

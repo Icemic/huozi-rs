@@ -2,7 +2,7 @@
   <ruby>活<rt>huó</rt>字<rt>zì</rt></ruby><sup style="font-size: 12px;line-height:48px;vertical-align: 65%;"><i><small>Rust</small></i></sup>
 </h1>
 <h3 align="center" style="font-family: 'PingFang SC', 'Microsoft Yahei', sans-serif; font-style: normal; margin-top: 0; font-weight: 400;">
-  A simple typography engine for CJK languages, especially designed for game rich-text.
+  A fully functional typography engine for CJK languages, especially designed for game rich-text.
 </h3>
 <h5 align="center"><a href="README.md">[查看中文版本]</a></h5>
 
