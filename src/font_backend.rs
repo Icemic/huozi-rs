@@ -119,7 +119,13 @@ impl HuoziFontManager {
         let mut descriptors = Vec::new();
 
         for (source_index, source) in sources.into_iter().enumerate() {
-            let bytes: Arc<[u8]> = source.bytes.into();
+            let bytes: Arc<[u8]> = match decode_font_source(source.bytes) {
+                Ok(bytes) => bytes.into(),
+                Err(error) => {
+                    warn!("skip invalid compressed font source {source_index}: {error}");
+                    continue;
+                }
+            };
             let collection_len = match skrifa::raw::FileRef::new(&bytes) {
                 Ok(skrifa::raw::FileRef::Font(_)) => 1,
                 Ok(skrifa::raw::FileRef::Collection(collection)) => collection.len(),
@@ -493,6 +499,20 @@ impl HuoziFontManager {
     }
 }
 
+#[cfg(feature = "woff")]
+fn decode_font_source(bytes: Vec<u8>) -> Result<Vec<u8>, wuff::WuffErr> {
+    match bytes.get(..4) {
+        Some(b"wOFF") => wuff::decompress_woff1(&bytes),
+        Some(b"wOF2") => wuff::decompress_woff2(&bytes),
+        _ => Ok(bytes),
+    }
+}
+
+#[cfg(not(feature = "woff"))]
+fn decode_font_source(bytes: Vec<u8>) -> Result<Vec<u8>, std::convert::Infallible> {
+    Ok(bytes)
+}
+
 impl ReplayableFontCatalog for HuoziFontManager {
     fn faces(&self) -> &[ReplayableFontFaceDescriptor] {
         &self.descriptors
@@ -748,6 +768,9 @@ mod tests {
         include_bytes!("../resources/fonts/SourceHanSerifCN-Regular.otf");
     const SOURCE_HAN_SERIF_SEMIBOLD: &[u8] =
         include_bytes!("../resources/fonts/SourceHanSerifCN-SemiBold.otf");
+    #[cfg(feature = "woff")]
+    const SOURCE_HAN_SERIF_WOFF2: &[u8] =
+        include_bytes!("../resources/fonts/SourceHanSerif-VF.otf.woff2");
 
     fn request(text: &str) -> FontBackendRequest {
         request_with_style(text, TextStyle::default())
@@ -769,6 +792,21 @@ mod tests {
             .iter()
             .find(|setting| setting.tag() == tag)
             .map(FontVariationSetting::value)
+    }
+
+    #[cfg(feature = "woff")]
+    #[test]
+    fn loads_woff2_font_source() {
+        let manager =
+            HuoziFontManager::from_sources(vec![FontSource::new(SOURCE_HAN_SERIF_WOFF2.to_vec())])
+                .unwrap();
+
+        assert!(!manager.faces.is_empty());
+        assert!(manager.faces.iter().any(|face| {
+            face.family_names
+                .iter()
+                .any(|name| name.contains("Source Han Serif"))
+        }));
     }
 
     #[test]

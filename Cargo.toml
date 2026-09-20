@@ -13,6 +13,7 @@ include = ["src/**/*", "Cargo.toml", "./README.md", "./README_EN.md", "LICENSE"]
 charsets = []
 default = ["wgpu", "charsets"]
 wgpu = ["dep:wgpu"]
+woff = ["dep:wuff"]
 
 [dependencies]
 ab_glyph_rasterizer = "0.1"
@@ -29,6 +30,7 @@ serde = {version = "1", features = ["derive"]}
 skrifa = "0.46"
 tiqian = "0.3"
 wgpu = {version = "30.0", optional = true}
+wuff = {version = "0.2.9", optional = true}
 
 [dev-dependencies]
 cfg-if = "1"

@@ -24,7 +24,7 @@
 | -------------------- | ---------------------------------------------------------------- |
 | 语言与构建           | Rust Edition 2024，crate 名为 `huozi`                            |
 | 段落布局             | `tiqian` 的 `ParagraphLayoutEngine`                              |
-| 字体解析、度量与轮廓 | `skrifa`                                                         |
+| 字体解析、度量与轮廓 | `skrifa`；可选 `wuff` 解码 WOFF 与 WOFF2                         |
 | OpenType shaping     | `harfrust`                                                       |
 | 轮廓栅格化           | `ab_glyph_rasterizer`                                            |
 | 富文本标签解析       | 手写 Unicode scalar scanner 与显式 frame 栈恢复                  |
@@ -33,7 +33,7 @@
 | 顶点二进制布局       | `bytemuck`                                                       |
 | GPU 示例             | 可选的 `wgpu` feature；示例还使用 `winit`、`egui` 与 `egui-wgpu` |
 
-默认 feature 为 `wgpu` 和 `charsets`。段落布局、字体后端、SDF 图集和顶点输出始终可用；`wgpu` 只为 `Vertex::desc()` 等 GPU 接口提供类型支持，`charsets` 控制预定义字符集模块。
+默认 feature 为 `wgpu` 和 `charsets`。段落布局、字体后端、SDF 图集和顶点输出始终可用；`wgpu` 只为 `Vertex::desc()` 等 GPU 接口提供类型支持，`charsets` 控制预定义字符集模块。非默认 `woff` feature 使用 `wuff` 将 WOFF 和 WOFF2 解码为现有字体管线使用的 OpenType 字节。
 
 ## 分层架构
 
@@ -94,7 +94,7 @@ flowchart TD
 
 相关文件：`src/font_backend.rs`。
 
-调用方通过 `FontSource` 提供字体文件字节和可选别名。字体目录会识别单字体文件与字体集合，并按以下顺序注册候选 face：
+调用方通过 `FontSource` 提供字体文件字节和可选别名。字体目录会识别单字体文件与字体集合；启用 `woff` feature 时还会按文件签名解码 WOFF 与 WOFF2。字体目录按以下顺序注册候选 face：
 
 1. `Vec<FontSource>` 的输入顺序。
 2. 同一字体集合中的 `collection_index` 升序。
