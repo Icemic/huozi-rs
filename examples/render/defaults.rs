@@ -3,7 +3,9 @@ use huozi::parser::*;
 
 pub fn text_style_default() -> TextStyle {
     TextStyle {
+        font_size: 24.0,
         fill_color: Color::new(1.0, 1.0, 1.0, 1.0),
+        font_weight: 400,
         stroke: Some(stroke_default()),
         shadow: Some(shadow_default()),
         ..TextStyle::default()
@@ -19,8 +21,8 @@ pub fn stroke_default() -> StrokeStyle {
 
 pub fn shadow_default() -> ShadowStyle {
     ShadowStyle {
-        shadow_offset_x: 2.0,
-        shadow_offset_y: 2.0,
+        shadow_offset_x: 1.5,
+        shadow_offset_y: 1.5,
         shadow_blur: 0.0,
         shadow_width: 0.4,
         shadow_color: Color::new(1.0, 0.25, 0.6, 1.0),

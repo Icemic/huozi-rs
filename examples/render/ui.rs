@@ -7,7 +7,6 @@ use winit::window::Window;
 
 use crate::State;
 use crate::defaults::{shadow_default, stroke_default};
-use crate::fonts::get_builtin_fonts;
 use crate::ui::grid::render_grid_ui;
 use crate::ui::switch::toggle;
 
@@ -16,7 +15,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
     state.egui_context.run_ui(raw_input, |ui| {
         // Bottom panel for text input and configuration
         egui::Panel::bottom("text_input_panel")
-            .resizable(false)
+            .resizable(true)
             .default_size(360.0)
             .show(ui, |ui| {
                 ui.add_space(6.);
@@ -35,26 +34,28 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                     // Layout configuration
 
                     let mut font_fallbacks_changed = false;
-                    render_grid_ui("basic_grid", ui, |ui| {
-                        ui.heading("🎨 Display");
-                        ui.end_row();
+                    ui.vertical(|ui| {
+                        render_grid_ui("display_grid", ui, |ui| {
+                            ui.heading("🎨 Display");
+                            ui.end_row();
 
-                        ui.label("Background Color:");
-                        let mut color = [
-                            (state.background_color.r * 255.0 + 0.5) as u8,
-                            (state.background_color.g * 255.0 + 0.5) as u8,
-                            (state.background_color.b * 255.0 + 0.5) as u8,
-                        ];
-                        if ui.color_edit_button_srgb(&mut color).changed() {
-                            state.background_color.r = color[0] as f64 / 255.;
-                            state.background_color.g = color[1] as f64 / 255.;
-                            state.background_color.b = color[2] as f64 / 255.;
-                        }
-                        ui.end_row();
+                            ui.label("Background Color:");
+                            let mut color = [
+                                (state.background_color.r * 255.0 + 0.5) as u8,
+                                (state.background_color.g * 255.0 + 0.5) as u8,
+                                (state.background_color.b * 255.0 + 0.5) as u8,
+                            ];
+                            if ui.color_edit_button_srgb(&mut color).changed() {
+                                state.background_color.r = color[0] as f64 / 255.;
+                                state.background_color.g = color[1] as f64 / 255.;
+                                state.background_color.b = color[2] as f64 / 255.;
+                            }
+                            ui.end_row();
+                        });
 
                         ui.label("Fonts:");
                         ui.allocate_ui_with_layout(
-                            egui::vec2(236.0, 112.0),
+                            egui::vec2(300.0, 260.0),
                             egui::Layout::top_down(egui::Align::Min),
                             |ui| {
                                 egui::Frame::group(ui.style())
@@ -62,7 +63,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                     .show(ui, |ui| {
                                         let mut move_font = None;
                                         let mut remove_font = None;
-                                        egui::ScrollArea::vertical().max_height(58.0).show(
+                                        egui::ScrollArea::vertical().max_height(100.0).show(
                                             ui,
                                             |ui| {
                                                 let last_index =
@@ -70,12 +71,19 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                                 for (index, font) in
                                                     state.font_fallbacks.iter_mut().enumerate()
                                                 {
+                                                    let display_name = state
+                                                        .font_files
+                                                        .iter()
+                                                        .find(|file| file.name == font.name)
+                                                        .map(|file| file.display_name.as_str())
+                                                        .unwrap_or(&font.name);
                                                     ui.horizontal(|ui| {
                                                         ui.add_sized(
-                                                            [100.0, 18.0],
-                                                            egui::Label::new(&font.name).truncate(),
+                                                            [200.0, 18.0],
+                                                            egui::Label::new(display_name)
+                                                                .truncate(),
                                                         )
-                                                        .on_hover_text(&font.name);
+                                                        .on_hover_text(display_name);
                                                         if ui
                                                             .add_sized(
                                                                 [32.0, 18.0],
@@ -146,21 +154,26 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                             let selected_text = state
                                                 .font_to_add
                                                 .as_deref()
+                                                .and_then(|name| {
+                                                    state
+                                                        .font_files
+                                                        .iter()
+                                                        .find(|font| font.name == name)
+                                                        .map(|font| font.display_name.as_str())
+                                                })
                                                 .unwrap_or("Select a font");
                                             egui::ComboBox::from_id_salt("add_font_fallback")
                                                 .width(182.0)
                                                 .selected_text(selected_text)
                                                 .show_ui(ui, |ui| {
-                                                    for (font_name, _) in get_builtin_fonts() {
-                                                        if !state
-                                                            .font_fallbacks
-                                                            .iter()
-                                                            .any(|font| font.name == font_name)
-                                                        {
+                                                    for font in &state.font_files {
+                                                        if !state.font_fallbacks.iter().any(
+                                                            |fallback| fallback.name == font.name,
+                                                        ) {
                                                             ui.selectable_value(
                                                                 &mut state.font_to_add,
-                                                                Some(font_name.to_string()),
-                                                                font_name,
+                                                                Some(font.name.to_owned()),
+                                                                &font.display_name,
                                                             );
                                                         }
                                                     }
@@ -186,43 +199,42 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                     });
                             },
                         );
-                        ui.end_row();
 
                         ui.add_space(10.);
-                        ui.end_row();
+                        render_grid_ui("layout_grid", ui, |ui| {
+                            ui.heading("⚙ Layout");
+                            ui.end_row();
 
-                        ui.heading("⚙ Layout");
-                        ui.end_row();
+                            ui.label("Box Width:");
+                            ui.add(egui::Slider::new(
+                                state.layout_config.box_width.get_or_insert(1280.0),
+                                0.0..=1280.0,
+                            ));
+                            ui.end_row();
 
-                        ui.label("Box Width:");
-                        ui.add(egui::Slider::new(
-                            state.layout_config.box_width.get_or_insert(1280.0),
-                            0.0..=1280.0,
-                        ));
-                        ui.end_row();
+                            ui.label("Box Height:");
+                            ui.add(egui::Slider::new(
+                                state.layout_config.box_height.get_or_insert(360.0),
+                                0.0..=1000.0,
+                            ));
+                            ui.end_row();
 
-                        ui.label("Box Height:");
-                        ui.add(egui::Slider::new(
-                            state.layout_config.box_height.get_or_insert(360.0),
-                            0.0..=360.0,
-                        ));
-                        ui.end_row();
+                            ui.label("Line Height:");
+                            ui.add(
+                                egui::DragValue::new(&mut state.layout_config.line_height)
+                                    .speed(0.1)
+                                    .range(0.5..=3.0),
+                            );
+                            ui.end_row();
 
-                        ui.label("Line Height:");
-                        ui.add(
-                            egui::DragValue::new(&mut state.layout_config.line_height)
-                                .speed(0.1)
-                                .range(0.5..=3.0),
-                        );
-                        ui.end_row();
-
-                        ui.label("Indent:");
-                        ui.add(
-                            egui::DragValue::new(&mut state.layout_config.indent)
-                                .speed(1.0)
-                                .range(0.0..=200.0),
-                        );
-                        ui.end_row();
+                            ui.label("Indent:");
+                            ui.add(
+                                egui::DragValue::new(&mut state.layout_config.indent)
+                                    .speed(1.0)
+                                    .range(0.0..=200.0),
+                            );
+                            ui.end_row();
+                        });
                     });
                     if font_fallbacks_changed {
                         state.huozi.take();
@@ -242,6 +254,13 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                 .speed(1.0)
                                 .range(8.0..=128.0),
                         );
+                        ui.end_row();
+
+                        ui.label("Font Weight:");
+                        ui.add(egui::Slider::new(
+                            &mut state.text_config.font_weight,
+                            250..=900,
+                        ));
                         ui.end_row();
 
                         ui.label("Fill Color:");

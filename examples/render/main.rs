@@ -25,7 +25,9 @@ use winit::{
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    defaults::text_style_default, fonts::get_builtin_fonts, mvp::MVPUniform,
+    defaults::text_style_default,
+    fonts::{FontFile, load_fonts},
+    mvp::MVPUniform,
     ui::render_control_panel_ui,
 };
 
@@ -39,7 +41,18 @@ const DEFAULT_TEXT: &str = r#"一个简单的中日韩文字排印引擎，为�
 A simple typography engine for CJK languages, especially designed for game rich-text.
 huózì 活字 gM 123.!""?;:-_/+=<>==
 CJK 标点——⸺，。：；“”？、《》「」【】
+[locale=zh-hans]骨直肩示[/locale] [locale=zh-hant]骨直肩示[/locale] [locale=zh-hk]骨直肩示[/locale] [locale=ja-jp]骨直肩示[/locale] [locale=ko-kr]骨直肩示[/locale]
+[font="Source Han Sans SC"]思源黑体[/font] / [font="Source Han Serif SC"]思源宋体[/font]
+[font="Source Han Sans SC"][weight=400]常规[/weight] / [bold]粗体[/bold][/font]
+[font="Inter Variable"]Inter Normal / [italic]Inter Italic[/italic][/font]
 "#;
+
+const DEFAULT_FONT_FALLBACKS: [&str; 4] = [
+    "InterVariable.ttf",
+    "InterVariable-Italic.ttf",
+    "SourceHanSansSC-VF.otf",
+    "SourceHanSerif-VF.otf.woff2",
+];
 
 #[cfg(target_os = "windows")]
 const REDRAW_DELAY: Duration = Duration::from_millis(1);
@@ -70,6 +83,7 @@ pub struct State {
     texture: texture::Texture,
     texture_bind_group: wgpu::BindGroup,
 
+    font_files: Vec<FontFile>,
     font_fallbacks: Vec<FontFallback>,
     font_to_add: Option<String>,
     huozi: Option<Huozi>,
@@ -108,6 +122,11 @@ enum RenderOutcome {
 impl State {
     async fn new(window: &Arc<Window>) -> Self {
         let size = window.inner_size();
+        let font_files = load_fonts().expect("failed to read ./resources/fonts");
+        assert!(
+            !font_files.is_empty(),
+            "no font files found in ./resources/fonts"
+        );
 
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
@@ -306,21 +325,19 @@ impl State {
 
         // Initialize egui
         let egui_context = egui::Context::default();
+        let proportional_font = font_files
+            .iter()
+            .find(|font| {
+                font.name
+                    .eq_ignore_ascii_case("SweiGothicCJKsc-Regular.ttf")
+            })
+            .unwrap_or(&font_files[0]);
         egui_context.add_font(FontInsert::new(
             "custom_font",
-            egui::FontData::from_owned(get_builtin_fonts()[0].1.to_vec()),
+            egui::FontData::from_owned(proportional_font.data.clone()),
             vec![InsertFontFamily {
                 family: egui::FontFamily::Proportional,
                 // use lowest priority to avoid overriding other fonts
-                priority: egui::epaint::text::FontPriority::Lowest,
-            }],
-        ));
-        egui_context.add_font(FontInsert::new(
-            "firacode",
-            egui::FontData::from_owned(get_builtin_fonts().last().unwrap().1.to_vec()),
-            vec![InsertFontFamily {
-                family: egui::FontFamily::Monospace,
-                // use highest priority to ensure monospace texts use Fira Code
                 priority: egui::epaint::text::FontPriority::Highest,
             }],
         ));
@@ -365,10 +382,19 @@ impl State {
             num_indices: None,
             texture,
             texture_bind_group,
-            font_fallbacks: vec![FontFallback {
-                name: get_builtin_fonts()[0].0.to_string(),
-                enabled: true,
-            }],
+            font_fallbacks: DEFAULT_FONT_FALLBACKS
+                .iter()
+                .filter_map(|name| {
+                    font_files
+                        .iter()
+                        .find(|font| font.name.eq_ignore_ascii_case(name))
+                })
+                .map(|font| FontFallback {
+                    name: font.name.clone(),
+                    enabled: true,
+                })
+                .collect(),
+            font_files,
             font_to_add: None,
             huozi: None,
             egui_context,
@@ -466,13 +492,13 @@ impl State {
 
             let font_sources = enabled_fonts
                 .iter()
-                .map(|font_name| {
-                    let font_data = get_builtin_fonts()
+                .map(|font_fallback| {
+                    let font = self
+                        .font_files
                         .iter()
-                        .find(|(name, _)| *name == font_name.name)
-                        .map(|(_, data)| *data)
-                        .expect("font fallback sequence contains an unknown built-in font");
-                    huozi::FontSource::with_alias(font_data.to_vec(), font_name.name.clone())
+                        .find(|font| font.name == font_fallback.name)
+                        .expect("font fallback sequence contains an unknown font file");
+                    huozi::FontSource::new(font.data.clone())
                 })
                 .collect();
 

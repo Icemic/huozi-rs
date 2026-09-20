@@ -7,7 +7,7 @@ pub fn render_grid_ui<R>(
 ) {
     ui.horizontal_top(|ui| {
         Grid::new(id_salt)
-            .min_col_width(200.)
+            .min_col_width(180.)
             .num_columns(2)
             .spacing([0.0, 6.0])
             .striped(false)

@@ -1,38 +1,93 @@
-// static FONT_
+use std::fs;
+use std::io;
+use std::path::Path;
 
-static FONT_SOURCE_HAN_SANS_SC_REGULAR: &[u8] =
-    include_bytes!("../assets/SourceHanSansSC-Regular.otf");
-static FONT_ZHUDOU_SANS_REGULAR: &[u8] = include_bytes!("../assets/Zhudou Sans Regular.ttf");
-static FONT_SOURCE_HAN_SERIF_SC_REGULAR: &[u8] =
-    include_bytes!("../assets/SourceHanSerifSC-Regular.otf");
-static FONT_SOURCE_HAN_SERIF_CN_SEMIBOLD: &[u8] =
-    include_bytes!("../assets/SourceHanSerifCN-SemiBold.otf");
-static FONT_LXGWENKAILITE_REGULAR: &[u8] = include_bytes!("../assets/LXGWWenKaiLite-Regular.ttf");
-static FONT_SWEIGOTHICCJKSC_REGULAR: &[u8] =
-    include_bytes!("../assets/SweiGothicCJKsc-Regular.ttf");
-static FONT_TSANGER_YU_YANG_T_W02: &[u8] = include_bytes!("../assets/TsangerYuYangT-W02.ttf");
-static FONT_TSANGER_YU_YANG_T_W03: &[u8] = include_bytes!("../assets/TsangerYuYangT-W03.ttf");
-static FONT_FIRA_CODE_VF: &[u8] = include_bytes!("../assets/FiraCode-VF.ttf");
+use skrifa::string::StringId;
+use skrifa::{FontRef, MetadataProvider};
 
-pub const fn get_builtin_fonts() -> [(&'static str, &'static [u8]); 9] {
-    [
-        (
-            "Source Han Sans SC Regular",
-            FONT_SOURCE_HAN_SANS_SC_REGULAR,
-        ),
-        ("Zhudou Sans Regular", FONT_ZHUDOU_SANS_REGULAR),
-        (
-            "Source Han Serif SC Regular",
-            FONT_SOURCE_HAN_SERIF_SC_REGULAR,
-        ),
-        (
-            "Source Han Serif CN SemiBold",
-            FONT_SOURCE_HAN_SERIF_CN_SEMIBOLD,
-        ),
-        ("LXGWWenKaiLite Regular", FONT_LXGWENKAILITE_REGULAR),
-        ("SweiGothicCJKsc Regular", FONT_SWEIGOTHICCJKSC_REGULAR),
-        ("TsangerYuYangT-W02", FONT_TSANGER_YU_YANG_T_W02),
-        ("TsangerYuYangT-W03", FONT_TSANGER_YU_YANG_T_W03),
-        ("Fira Code VF", FONT_FIRA_CODE_VF),
-    ]
+pub struct FontFile {
+    pub name: String,
+    pub display_name: String,
+    pub data: Vec<u8>,
+}
+
+pub fn load_fonts() -> io::Result<Vec<FontFile>> {
+    let mut paths = fs::read_dir(Path::new("resources").join("fonts"))?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.is_file()
+                && path
+                    .extension()
+                    .and_then(|extension| extension.to_str())
+                    .is_some_and(|extension| {
+                        let extension = extension.to_ascii_lowercase();
+                        matches!(extension.as_str(), "otc" | "otf" | "ttc" | "ttf")
+                            || cfg!(feature = "woff")
+                                && matches!(extension.as_str(), "woff" | "woff2")
+                    })
+        })
+        .collect::<Vec<_>>();
+    paths.sort_by_cached_key(|path| {
+        path.file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_ascii_lowercase()
+    });
+
+    paths
+        .into_iter()
+        .map(|path| {
+            let name = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            let data = fs::read(path)?;
+            Ok(FontFile {
+                display_name: font_display_name(&data).unwrap_or_else(|| name.clone()),
+                name,
+                data,
+            })
+        })
+        .collect()
+}
+
+fn font_display_name(data: &[u8]) -> Option<String> {
+    #[cfg(feature = "woff")]
+    let decoded;
+    #[cfg(feature = "woff")]
+    let data = match data.get(..4) {
+        Some(b"wOFF") => {
+            decoded = wuff::decompress_woff1(data).ok()?;
+            decoded.as_slice()
+        }
+        Some(b"wOF2") => {
+            decoded = wuff::decompress_woff2(data).ok()?;
+            decoded.as_slice()
+        }
+        _ => data,
+    };
+
+    let font = FontRef::from_index(data, 0).ok()?;
+    let names = [4, 16, 1]
+        .into_iter()
+        .flat_map(|name_id| {
+            font.localized_strings(StringId::new(name_id))
+                .map(|name| name.to_string())
+        })
+        .filter(|name| !name.trim().is_empty())
+        .collect::<Vec<_>>();
+    names
+        .iter()
+        .find(|name| name.chars().any(is_chinese_character))
+        .cloned()
+        .or_else(|| names.into_iter().next())
+}
+
+fn is_chinese_character(character: char) -> bool {
+    matches!(
+        character,
+        '\u{3400}'..='\u{4DBF}' | '\u{4E00}'..='\u{9FFF}' | '\u{F900}'..='\u{FAFF}'
+    )
 }
