@@ -22,7 +22,7 @@
 - 使用 SDF（Signed Distance Field）技术渲染字形
 - 动态 SDF 字形生成和缓存，支持同时渲染最多 1024 个不同字形
 - 支持多种排印效果，包括描边、阴影等
-- 支持多种字体格式，包括 TTF、OTF、OTC、TTC
+- 支持 TTF、OTF、OTC、TTC 以及可选的 WOFF、WOFF2
 - 支持有序字体 fallback
 - 支持 shaping 与 glyph-id SDF 图集
 - 支持多种文字效果，包括下划线、删除线、颜色等（开发中）

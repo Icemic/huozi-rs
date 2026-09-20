@@ -22,7 +22,7 @@ Huozi (Rust) is a new generation version of [huozi.js](https://github.com/Icemic
 - Renders glyphs using SDF (Signed Distance Field) technology
 - Dynamic SDF glyph generation and caching, supporting rendering up to 1024 different glyphs simultaneously
 - Supports various typography effects, including stroke, shadow, etc.
-- Supports multiple font formats, including TTF, OTF, OTC, and TTC
+- Supports TTF, OTF, OTC, and TTC, as well as optional WOFF and WOFF2
 - Supports ordered font fallback
 - Supports shaping and glyph-id SDF atlases
 - Supports various text effects, including underline, strikethrough, color, etc. (under development)
