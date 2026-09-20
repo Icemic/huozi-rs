@@ -1,0 +1,39 @@
+# Add the contents of this file to `config.toml` to enable "fast build" configuration. Please read the notes below.
+
+# NOTE: For maximum performance, build using a nightly compiler
+# If you are using rust stable, remove the "-Zshare-generics=y" below.
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-Clink-arg=-fuse-ld=lld"]
+
+[target.x86_64-apple-darwin]
+linker = "rust-lld"
+rustflags = []
+
+[target.aarch64-apple-darwin]
+linker = "rust-lld"
+rustflags = []
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"
+rustflags = ["-Clink-arg=/STACK:8388608"]
+
+[target.wasm32-unknown-unknown]
+linker = "rust-lld"
+rustflags = ["-C", "target-feature=+simd128", "--cfg", "web_sys_unstable_apis"]
+
+# Optional: Uncommenting the following improves compile times, but reduces the amount of debug info to 'line number tables only'
+# In most cases the gains are negligible, but if you are on macos and have slow compile times you should see significant gains.
+[profile.dev]
+debug = 1
+opt-level = 1
+
+[profile.release]
+panic = "abort"
+
+[build]
+
+[env]
+
+[alias]

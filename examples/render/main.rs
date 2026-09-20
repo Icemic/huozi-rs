@@ -9,7 +9,7 @@ use log::{error, info};
 use std::{
     iter,
     sync::Arc,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 use wgpu::{BlendState, util::DeviceExt};
 use winit::{
@@ -477,7 +477,7 @@ impl State {
     }
 
     fn render_huozi_text(&mut self) {
-        let t = SystemTime::now();
+        let started_at = Instant::now();
 
         if self.huozi.is_none() {
             let enabled_fonts = self
@@ -500,7 +500,7 @@ impl State {
                     .collect::<Vec<_>>()
             );
             // initialize huozi instance
-            let t = SystemTime::now();
+            let t = Instant::now();
 
             let font_sources = enabled_fonts
                 .iter()
@@ -518,10 +518,7 @@ impl State {
                 })
                 .collect();
 
-            info!(
-                "font files loaded, {}ms",
-                SystemTime::now().duration_since(t).unwrap().as_millis()
-            );
+            info!("font files loaded, {:?}", t.elapsed());
 
             let huozi =
                 huozi::Huozi::new(font_sources).expect("Failed to initialize Huozi font manager");
@@ -541,10 +538,7 @@ impl State {
             None,
         ) {
             Ok((glyphs, _, total_width, total_height)) => {
-                info!(
-                    "text layouting finished, {}ms",
-                    SystemTime::now().duration_since(t).unwrap().as_millis()
-                );
+                info!("text layouting finished, {:?}", started_at.elapsed(),);
 
                 info!(
                     "total_width: {}, total_height: {}",

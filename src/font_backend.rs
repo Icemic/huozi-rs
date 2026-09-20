@@ -2,6 +2,7 @@ use harfrust::{
     Direction, Feature, FontRef as HarfRustFontRef, ShaperData, ShaperInstance, Tag, UnicodeBuffer,
 };
 use log::warn;
+use lru::LruCache;
 use skrifa::attribute::{Attributes, Style};
 use skrifa::instance::{LocationRef, Size};
 use skrifa::outline::pen::ControlBoundsPen;
@@ -10,7 +11,8 @@ use skrifa::raw::TableProvider;
 use skrifa::string::StringId;
 use skrifa::{FontRef as SkrifaFontRef, GlyphId, MetadataProvider};
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::num::NonZeroUsize;
+use std::sync::{Arc, Mutex};
 use tiqian::common::HashSet;
 use tiqian::core::font_face::{FontFaceId, FontVariationInstance, FontVariationSetting};
 use tiqian::core::geometry::Rect;
@@ -94,7 +96,6 @@ struct FontVariationAxes {
     slant: Option<FontVariationAxis>,
 }
 
-#[derive(Clone)]
 struct FontFaceRecord {
     id: FontFaceId,
     source_index: usize,
@@ -111,6 +112,15 @@ struct FontFaceRecord {
     leading: i16,
     typo_ascent: Option<i16>,
     typo_descent: Option<i16>,
+    shaper_data: ShaperData,
+}
+
+const INK_BOUNDS_CACHE_CAPACITY: usize = 1024;
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct InkBoundsKey {
+    face: FontFaceId,
+    glyph_id: u32,
 }
 
 struct FontCandidate<'a> {
@@ -129,6 +139,7 @@ pub(crate) struct HuoziFontManager {
     descriptors: Arc<[ReplayableFontFaceDescriptor]>,
     descriptor_indices: Arc<HashMap<FontFaceId, usize>>,
     capability_report: Arc<FontBackendCapabilityReport>,
+    ink_bounds_cache: Arc<Mutex<LruCache<InkBoundsKey, Option<Rect>>>>,
 }
 
 impl HuoziFontManager {
@@ -178,6 +189,8 @@ impl HuoziFontManager {
                 );
                 let os2 = font.os2().ok();
                 let attributes = Attributes::new(&font);
+                let harfrust_font = HarfRustFontRef::from_index(&bytes, collection_index)
+                    .expect("SkRifa 可读取的已注册字体应当也可供 HarfRust 读取");
                 let mut family_names = font_family_names(&font);
                 if let Some(alias) = source_alias.as_deref() {
                     push_unique_family_name(&mut family_names, alias);
@@ -203,6 +216,7 @@ impl HuoziFontManager {
                     leading: hhea.line_gap().into(),
                     typo_ascent: os2.as_ref().map(|table| table.s_typo_ascender()),
                     typo_descent: os2.as_ref().map(|table| table.s_typo_descender()),
+                    shaper_data: ShaperData::new(&harfrust_font),
                 };
                 descriptors.push(
                     ReplayableFontFaceDescriptor::builder(
@@ -247,6 +261,9 @@ impl HuoziFontManager {
             "controlled-font-bytes".to_owned(),
             descriptors.clone(),
         );
+        let ink_bounds_cache = LruCache::new(
+            NonZeroUsize::new(INK_BOUNDS_CACHE_CAPACITY).expect("ink bounds 缓存容量必须大于零"),
+        );
         Ok(Self {
             faces: faces.into(),
             face_indices: Arc::new(face_indices),
@@ -255,6 +272,7 @@ impl HuoziFontManager {
             descriptors: descriptors.into(),
             descriptor_indices: Arc::new(descriptor_indices),
             capability_report: Arc::new(capability_report),
+            ink_bounds_cache: Arc::new(Mutex::new(ink_bounds_cache)),
         })
     }
 
@@ -370,10 +388,36 @@ impl HuoziFontManager {
         glyph_id: u32,
         font_size: f32,
     ) -> Option<Rect> {
+        let key = InkBoundsKey {
+            face: id.clone(),
+            glyph_id,
+        };
+        let mut cache = self
+            .ink_bounds_cache
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some(bounds) = cache.get(&key) {
+            return bounds.map(|bounds| self.scale_ink_bounds(id, bounds, font_size));
+        }
+        let bounds = self.glyph_ink_bounds_uncached(id, glyph_id);
+        cache.put(key, bounds);
+        bounds.map(|bounds| self.scale_ink_bounds(id, bounds, font_size))
+    }
+
+    fn glyph_ink_bounds_uncached(&self, id: &FontFaceId, glyph_id: u32) -> Option<Rect> {
         let face = self.face_for_id(id);
         let font = SkrifaFontRef::from_index(&face.bytes, face.collection_index).ok()?;
-        let scale = font_size / face.units_per_em as f32;
-        glyph_ink_bounds(&font, id.variation_instance(), glyph_id, scale)
+        glyph_ink_bounds(&font, id.variation_instance(), glyph_id, 1.0)
+    }
+
+    fn scale_ink_bounds(&self, id: &FontFaceId, bounds: Rect, font_size: f32) -> Rect {
+        let scale = font_size / self.face_for_id(id).units_per_em as f32;
+        Rect {
+            left: bounds.left * scale,
+            top: bounds.top * scale,
+            right: bounds.right * scale,
+            bottom: bounds.bottom * scale,
+        }
     }
 
     #[cfg_attr(not(test), allow(dead_code))]
@@ -415,7 +459,6 @@ impl HuoziFontManager {
         let face = candidate.face;
         let font = HarfRustFontRef::from_index(&face.bytes, face.collection_index)
             .expect("registered face must remain readable by HarfRust");
-        let data = ShaperData::new(&font);
         let variation_settings: Vec<_> = candidate
             .id
             .variation_instance()
@@ -424,7 +467,11 @@ impl HuoziFontManager {
             .map(|setting| (Tag::new(&feature_tag(setting.tag())), setting.value()))
             .collect();
         let instance = ShaperInstance::from_variations(&font, variation_settings);
-        let shaper = data.shaper(&font).instance(Some(&instance)).build();
+        let shaper = face
+            .shaper_data
+            .shaper(&font)
+            .instance(Some(&instance))
+            .build();
         let mut buffer = UnicodeBuffer::new();
         buffer.push_str(request.display_text.as_str());
         buffer.guess_segment_properties();
@@ -507,23 +554,28 @@ impl HuoziFontManager {
         )
     }
 
-    fn add_ink_bounds(
-        &self,
-        shaping: &mut ShapingResult,
-        face: &FontFaceRecord,
-        id: &FontFaceId,
-        font_size: f32,
-    ) {
-        let font = SkrifaFontRef::from_index(&face.bytes, face.collection_index)
-            .expect("registered face must remain readable by SkRifa");
-        let scale = font_size / face.units_per_em as f32;
+    fn add_ink_bounds(&self, shaping: &mut ShapingResult, id: &FontFaceId, font_size: f32) {
+        let mut cache = self
+            .ink_bounds_cache
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let mut glyphs_without_ink_bounds = 0;
         for glyph in shaping
             .glyph_runs
             .iter_mut()
             .flat_map(|run| &mut run.glyphs)
         {
-            glyph.bounds = glyph_ink_bounds(&font, id.variation_instance(), glyph.id, scale);
+            let key = InkBoundsKey {
+                face: id.clone(),
+                glyph_id: glyph.id,
+            };
+            glyph.bounds = if let Some(bounds) = cache.get(&key) {
+                bounds.map(|bounds| self.scale_ink_bounds(id, bounds, font_size))
+            } else {
+                let bounds = self.glyph_ink_bounds_uncached(id, glyph.id);
+                cache.put(key, bounds);
+                bounds.map(|bounds| self.scale_ink_bounds(id, bounds, font_size))
+            };
             glyphs_without_ink_bounds += i32::from(glyph.bounds.is_none());
         }
         for decision in &mut shaping.decisions {
@@ -579,12 +631,7 @@ impl FontBackend for HuoziFontManager {
                 missing_glyphs,
             ));
             if missing_glyphs == 0 {
-                self.add_ink_bounds(
-                    &mut shaping,
-                    candidate.face,
-                    &candidate.id,
-                    request.style.font_size,
-                );
+                self.add_ink_bounds(&mut shaping, &candidate.id, request.style.font_size);
                 return FontBackendShapingResult::new(candidate.id, shaping, attempts);
             }
             if preferred.is_none() {
@@ -592,9 +639,9 @@ impl FontBackend for HuoziFontManager {
                 continue;
             }
         }
-        let (face_id, face, mut shaping) =
+        let (face_id, _, mut shaping) =
             preferred.expect("HuoziFontManager must contain at least one face");
-        self.add_ink_bounds(&mut shaping, face, &face_id, request.style.font_size);
+        self.add_ink_bounds(&mut shaping, &face_id, request.style.font_size);
         FontBackendShapingResult::new(face_id, shaping, attempts)
     }
 
@@ -688,7 +735,7 @@ fn font_variation_axis(axis: skrifa::Axis) -> FontVariationAxis {
 }
 
 fn font_candidate(face: &FontFaceRecord, requested_weight: i32, italic: bool) -> FontCandidate<'_> {
-    let mut settings = Vec::with_capacity(2);
+    let mut settings = Vec::new();
     let weight = if let Some(axis) = face.variation_axes.weight {
         let value = (requested_weight as f32).clamp(axis.min, axis.max);
         push_non_default_variation(&mut settings, "wght", value, axis.default);
@@ -711,14 +758,18 @@ fn font_candidate(face: &FontFaceRecord, requested_weight: i32, italic: bool) ->
     } else {
         face.style
     };
-    let variation = FontVariationInstance::new(settings);
-    FontCandidate {
-        face,
-        id: FontFaceId::new(
+    let id = if settings.is_empty() {
+        face.id.clone()
+    } else {
+        FontFaceId::new(
             face.id.resource_id().to_owned(),
             face.collection_index,
-            variation,
-        ),
+            FontVariationInstance::new(settings),
+        )
+    };
+    FontCandidate {
+        face,
+        id,
         weight,
         style,
     }
@@ -737,35 +788,32 @@ fn push_non_default_variation(
 
 fn append_candidates_by_weight<'a>(
     output: &mut Vec<FontCandidate<'a>>,
-    candidates: Vec<FontCandidate<'a>>,
+    mut candidates: Vec<FontCandidate<'a>>,
     requested_weight: i32,
 ) {
-    let mut weights: Vec<Vec<FontCandidate<'a>>> = (0..=1000).map(|_| Vec::new()).collect();
-    for candidate in candidates {
-        weights[candidate.weight.clamp(1, 1000) as usize].push(candidate);
-    }
-
-    if requested_weight < 400 {
-        append_weight_range(output, &mut weights, (1..=requested_weight).rev());
-        append_weight_range(output, &mut weights, requested_weight + 1..=1000);
-    } else if requested_weight <= 500 {
-        append_weight_range(output, &mut weights, requested_weight..=500);
-        append_weight_range(output, &mut weights, (1..requested_weight).rev());
-        append_weight_range(output, &mut weights, 501..=1000);
-    } else {
-        append_weight_range(output, &mut weights, requested_weight..=1000);
-        append_weight_range(output, &mut weights, (1..requested_weight).rev());
-    }
-}
-
-fn append_weight_range<'a>(
-    output: &mut Vec<FontCandidate<'a>>,
-    weights: &mut [Vec<FontCandidate<'a>>],
-    range: impl Iterator<Item = i32>,
-) {
-    for weight in range {
-        output.append(&mut weights[weight as usize]);
-    }
+    candidates.sort_by_key(|candidate| {
+        let weight = candidate.weight.clamp(1, 1000);
+        if requested_weight < 400 {
+            if weight <= requested_weight {
+                (0, requested_weight - weight)
+            } else {
+                (1, weight - requested_weight)
+            }
+        } else if requested_weight <= 500 {
+            if weight >= requested_weight && weight <= 500 {
+                (0, weight - requested_weight)
+            } else if weight < requested_weight {
+                (1, requested_weight - weight)
+            } else {
+                (2, weight - 501)
+            }
+        } else if weight >= requested_weight {
+            (0, weight - requested_weight)
+        } else {
+            (1, requested_weight - weight)
+        }
+    });
+    output.append(&mut candidates);
 }
 
 fn feature_tag(feature: &str) -> [u8; 4] {
@@ -789,6 +837,7 @@ fn feature_value(feature: &str) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap as StdHashMap;
     use tiqian::core::geometry::text_range;
     use tiqian::core::text::Text;
     use tiqian::core::text_model::TextStyle;
@@ -1145,6 +1194,108 @@ mod tests {
     }
 
     #[test]
+    fn optimized_weight_order_matches_css_range_order() {
+        let weights = [1, 100, 250, 399, 400, 450, 500, 501, 650, 900, 1000];
+        for requested_weight in 1..=1000 {
+            let mut optimized = weights;
+            optimized.sort_by_key(|weight| {
+                if requested_weight < 400 {
+                    if *weight <= requested_weight {
+                        (0, requested_weight - *weight)
+                    } else {
+                        (1, *weight - requested_weight)
+                    }
+                } else if requested_weight <= 500 {
+                    if *weight >= requested_weight && *weight <= 500 {
+                        (0, *weight - requested_weight)
+                    } else if *weight < requested_weight {
+                        (1, requested_weight - *weight)
+                    } else {
+                        (2, *weight - 501)
+                    }
+                } else if *weight >= requested_weight {
+                    (0, *weight - requested_weight)
+                } else {
+                    (1, requested_weight - *weight)
+                }
+            });
+
+            let mut by_weight: StdHashMap<i32, i32> =
+                StdHashMap::from_iter(weights.map(|weight| (weight, weight)));
+            let ranges: Vec<Box<dyn Iterator<Item = i32>>> = if requested_weight < 400 {
+                vec![
+                    Box::new((1..=requested_weight).rev()),
+                    Box::new(requested_weight + 1..=1000),
+                ]
+            } else if requested_weight <= 500 {
+                vec![
+                    Box::new(requested_weight..=500),
+                    Box::new((1..requested_weight).rev()),
+                    Box::new(501..=1000),
+                ]
+            } else {
+                vec![
+                    Box::new(requested_weight..=1000),
+                    Box::new((1..requested_weight).rev()),
+                ]
+            };
+            let expected = ranges
+                .into_iter()
+                .flatten()
+                .filter_map(|weight| by_weight.remove(&weight))
+                .collect::<Vec<_>>();
+
+            assert_eq!(optimized.as_slice(), expected.as_slice());
+        }
+    }
+
+    #[test]
+    fn ink_bounds_cache_evicts_at_fixed_capacity() {
+        let manager =
+            HuoziFontManager::from_sources(vec![FontSource::new(INTER.to_vec())]).unwrap();
+        let face = manager.faces[0].id.clone();
+        let mut cache = manager
+            .ink_bounds_cache
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        for glyph_id in 0..=INK_BOUNDS_CACHE_CAPACITY as u32 {
+            cache.put(
+                InkBoundsKey {
+                    face: face.clone(),
+                    glyph_id,
+                },
+                None,
+            );
+        }
+
+        assert_eq!(cache.len(), INK_BOUNDS_CACHE_CAPACITY);
+    }
+
+    #[test]
+    fn ink_bounds_cache_reuses_unscaled_bounds_across_font_sizes() {
+        let manager =
+            HuoziFontManager::from_sources(vec![FontSource::new(INTER.to_vec())]).unwrap();
+        let face = manager.faces[0].id.clone();
+        let glyph_id = 36;
+
+        let small = manager.glyph_ink_bounds(&face, glyph_id, 24.0).unwrap();
+        let large = manager.glyph_ink_bounds(&face, glyph_id, 48.0).unwrap();
+
+        assert_eq!(large.left, small.left * 2.0);
+        assert_eq!(large.top, small.top * 2.0);
+        assert_eq!(large.right, small.right * 2.0);
+        assert_eq!(large.bottom, small.bottom * 2.0);
+        assert_eq!(
+            manager
+                .ink_bounds_cache
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .len(),
+            1
+        );
+    }
+
+    #[test]
     fn creates_distinct_variable_weight_instances() {
         let manager = HuoziFontManager::from_sources(vec![FontSource::with_alias(
             INTER.to_vec(),
@@ -1265,6 +1416,9 @@ mod tests {
             leading: 0,
             typo_ascent: Some(800),
             typo_descent: Some(-200),
+            shaper_data: ShaperData::new(
+                &HarfRustFontRef::from_index(INTER, 0).expect("测试字体必须有效"),
+            ),
         }
     }
 }

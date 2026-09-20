@@ -103,7 +103,7 @@ flowchart TD
 
 对 tiqian 发出的一个 shaping 请求，字体后端先按请求的 family 顺序构造候选域；没有 family 命中时按注册 family 顺序退化。`CjkText` 与 `CjkPunctuation` 会在该域内优先尝试 `FontSourceKind::Cjk`，`LatinText` 会优先尝试 `FontSourceKind::Latin`；`Symbol`、`Emoji` 与 `Unknown` 保持基础顺序。显式 `[font]` 列表只定义候选域，角色优先级不会选择列表外的 family。每个候选部分内先按 normal、italic、oblique 的请求顺序选择 style 档，再按 CSS Fonts weight 规则排列 face。字体后端依次对候选完整执行 HarfRust shaping，第一个不含 glyph id `0` 的候选被选中；所有候选均缺字时，保留第一个候选的 shaping 结果和 `.notdef` glyph。
 
-variable font 会根据文字样式设置 `wght`，斜体请求优先设置 `ital=1`，没有 `ital` 时设置 `slnt=-14`，所有值均限制在字体声明的轴范围内。没有合适静态 face 或标准轴时退化到最近的非合成 face，不生成软件加粗或软件倾斜。每个输出 glyph 都携带包含实际 variation instance 的 `FontFaceId`；HarfRust shaping、SkRifa metrics、glyph bounds、轮廓回放和 SDF 图集使用同一实例。库当前不向调用方开放任意字体轴配置。
+variable font 会根据文字样式设置 `wght`，斜体请求优先设置 `ital=1`，没有 `ital` 时设置 `slnt=-14`，所有值均限制在字体声明的轴范围内。没有合适静态 face 或标准轴时退化到最近的非合成 face，不生成软件加粗或软件倾斜。每个输出 glyph 都携带包含实际 variation instance 的 `FontFaceId`；HarfRust shaping、SkRifa metrics、glyph bounds、轮廓回放和 SDF 图集使用同一实例。每个字体 face 的 HarfRust `ShaperData` 在字体目录初始化时创建并复用，variation-specific `ShaperInstance` 按请求构造。字体后端还持有 1024 项的未缩放 glyph ink bounds LRU，key 包含字体实例和 glyph id；排版时按字号缩放，连续加入新字符时旧 bounds 会被淘汰，缓存内存保持固定上界。库当前不向调用方开放任意字体轴配置。
 
 ### 4. 段落输入与布局层
 
