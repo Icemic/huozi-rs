@@ -112,7 +112,9 @@ fn main() {
         }
         let text = profile_inputs
             .as_ref()
-            .map_or(input_text.as_str(), |inputs| inputs[iteration as usize].as_str());
+            .map_or(input_text.as_str(), |inputs| {
+                inputs[iteration as usize].as_str()
+            });
         let segments = vec![Segment::dummy(text)];
         let layout_started_at = Instant::now();
         last_output = Some(
