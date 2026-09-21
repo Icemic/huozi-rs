@@ -434,7 +434,7 @@ mod tests {
         let font = include_bytes!("../resources/fonts/FiraCode-VF.ttf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
         let style = HuoziTextStyle::default();
-        let (vertices, _, _, _) = huozi
+        let output = huozi
             .layout_parse(
                 &vec![Segment::dummy("!==")],
                 &LayoutStyle::default(),
@@ -443,6 +443,7 @@ mod tests {
                 None,
             )
             .unwrap();
+        let vertices = output.glyphs;
 
         assert_eq!(vertices.len(), 1);
         let texture_width = vertices[0].fill[3].tex_coords[0] - vertices[0].fill[0].tex_coords[0];
@@ -512,6 +513,7 @@ mod tests {
         let crate::layout::tiqian_input::HuoziTiqianInput {
             layout_input,
             source_map,
+            ..
         } = input;
         let text = layout_input.content.text.clone();
         let request = FontBackendRequest::new(
@@ -544,12 +546,16 @@ mod tests {
             ],
         );
 
-        let (glyphs, spans, width, height) = HuoziTiqianOutputAdapter::adapt(
+        let output = HuoziTiqianOutputAdapter::adapt(
             &mut huozi,
             &layout_result,
             &source_map,
             &ColorSpace::SRGB,
         );
+        let glyphs = output.glyphs;
+        let spans = output.segment_glyph_spans;
+        let width = output.width;
+        let height = output.height;
 
         assert_eq!(glyphs.len(), 1);
         assert_eq!(glyphs[0].fill.len(), 4);
@@ -628,6 +634,7 @@ mod tests {
         let crate::layout::tiqian_input::HuoziTiqianInput {
             layout_input,
             source_map,
+            ..
         } = input;
         let text = layout_input.content.text.clone();
         let request = FontBackendRequest::new(
@@ -661,18 +668,20 @@ mod tests {
             ],
         );
 
-        let (glyphs, spans, _, _) = HuoziTiqianOutputAdapter::adapt(
+        let output = HuoziTiqianOutputAdapter::adapt(
             &mut huozi,
             &layout_result,
             &source_map,
             &ColorSpace::SRGB,
         );
+        let glyphs = output.glyphs;
+        let spans = output.segment_glyph_spans;
 
         assert_eq!(glyphs.len(), glyph_count);
         assert_eq!(glyphs[0].row, 0);
         assert_eq!(glyphs[0].col, 0);
         assert_eq!(glyphs[1].row, 0);
-        assert_eq!(glyphs[1].col, 1);
+        assert_eq!(glyphs[1].col, 0);
         assert_ne!(glyphs[0].fill[0].position[0], glyphs[1].fill[0].position[0]);
         assert_eq!(spans[0].segment_id, SegmentId::Lite(8));
         assert_eq!(spans[0].glyph_range, 0..glyph_count);
@@ -702,6 +711,7 @@ mod tests {
         let crate::layout::tiqian_input::HuoziTiqianInput {
             layout_input,
             source_map,
+            ..
         } = input;
         let text = layout_input.content.text.clone();
         let request = FontBackendRequest::new(
@@ -749,17 +759,19 @@ mod tests {
             ],
         );
 
-        let (glyphs, spans, _, _) = HuoziTiqianOutputAdapter::adapt(
+        let output = HuoziTiqianOutputAdapter::adapt(
             &mut huozi,
             &layout_result,
             &source_map,
             &ColorSpace::SRGB,
         );
+        let glyphs = output.glyphs;
+        let spans = output.segment_glyph_spans;
 
         assert_eq!(glyphs.len(), 2);
         assert_eq!(glyphs[1].x, 48);
         assert_eq!(glyphs[1].row, 0);
-        assert_eq!(glyphs[1].col, 1);
+        assert_eq!(glyphs[1].col, 0);
         assert_eq!(spans[0].segment_id, SegmentId::Lite(10));
         assert_eq!(spans[0].glyph_range, 0..2);
     }
@@ -792,6 +804,7 @@ mod tests {
         let crate::layout::tiqian_input::HuoziTiqianInput {
             layout_input,
             source_map,
+            ..
         } = input;
         let text = layout_input.content.text.clone();
         let request = FontBackendRequest::new(
@@ -824,12 +837,15 @@ mod tests {
             ],
         );
 
-        let (glyphs, spans, _, height) = HuoziTiqianOutputAdapter::adapt(
+        let output = HuoziTiqianOutputAdapter::adapt(
             &mut huozi,
             &layout_result,
             &source_map,
             &ColorSpace::SRGB,
         );
+        let glyphs = output.glyphs;
+        let spans = output.segment_glyph_spans;
+        let height = output.height;
 
         assert!(glyphs.is_empty());
         assert!(spans.is_empty());

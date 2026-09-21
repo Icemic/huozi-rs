@@ -243,8 +243,8 @@ fn append_nodes(
                         )
                     });
                 }
-                InlineScopeKind::Link { target } => {
-                    builder.with_link(target.clone(), |builder| {
+                InlineScopeKind::Link { id, target } => {
+                    builder.with_link(id.clone(), target.clone(), |builder| {
                         append_nodes(
                             builder,
                             children,
@@ -339,7 +339,10 @@ fn append_object(
         .leading_boundary(InlineObjectBoundaryAdjustment::FIXED)
         .trailing_boundary(InlineObjectBoundaryAdjustment::FIXED)
         .build();
-    if builder.inline_object(&object.alt, metrics).is_ok() {
+    if builder
+        .inline_object(object.id.clone(), &object.alt, metrics)
+        .is_ok()
+    {
         source_map_entries.push(HuoziSourceMapEntry {
             display_range: range,
             source_range: object.source_range.clone(),
@@ -805,12 +808,14 @@ mod tests {
                     kind: InlineScopeKind::Background(BackgroundStyle::default()),
                     children: vec![InlineNode::Scope {
                         kind: InlineScopeKind::Link {
+                            id: None,
                             target: "https://example.com".to_string(),
                         },
                         children: vec![InlineNode::Text(text_run)],
                     }],
                 },
                 InlineNode::Object(InlineObject {
+                    id: None,
                     alt: "锚".to_string(),
                     width: 12.0,
                     ascent: 9.0,
@@ -835,11 +840,15 @@ mod tests {
 
         assert_eq!(input.layout_input.content.text.as_str(), "甲锚");
         assert_eq!(input.layout_input.inline_objects.len(), 1);
+        assert_eq!(
+            input.layout_input.inline_objects[0].range,
+            TextRange::new(ScalarOffset::new(1), ScalarOffset::new(2))
+        );
         assert!(input.layout_input.rich_text.iter().any(|span| {
             span.semantics.iter().any(|semantic| {
                 matches!(
                     semantic,
-                    tiqian::core::text_model::RichTextSemantic::Link { target }
+                    tiqian::core::text_model::RichTextSemantic::Link { target, .. }
                         if target == "https://example.com"
                 )
             })

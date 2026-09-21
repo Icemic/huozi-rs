@@ -2,7 +2,7 @@ use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
     FontSourceKind, Huozi,
     constant::TEXTURE_SIZE,
-    layout::{ColorSpace, LayoutStyle, Vertex},
+    layout::{ColorSpace, Interaction, LayoutStyle, Vertex},
     parser::{Segment, TextStyle},
 };
 use log::{error, info};
@@ -37,7 +37,7 @@ mod mvp;
 mod texture;
 mod ui;
 
-const DEFAULT_TEXT: &str = r#"一个功能完善的中日韩文字排印引擎，为[shadow offsetX=1.5 offsetY=1.5 blur=0 width=0.4 color="rgba(255, 64, 153, 1.0)"]游戏富文本[/shadow]特别设计。
+const DEFAULT_TEXT: &str = r#"一个功能完善的中日韩文字排印引擎，为[shadow offsetX=1.5 offsetY=1.5 blur=0 width=0.4 color="rgba(255, 64, 153, 1.0)"]游戏富文本[/shadow]特别设计。[link id="demo-interaction" target="https://example.com/interaction"]点击这里显示交互提示[/link]
 A fully functional typography engine for CJK languages, especially designed for game rich-text.
 huózì 活字 gM 123.!""?;:-_/+=<>==
 CJK 标点——⸺，。：；“”？、《》「」【】
@@ -105,6 +105,9 @@ pub struct State {
     stroke_enabled: bool,
     shadow_enabled: bool,
     config_changed: bool,
+    interactions: Vec<Interaction>,
+    cursor_position: Option<(f32, f32)>,
+    interaction_notice: Option<String>,
 
     // Store egui render data
     egui_paint_jobs: Vec<egui::ClippedPrimitive>,
@@ -422,6 +425,9 @@ impl State {
             stroke_enabled: true,
             shadow_enabled: false,
             config_changed: false,
+            interactions: Vec::new(),
+            cursor_position: None,
+            interaction_notice: None,
             egui_paint_jobs: Vec::new(),
             egui_textures_delta: Default::default(),
         }
@@ -482,6 +488,7 @@ impl State {
                 self.vertex_buffer = None;
                 self.index_buffer = None;
                 self.num_indices = None;
+                self.interactions.clear();
                 return;
             }
 
@@ -530,20 +537,20 @@ impl State {
             ColorSpace::SRGB,
             None,
         ) {
-            Ok((glyphs, _, total_width, total_height)) => {
+            Ok(output) => {
                 info!("text layouting finished, {:?}", started_at.elapsed(),);
 
                 info!(
                     "total_width: {}, total_height: {}",
-                    total_width, total_height
+                    output.width, output.height
                 );
 
-                let mut vertices: Vec<Vertex> = Vec::with_capacity(glyphs.len() * 4 * 3);
-                let mut indices: Vec<u16> = Vec::with_capacity(glyphs.len() * 6);
+                let mut vertices: Vec<Vertex> = Vec::with_capacity(output.glyphs.len() * 4 * 3);
+                let mut indices: Vec<u16> = Vec::with_capacity(output.glyphs.len() * 6);
 
                 let mut index_offset = 0;
 
-                for glyph in glyphs.iter() {
+                for glyph in &output.glyphs {
                     if let Some(shadow) = glyph.shadow {
                         vertices.extend(shadow);
                         indices.extend(glyph.indices.iter().map(|i| i + index_offset));
@@ -551,7 +558,7 @@ impl State {
                     }
                 }
 
-                for glyph in glyphs.iter() {
+                for glyph in &output.glyphs {
                     if let Some(stroke) = glyph.stroke {
                         vertices.extend(stroke);
                         indices.extend(glyph.indices.iter().map(|i| i + index_offset));
@@ -559,7 +566,7 @@ impl State {
                     }
                 }
 
-                for glyph in glyphs.iter() {
+                for glyph in &output.glyphs {
                     vertices.extend(glyph.fill);
                     indices.extend(glyph.indices.iter().map(|i| i + index_offset));
 
@@ -585,6 +592,7 @@ impl State {
                 self.vertex_buffer = Some(vertex_buffer);
                 self.index_buffer = Some(index_buffer);
                 self.num_indices = Some(num_indices);
+                self.interactions = output.interactions;
 
                 let texture = huozi.texture_pixels();
                 self.texture.write_pixels(
@@ -595,6 +603,7 @@ impl State {
                 );
             }
             Err(err_msg) => {
+                self.interactions.clear();
                 error!("{}", err_msg);
             }
         }
@@ -827,6 +836,35 @@ impl ApplicationHandler for App {
             WindowEvent::Resized(physical_size) => {
                 if let Some(state) = self.state.as_mut() {
                     state.resize(physical_size);
+                }
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref()) {
+                    let scale_factor = window.scale_factor() as f32;
+                    state.cursor_position = Some((
+                        position.x as f32 / scale_factor,
+                        position.y as f32 / scale_factor,
+                    ));
+                }
+            }
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Left,
+                ..
+            } => {
+                if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref())
+                    && let Some((x, y)) = state.cursor_position
+                    && let Some(interaction) = state.interactions.iter().find(|interaction| {
+                        interaction.areas.iter().any(|area| {
+                            area.rect.left <= x
+                                && x <= area.rect.right
+                                && area.rect.top <= y
+                                && y <= area.rect.bottom
+                        })
+                    })
+                {
+                    state.interaction_notice = Some(format!("已点击交互元素：{}", interaction.id));
+                    window.request_redraw();
                 }
             }
             _ => {}

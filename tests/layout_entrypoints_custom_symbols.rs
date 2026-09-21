@@ -11,7 +11,7 @@ fn layout_parse_with_uses_custom_tag_symbols() {
     let mut huozi = Huozi::new(vec![FontSource::new(TEST_FONT.to_vec())]).unwrap();
     let segments = vec![Segment::dummy("【size=48】中【/size】")];
 
-    let (glyphs, _, _, _) = huozi
+    let output = huozi
         .layout_parse_with::<'【', '】'>(
             &segments,
             &LayoutStyle::default(),
@@ -21,6 +21,6 @@ fn layout_parse_with_uses_custom_tag_symbols() {
         )
         .unwrap();
 
-    assert_eq!(glyphs.len(), 1);
-    assert_eq!(glyphs[0].scale_ratio, 0.5);
+    assert_eq!(output.glyphs.len(), 1);
+    assert_eq!(output.glyphs[0].scale_ratio, 0.5);
 }

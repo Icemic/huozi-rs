@@ -323,7 +323,10 @@ fn scope_kind(
         "bookTitle" => Some(InlineScopeKind::Decoration(DecorationKind::BookTitle)),
         "link" => attribute_value(attributes, "target")
             .cloned()
-            .map(|target| InlineScopeKind::Link { target }),
+            .map(|target| InlineScopeKind::Link {
+                id: nonempty_attribute_value(attributes, "id"),
+                target,
+            }),
         "technical" => Some(InlineScopeKind::Technical),
         "code" => Some(InlineScopeKind::InlineCode(InlineCodeStyle {
             text_style: code_text_style(attributes, current_style),
@@ -611,6 +614,7 @@ fn inline_object(
     let ascent = parse_required(attribute_value(attributes, "ascent"), "object ascent")?;
     let descent = parse_required(attribute_value(attributes, "descent"), "object descent")?;
     Some(InlineObject {
+        id: nonempty_attribute_value(attributes, "id"),
         alt,
         width,
         ascent,
@@ -688,6 +692,12 @@ fn attribute_value<'a>(attributes: &'a [Attribute], name: &str) -> Option<&'a St
         .rev()
         .find(|attribute| attribute.name == name)
         .map(|attribute| &attribute.value)
+}
+
+fn nonempty_attribute_value(attributes: &[Attribute], name: &str) -> Option<String> {
+    attribute_value(attributes, name)
+        .filter(|value| !value.is_empty())
+        .cloned()
 }
 
 fn parse_required<T: FromStr>(value: Option<&String>, name: &str) -> Option<T> {

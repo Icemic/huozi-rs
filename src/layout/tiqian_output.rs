@@ -1,10 +1,12 @@
 use csscolorparser::Color;
 use log::warn;
 use std::collections::HashMap;
-use tiqian::core::geometry::TextRange;
+use tiqian::core::geometry::{Rect, TextRange};
 use tiqian::core::layout_model::LayoutResult;
 use tiqian::core::layout_queries::positioned_clusters;
-use tiqian::core::text_model::{RichTextLayerKind, RichTextPaint, TextStyle as TiqianTextStyle};
+use tiqian::core::text_model::{
+    RichTextLayerKind, RichTextPaint, RichTextSemantic, TextStyle as TiqianTextStyle,
+};
 
 use crate::Huozi;
 use crate::constant::{CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS};
@@ -14,7 +16,7 @@ use crate::parser::SegmentId;
 
 use super::color_space::{ColorSpace, get_color_value};
 use super::tiqian_input::HuoziSourceMap;
-use super::{SegmentGlyphSpan, Vertex};
+use super::{Interaction, InteractionArea, RichTextLayoutOutput, SegmentGlyphSpan, Vertex};
 
 pub(crate) struct HuoziTiqianOutputAdapter;
 
@@ -24,7 +26,7 @@ impl HuoziTiqianOutputAdapter {
         result: &LayoutResult,
         source_map: &HuoziSourceMap,
         color_space: &ColorSpace,
-    ) -> (Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32) {
+    ) -> RichTextLayoutOutput {
         warn_unsupported_annotation_geometry(result);
 
         let positioned_clusters = positioned_clusters(result);
@@ -48,12 +50,21 @@ impl HuoziTiqianOutputAdapter {
         let mut source_map_cursor = 0;
         let mut text_style_cursor = 0;
         let mut rich_text_cursor = 0;
+        let mut interaction_clusters = Vec::new();
 
         for (positioned_index, positioned) in positioned_clusters.iter().enumerate() {
             let line_index = positioned.line_index as usize;
             if line_index >= visible_line_count {
                 continue;
             }
+            let col = columns_by_line[line_index];
+            columns_by_line[line_index] += 1;
+            interaction_clusters.push(InteractionCluster {
+                range: positioned.range,
+                rect: positioned.rect(),
+                row: positioned.line_index as u32,
+                col,
+            });
             let line_ends_after_cluster = positioned_clusters
                 .get(positioned_index + 1)
                 .is_none_or(|next| next.line_index != positioned.line_index);
@@ -78,8 +89,6 @@ impl HuoziTiqianOutputAdapter {
                         continue;
                     };
                     let atlas_glyph = huozi.get_glyph_by_id(face, glyph.id);
-                    let col = columns_by_line[line_index];
-                    columns_by_line[line_index] += 1;
                     let glyph_vertices_item = glyph_vertices_for_glyph(
                         glyph,
                         &atlas_glyph,
@@ -129,8 +138,7 @@ impl HuoziTiqianOutputAdapter {
                     continue;
                 };
                 let atlas_glyph = huozi.get_glyph_by_id(face, glyph.id);
-                let col = columns_by_line[line_index];
-                columns_by_line[line_index] += 1;
+                let col = columns_by_line[line_index].saturating_sub(1);
                 let glyph_vertices_item = glyph_vertices_for_glyph(
                     glyph,
                     &atlas_glyph,
@@ -168,13 +176,104 @@ impl HuoziTiqianOutputAdapter {
         } else {
             result.lines[visible_line_count - 1].bottom.max(0.0).round() as u32
         };
-        (
-            glyph_vertices,
+        RichTextLayoutOutput {
+            glyphs: glyph_vertices,
             segment_glyph_spans,
-            result.size.width.max(0.0).round() as u32,
+            interactions: interactions_from_tiqian_input(&interaction_clusters, result),
+            width: result.size.width.max(0.0).round() as u32,
             height,
-        )
+        }
     }
+}
+
+struct InteractionCluster {
+    range: TextRange,
+    rect: Rect,
+    row: u32,
+    col: u32,
+}
+
+struct IdentifiedRange {
+    id: String,
+    range: TextRange,
+    /// 同范围的链接包裹对象时，对象作为后进入的内层元素。
+    is_object: bool,
+}
+
+fn interactions_from_tiqian_input(
+    clusters: &[InteractionCluster],
+    result: &LayoutResult,
+) -> Vec<Interaction> {
+    let mut identified_ranges = result
+        .input
+        .inline_objects
+        .iter()
+        .filter_map(|object| {
+            object.id.as_ref().map(|id| IdentifiedRange {
+                id: id.clone(),
+                range: object.range,
+                is_object: true,
+            })
+        })
+        .chain(result.input.rich_text.iter().flat_map(|span| {
+            span.semantics
+                .iter()
+                .filter_map(move |semantic| match semantic {
+                    RichTextSemantic::Link { id: Some(id), .. } => Some(IdentifiedRange {
+                        id: id.clone(),
+                        range: span.range,
+                        is_object: false,
+                    }),
+                    RichTextSemantic::Link { id: None, .. } | RichTextSemantic::TechnicalInline => {
+                        None
+                    }
+                })
+        }))
+        .collect::<Vec<_>>();
+    identified_ranges.sort_by_key(|interaction| {
+        (
+            interaction.range.start(),
+            std::cmp::Reverse(interaction.range.end()),
+            interaction.is_object,
+        )
+    });
+    let mut ordered_ranges = Vec::with_capacity(identified_ranges.len());
+    let mut open_ranges = Vec::new();
+    for interaction in identified_ranges {
+        while open_ranges
+            .last()
+            .is_some_and(|parent: &IdentifiedRange| interaction.range.end() > parent.range.end())
+        {
+            if let Some(parent) = open_ranges.pop() {
+                ordered_ranges.push(parent);
+            }
+        }
+        open_ranges.push(interaction);
+    }
+    while let Some(interaction) = open_ranges.pop() {
+        ordered_ranges.push(interaction);
+    }
+
+    ordered_ranges
+        .into_iter()
+        .filter_map(|interaction| {
+            let start = clusters
+                .partition_point(|cluster| cluster.range.end() <= interaction.range.start());
+            let areas = clusters[start..]
+                .iter()
+                .take_while(|cluster| cluster.range.start() < interaction.range.end())
+                .map(|cluster| InteractionArea {
+                    rect: cluster.rect,
+                    row: cluster.row,
+                    col: cluster.col,
+                })
+                .collect::<Vec<_>>();
+            (!areas.is_empty()).then(|| Interaction {
+                id: interaction.id,
+                areas,
+            })
+        })
+        .collect()
 }
 
 fn warn_unsupported_annotation_geometry(result: &LayoutResult) {

@@ -1,5 +1,6 @@
 mod color_space;
 mod glyph_span;
+mod layout_output;
 mod layout_style;
 pub(crate) mod tiqian_input;
 pub(crate) mod tiqian_output;
@@ -10,7 +11,6 @@ use std::collections::HashMap;
 use anyhow::Result;
 
 use crate::Huozi;
-use crate::glyph_vertices::GlyphVertices;
 use crate::parser::{
     ParsedText, Segment, SourceRange, TextRun, TextSpan, TextStyle, lower_elements, parse,
     parse_with,
@@ -21,6 +21,7 @@ use self::tiqian_output::HuoziTiqianOutputAdapter;
 
 pub use self::color_space::*;
 pub use self::glyph_span::*;
+pub use self::layout_output::*;
 pub use self::layout_style::*;
 pub use self::vertex::*;
 
@@ -67,7 +68,7 @@ impl Huozi {
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<(Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32), String> {
+    ) -> Result<RichTextLayoutOutput, String> {
         let text = self.parse_text(segments, initial_text_style, style_prefabs)?;
         Ok(self.layout_parsed_text(layout_style, &text, initial_text_style, color_space))
     }
@@ -80,7 +81,7 @@ impl Huozi {
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
         style_prefabs: Option<&HashMap<String, TextStyle>>,
-    ) -> Result<(Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32), String> {
+    ) -> Result<RichTextLayoutOutput, String> {
         let text =
             self.parse_text_with::<OPEN, CLOSE>(segments, initial_text_style, style_prefabs)?;
         Ok(self.layout_parsed_text(layout_style, &text, initial_text_style, color_space))
@@ -93,7 +94,7 @@ impl Huozi {
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
-    ) -> Result<(Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32), String> {
+    ) -> Result<RichTextLayoutOutput, String> {
         let text_spans = segments
             .iter()
             .map(|segment| TextSpan {
@@ -118,7 +119,7 @@ impl Huozi {
         layout_style: &LayoutStyle,
         text_spans: T,
         color_space: ColorSpace,
-    ) -> (Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32) {
+    ) -> RichTextLayoutOutput {
         let initial_text_style = text_spans
             .as_ref()
             .first()
@@ -137,7 +138,7 @@ impl Huozi {
         text: &ParsedText,
         initial_text_style: &TextStyle,
         color_space: ColorSpace,
-    ) -> (Vec<GlyphVertices>, Vec<SegmentGlyphSpan>, u32, u32) {
+    ) -> RichTextLayoutOutput {
         let Some(paragraph) = text.paragraphs.first() else {
             return self.layout(layout_style, Vec::<TextSpan>::new(), color_space);
         };

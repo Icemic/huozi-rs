@@ -14,6 +14,19 @@ use huozi::layout::ParagraphAlignment;
 pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput {
     let raw_input = state.egui_state.take_egui_input(window);
     state.egui_context.run_ui(raw_input, |ui| {
+        if let Some(notice) = state.interaction_notice.clone() {
+            egui::Window::new("交互提示")
+                .anchor(egui::Align2::CENTER_TOP, [0.0, 16.0])
+                .collapsible(false)
+                .resizable(false)
+                .show(ui.ctx(), |ui| {
+                    ui.label(notice);
+                    if ui.button("关闭").clicked() {
+                        state.interaction_notice = None;
+                    }
+                });
+        }
+
         // Bottom panel for text input and configuration
         egui::Panel::bottom("text_input_panel")
             .resizable(true)

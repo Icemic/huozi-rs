@@ -92,7 +92,7 @@ fn main() {
 
     let warmup_summary = {
         let segments = vec![Segment::dummy(&input_text)];
-        let (glyphs, spans, width, height) = huozi
+        let output = huozi
             .layout_parse(
                 &segments,
                 &layout_style,
@@ -101,7 +101,12 @@ fn main() {
                 None,
             )
             .expect("预热排版失败");
-        black_box((glyphs.len(), spans.len(), width, height))
+        black_box((
+            output.glyphs.len(),
+            output.segment_glyph_spans.len(),
+            output.width,
+            output.height,
+        ))
     };
 
     let wall_started_at = Instant::now();
@@ -132,8 +137,13 @@ fn main() {
         layout_elapsed += layout_started_at.elapsed();
     }
     let wall_elapsed = wall_started_at.elapsed();
-    let (glyphs, spans, width, height) = black_box(last_output.unwrap());
-    let output_summary = (glyphs.len(), spans.len(), width, height);
+    let output = black_box(last_output.unwrap());
+    let output_summary = (
+        output.glyphs.len(),
+        output.segment_glyph_spans.len(),
+        output.width,
+        output.height,
+    );
     if mode == Mode::Fixed {
         assert_eq!(output_summary, warmup_summary, "重复排版的输出摘要发生变化");
     }
@@ -146,9 +156,9 @@ fn main() {
     println!(
         "完成 {iterations} 次 {mode_name} 排版：排版耗时 {layout_elapsed:?}，平均每次 {:?}，墙钟耗时 {wall_elapsed:?}；最后一次输出 {} 个字形、{} 个来源区间，尺寸 {}×{}",
         layout_elapsed / iterations,
-        glyphs.len(),
-        spans.len(),
-        width,
-        height,
+        output.glyphs.len(),
+        output.segment_glyph_spans.len(),
+        output.width,
+        output.height,
     );
 }

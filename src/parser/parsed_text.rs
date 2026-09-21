@@ -55,7 +55,7 @@ pub enum InlineScopeKind {
     LineThrough(LineStyle),
     Ruby(RubyStyle),
     Decoration(DecorationKind),
-    Link { target: String },
+    Link { id: Option<String>, target: String },
     Technical,
     InlineCode(InlineCodeStyle),
     AutoSpaceSuppressed,
@@ -182,6 +182,7 @@ pub enum InlineBoxSpacing {
 /// 插入当前位置的行内对象。
 #[derive(Debug, Clone)]
 pub struct InlineObject {
+    pub id: Option<String>,
     pub alt: String,
     pub width: f32,
     pub ascent: f32,
