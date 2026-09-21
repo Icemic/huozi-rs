@@ -88,7 +88,7 @@ flowchart TD
 
 `SourceRange` 以 Unicode scalar value 为单位，使用半开范围 `[start, end)` 指向单个原始 `Segment.content`。它可以包含标签和转义符号的位置，不等同于 tiqian 拼接后显示文本的范围。
 
-`TextStyle` 表示 run 级字体族、字号、locale、字重、斜体、`fontSynthesis`、基线偏移、附着方式、填充色、描边和阴影。`fontSynthesis` 的 `none`、`weight`、`style`、`all` 分别禁止全部合成、仅允许仿粗、仅允许仿斜、允许两者，默认 `all`。`InlineScopeKind` 保存背景、线条、注音、装饰、链接、技术文本、行内代码、自动间距和行内盒等范围语义。`LayoutStyle` 表示整个布局调用的宽高约束、相对基础字号的行高倍率和以 CJK 字宽表示的首行缩进；`ParagraphStyleOverride` 保存 `[br /]` 对后续段落的覆盖字段。
+`TextStyle` 表示 run 级字体族、字号、locale、字重、斜体、`fontSynthesis`、基线偏移、附着方式、填充色、描边和阴影。`fontSynthesis` 的 `none`、`weight`、`style`、`all` 分别禁止全部合成、仅允许仿粗、仅允许仿斜、允许两者，默认 `all`。`InlineScopeKind` 保存背景、线条、注音、装饰、链接、技术文本、行内代码、自动间距和行内盒等范围语义。`LayoutStyle` 表示整个布局调用的宽高约束、相对基础字号的行高倍率、以 CJK 字宽表示的首行缩进和段落 `align`；`ParagraphStyleOverride` 保存 `[br /]` 对后续段落的覆盖字段。
 
 ### 3. 字体、fallback 与 shaping 层
 
@@ -115,10 +115,10 @@ variable font 会根据文字样式设置 `wght`，斜体请求优先设置 `ita
 - 将每个 run 的完整局部文字样式写入 tiqian 文字样式覆盖；
 - 将填充、描边、阴影写入 tiqian `RichTextPaint`；
 - 将背景、线条、注音、装饰、链接、技术文本、行内代码、自动间距、行内盒和对象写入对应的 Tiqian builder scope；
-- 将 `LayoutStyle` 转为段落行高、首行缩进和宽高约束；
+- 将 `LayoutStyle` 转为段落行高、首行缩进、结束行对齐和宽高约束；
 - 同时建立私有 `HuoziSourceMap`，关联显示文本 scalar range 与原始 `SourceRange`。
 
-tiqian 是段落几何的唯一来源。它负责字体请求时机、shaping 结果消费、CLREQ 标点规则、断行、行调整和最终 placement。Huozi 不维护另一套字符 advance、标点压缩、悬挂标点、断行或两端对齐规则。
+tiqian 是段落几何的唯一来源。它负责字体请求时机、shaping 结果消费、CLREQ 标点规则、断行、行调整和最终 placement。Huozi 不维护另一套字符 advance、标点压缩、悬挂标点、断行或两端对齐规则。`LayoutStyle.align` 的 `Start`、`Center`、`End` 映射为 Tiqian `LastLineAlignment`；段落结束行居中或靠末端，自动换行行继续使用 Tiqian 的既有正文行调整。`box_width` 未指定时，`Center` 与 `End` 退化为 `Start`，避免非有限位置。
 
 ### 5. SDF 图集层
 
@@ -230,7 +230,7 @@ Segment.id
 | `SourceRange` / `ScalarOffset`    | 原始 segment 内的 scalar 半开范围。       |
 | `TextStyle`                       | 字号、填充、描边、阴影。                  |
 | `StrokeStyle` / `ShadowStyle`     | 描边与阴影参数。                          |
-| `LayoutStyle`                     | 段落宽高、行高倍率和首行缩进。            |
+| `LayoutStyle`                     | 段落宽高、行高倍率、首行缩进和 `align`。  |
 | `ColorSpace`                      | 顶点颜色为线性或 sRGB 数值。              |
 | `GlyphVertices` / `Vertex`        | 可上传到渲染器的 glyph 分层四边形与顶点。 |
 | `SegmentGlyphSpan`                | `SegmentId` 到连续 glyph 下标范围的映射。 |

@@ -1,5 +1,20 @@
 use serde::{Deserialize, Serialize};
 
+/// 段落结束行的行内对齐方式。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ParagraphAlignment {
+    Start,
+    Center,
+    End,
+}
+
+impl Default for ParagraphAlignment {
+    fn default() -> Self {
+        Self::Start
+    }
+}
+
 /// This is the setting of the full text in a `box`, which is also known as `text window`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -12,6 +27,8 @@ pub struct LayoutStyle {
     pub line_height: f64,
     /// The first-line indent in CJK character widths.
     pub indent: f64,
+    /// 段落结束行的行内对齐方式。
+    pub align: ParagraphAlignment,
 }
 
 impl Default for LayoutStyle {
@@ -21,6 +38,7 @@ impl Default for LayoutStyle {
             box_height: None,
             line_height: 1.5,
             indent: 0.,
+            align: ParagraphAlignment::Start,
         }
     }
 }

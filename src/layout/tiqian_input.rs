@@ -13,11 +13,11 @@ use tiqian::core::text_model::{
 };
 use tiqian::core::units::Ic;
 
-use crate::layout::LayoutStyle;
+use crate::layout::{LayoutStyle, ParagraphAlignment};
 use crate::parser::{
     BackgroundMetricPolicy, DecorationKind, InlineBoxSpacing, InlineNode, InlineObject,
-    InlineScopeKind, LastLineAlignment, LinePattern, LineStyle, ParagraphStyleOverride,
-    ParsedParagraph, RubyKind, RubyLineHeightMode, SourceRange, TextSpan, TextStyle,
+    InlineScopeKind, LinePattern, LineStyle, ParagraphStyleOverride, ParsedParagraph, RubyKind,
+    RubyLineHeightMode, SourceRange, TextSpan, TextStyle,
 };
 
 pub(crate) struct HuoziTiqianInput {
@@ -50,6 +50,7 @@ impl HuoziTiqianInputAdapter {
             .first_line_indent(Some(Ic {
                 count: layout_style.indent as f32,
             }))
+            .last_line_alignment(tiqian_last_line_alignment(layout_style, None))
             .build();
         let mut builder = ParagraphBuilder::new(constraints);
         builder
@@ -416,11 +417,10 @@ fn paragraph_style(
         .block_indent(Ic {
             count: override_style.block_indent.unwrap_or(0.0),
         })
-        .last_line_alignment(match override_style.last_line_alignment {
-            Some(LastLineAlignment::Start) | None => TiqianLastLineAlignment::Start,
-            Some(LastLineAlignment::Center) => TiqianLastLineAlignment::Center,
-            Some(LastLineAlignment::End) => TiqianLastLineAlignment::End,
-        })
+        .last_line_alignment(tiqian_last_line_alignment(
+            layout_style,
+            override_style.last_line_alignment,
+        ))
         .line_length_grid(LineLengthGrid::with_enabled(
             override_style.line_length_grid.unwrap_or(true),
         ))
@@ -437,6 +437,25 @@ fn paragraph_style(
         )
         .emphasis_dot_gap_em(override_style.emphasis_dot_gap.unwrap_or(0.1))
         .build()
+}
+
+fn tiqian_last_line_alignment(
+    layout_style: &LayoutStyle,
+    override_alignment: Option<ParagraphAlignment>,
+) -> TiqianLastLineAlignment {
+    let alignment = if layout_style
+        .box_width
+        .is_some_and(|width| (width as f32).is_finite())
+    {
+        override_alignment.unwrap_or(layout_style.align)
+    } else {
+        ParagraphAlignment::Start
+    };
+    match alignment {
+        ParagraphAlignment::Start => TiqianLastLineAlignment::Start,
+        ParagraphAlignment::Center => TiqianLastLineAlignment::Center,
+        ParagraphAlignment::End => TiqianLastLineAlignment::End,
+    }
 }
 
 fn tiqian_background(style: &crate::parser::BackgroundStyle) -> RichTextBackgroundPaint {
@@ -534,6 +553,7 @@ fn color_to_argb(color: &Color) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::layout::ParagraphAlignment;
     use crate::parser::{
         BackgroundStyle, InlineNode, InlineObject, InlineObjectBoundary, InlineScopeKind,
         ParsedParagraph, ScalarOffset as HuoziScalarOffset, SegmentId, TextRun,
@@ -682,6 +702,89 @@ mod tests {
         assert_eq!(
             color_to_argb(&Color::from_rgba8(0x12, 0x34, 0x56, 0x78)),
             0x7812_3456_u32 as i32
+        );
+    }
+
+    #[test]
+    fn maps_layout_align_to_tiqian_and_degrades_without_width() {
+        let text_spans = [TextSpan {
+            runs: vec![TextRun {
+                text: "甲".to_owned(),
+                style: TextStyle::default(),
+                source_range: SourceRange::default(),
+            }],
+            span_id: None,
+        }];
+        for (align, expected) in [
+            (ParagraphAlignment::Start, TiqianLastLineAlignment::Start),
+            (ParagraphAlignment::Center, TiqianLastLineAlignment::Center),
+            (ParagraphAlignment::End, TiqianLastLineAlignment::End),
+        ] {
+            let input = HuoziTiqianInputAdapter::adapt(
+                &text_spans,
+                &LayoutStyle {
+                    box_width: Some(160.0),
+                    align,
+                    ..LayoutStyle::default()
+                },
+                &TextStyle::default(),
+            );
+            assert_eq!(
+                input.layout_input.paragraph_style.last_line_alignment,
+                expected
+            );
+        }
+
+        let input = HuoziTiqianInputAdapter::adapt(
+            &text_spans,
+            &LayoutStyle {
+                align: ParagraphAlignment::Center,
+                ..LayoutStyle::default()
+            },
+            &TextStyle::default(),
+        );
+        assert_eq!(
+            input.layout_input.paragraph_style.last_line_alignment,
+            TiqianLastLineAlignment::Start
+        );
+
+        let input = HuoziTiqianInputAdapter::adapt(
+            &text_spans,
+            &LayoutStyle {
+                box_width: Some(f64::INFINITY),
+                align: ParagraphAlignment::End,
+                ..LayoutStyle::default()
+            },
+            &TextStyle::default(),
+        );
+        assert_eq!(
+            input.layout_input.paragraph_style.last_line_alignment,
+            TiqianLastLineAlignment::Start
+        );
+    }
+
+    #[test]
+    fn paragraph_override_takes_priority_over_layout_align() {
+        let paragraph = ParsedParagraph {
+            paragraph_style: ParagraphStyleOverride {
+                last_line_alignment: Some(ParagraphAlignment::End),
+                ..ParagraphStyleOverride::default()
+            },
+            ..ParsedParagraph::default()
+        };
+        let input = HuoziTiqianInputAdapter::adapt_paragraph(
+            &paragraph,
+            &LayoutStyle {
+                box_width: Some(160.0),
+                align: ParagraphAlignment::Center,
+                ..LayoutStyle::default()
+            },
+            &TextStyle::default(),
+        );
+
+        assert_eq!(
+            input.layout_input.paragraph_style.last_line_alignment,
+            TiqianLastLineAlignment::End
         );
     }
 

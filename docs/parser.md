@@ -251,7 +251,7 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 | `indent` | `f32`，首行缩进。 |
 | `lineHeight` | `f32`，绝对行高。 |
 | `blockIndent` | `f32`，所有行的起始缩进。 |
-| `lastLineAlignment` | `start`、`center`、`end`。 |
+| `align` | `start`、`center`、`end`。 |
 | `lineLengthGrid` | `bool`。 |
 | `rubyLineHeightMode` | `perLine`、`uniformParagraph`。 |
 | `inlineObjectMinimumClearance` | `f32`。 |

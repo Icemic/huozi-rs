@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use crate::layout::ParagraphAlignment;
 use crate::parser::{
     Attribute, BackgroundMetricPolicy, BackgroundStyle, DecorationKind, Element, FontSynthesis,
     InlineAttachment, InlineBoxSpacing, InlineBoxStyle, InlineCodeStyle, InlineNode, InlineObject,
-    InlineObjectBoundary, InlineScopeKind, LastLineAlignment, LinePattern, LineStyle,
-    ParagraphStyleOverride, ParsedParagraph, ParsedText, RubyKind, RubyLineHeightMode, RubyStyle,
-    ShadowStyle, SourceRange, StrokeStyle, TextRun, TextStyle,
+    InlineObjectBoundary, InlineScopeKind, LinePattern, LineStyle, ParagraphStyleOverride,
+    ParsedParagraph, ParsedText, RubyKind, RubyLineHeightMode, RubyStyle, ShadowStyle, SourceRange,
+    StrokeStyle, TextRun, TextStyle,
 };
 
 pub(crate) fn lower_elements(
@@ -640,13 +641,13 @@ fn apply_paragraph_attributes(style: &mut ParagraphStyleOverride, attributes: &[
                 &mut style.block_indent,
                 "paragraph block indent",
             ),
-            "lastLineAlignment" => {
+            "align" => {
                 style.last_line_alignment = match attribute.value.as_str() {
-                    "start" => Some(LastLineAlignment::Start),
-                    "center" => Some(LastLineAlignment::Center),
-                    "end" => Some(LastLineAlignment::End),
+                    "start" => Some(ParagraphAlignment::Start),
+                    "center" => Some(ParagraphAlignment::Center),
+                    "end" => Some(ParagraphAlignment::End),
                     _ => {
-                        log::warn!("invalid last line alignment `{}`", attribute.value);
+                        log::warn!("invalid paragraph align `{}`", attribute.value);
                         style.last_line_alignment
                     }
                 }
@@ -721,6 +722,7 @@ fn parse_optional<T: FromStr + Clone>(value: &str, fallback: Option<&T>, name: &
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::layout::ParagraphAlignment;
     use crate::parser::{Element, Segment, parse};
 
     #[test]
@@ -791,7 +793,7 @@ mod tests {
     fn br_splits_paragraphs_and_continues_enclosing_scope() {
         let document = lower_elements(
             parse(&Segment::dummy(
-                "[background color=#FFFF00]甲[br indent=2/]乙[/background]",
+                "[background color=#FFFF00]甲[br indent=2 align=center/]乙[/background]",
             ))
             .unwrap(),
             &TextStyle::default(),
@@ -799,6 +801,10 @@ mod tests {
         );
         assert_eq!(document.paragraphs.len(), 2);
         assert_eq!(document.paragraphs[1].paragraph_style.indent, Some(2.0));
+        assert_eq!(
+            document.paragraphs[1].paragraph_style.last_line_alignment,
+            Some(ParagraphAlignment::Center)
+        );
         for paragraph in &document.paragraphs {
             let InlineNode::Scope {
                 kind: InlineScopeKind::Background(_),
@@ -809,6 +815,27 @@ mod tests {
             };
             assert!(matches!(&children[0], InlineNode::Text(_)));
         }
+    }
+
+    #[test]
+    fn br_rejects_legacy_last_line_alignment_attribute() {
+        let document = lower_elements(
+            parse(&Segment::dummy(
+                "甲[br align=end/]乙[br lastLineAlignment=center/]丙",
+            ))
+            .unwrap(),
+            &TextStyle::default(),
+            None,
+        );
+
+        assert_eq!(
+            document.paragraphs[1].paragraph_style.last_line_alignment,
+            Some(ParagraphAlignment::End)
+        );
+        assert_eq!(
+            document.paragraphs[2].paragraph_style.last_line_alignment,
+            Some(ParagraphAlignment::End)
+        );
     }
 
     #[test]

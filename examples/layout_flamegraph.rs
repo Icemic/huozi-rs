@@ -70,6 +70,7 @@ fn main() {
         box_height: Some(600.0),
         line_height: 1.5,
         indent: 0.0,
+        ..LayoutStyle::default()
     };
     let text_style = TextStyle {
         font_size: 24.0,

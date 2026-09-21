@@ -9,6 +9,7 @@ use crate::State;
 use crate::defaults::{shadow_default, stroke_default};
 use crate::ui::grid::render_grid_ui;
 use crate::ui::switch::toggle;
+use huozi::layout::ParagraphAlignment;
 
 pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput {
     let raw_input = state.egui_state.take_egui_input(window);
@@ -268,6 +269,32 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                                     .speed(1.0)
                                     .range(0.0..=200.0),
                             );
+                            ui.end_row();
+
+                            ui.label("Align:");
+                            egui::ComboBox::from_id_salt("paragraph_align")
+                                .selected_text(match state.layout_config.align {
+                                    ParagraphAlignment::Start => "Start",
+                                    ParagraphAlignment::Center => "Center",
+                                    ParagraphAlignment::End => "End",
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut state.layout_config.align,
+                                        ParagraphAlignment::Start,
+                                        "Start",
+                                    );
+                                    ui.selectable_value(
+                                        &mut state.layout_config.align,
+                                        ParagraphAlignment::Center,
+                                        "Center",
+                                    );
+                                    ui.selectable_value(
+                                        &mut state.layout_config.align,
+                                        ParagraphAlignment::End,
+                                        "End",
+                                    );
+                                });
                             ui.end_row();
                         });
                     });

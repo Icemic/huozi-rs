@@ -1,5 +1,6 @@
 use csscolorparser::Color;
 
+use crate::layout::ParagraphAlignment;
 use crate::parser::{ShadowStyle, SourceRange, StrokeStyle, TextRun, TextStyle};
 
 /// 解析后的富文本内容，按段落保留标签声明。
@@ -21,19 +22,11 @@ pub struct ParagraphStyleOverride {
     pub indent: Option<f32>,
     pub line_height: Option<f32>,
     pub block_indent: Option<f32>,
-    pub last_line_alignment: Option<LastLineAlignment>,
+    pub last_line_alignment: Option<ParagraphAlignment>,
     pub line_length_grid: Option<bool>,
     pub ruby_line_height_mode: Option<RubyLineHeightMode>,
     pub inline_object_minimum_clearance: Option<f32>,
     pub emphasis_dot_gap: Option<f32>,
-}
-
-/// 段落末行对齐方式。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LastLineAlignment {
-    Start,
-    Center,
-    End,
 }
 
 /// 注音影响行高的方式。

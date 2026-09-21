@@ -416,6 +416,7 @@ impl State {
                 box_height: Some(600.),
                 line_height: 1.5,
                 indent: 0.,
+                ..LayoutStyle::default()
             },
             text_config: text_style_default(),
             stroke_enabled: true,
