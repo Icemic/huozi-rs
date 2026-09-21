@@ -4,12 +4,12 @@ use tiqian::api::{
 };
 use tiqian::core::geometry::{LayoutConstraints, ScalarOffset, TextRange};
 use tiqian::core::text_model::{
-    DecorationKind as TiqianDecorationKind, InlineAttachment as TiqianInlineAttachment,
-    InlineBoxOuterSpacing, InlineObjectBoundaryAdjustment,
-    LastLineAlignment as TiqianLastLineAlignment, LayoutInput, LineLengthGrid, ParagraphStyle,
-    RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextLinePaint,
-    RichTextLinePattern, RichTextPaint, RubyLineHeightMode as TiqianRubyLineHeightMode,
-    TextStyle as TiqianTextStyle,
+    DecorationKind as TiqianDecorationKind, FontSynthesis as TiqianFontSynthesis,
+    InlineAttachment as TiqianInlineAttachment, InlineBoxOuterSpacing,
+    InlineObjectBoundaryAdjustment, LastLineAlignment as TiqianLastLineAlignment, LayoutInput,
+    LineLengthGrid, ParagraphStyle, RichTextBackgroundMetricPolicy, RichTextBackgroundPaint,
+    RichTextLinePaint, RichTextLinePattern, RichTextPaint,
+    RubyLineHeightMode as TiqianRubyLineHeightMode, TextStyle as TiqianTextStyle,
 };
 use tiqian::core::units::Ic;
 
@@ -365,6 +365,7 @@ fn tiqian_text_style(style: &TextStyle) -> TiqianTextStyle {
         .locale(style.locale.clone())
         .font_weight(style.font_weight)
         .italic(style.italic)
+        .font_synthesis(style.font_synthesis.into())
         .baseline_shift(style.baseline_shift)
         .inline_attachment(match style.inline_attachment {
             crate::parser::InlineAttachment::None => TiqianInlineAttachment::None,
@@ -380,12 +381,24 @@ fn tiqian_text_style_override(style: &TextStyle) -> TextStyleOverride {
         .locale(style.locale.clone())
         .font_weight(style.font_weight)
         .italic(style.italic)
+        .font_synthesis(style.font_synthesis.into())
         .baseline_shift(style.baseline_shift)
         .inline_attachment(match style.inline_attachment {
             crate::parser::InlineAttachment::None => TiqianInlineAttachment::None,
             crate::parser::InlineAttachment::Previous => TiqianInlineAttachment::Previous,
         })
         .build()
+}
+
+impl From<crate::parser::FontSynthesis> for TiqianFontSynthesis {
+    fn from(value: crate::parser::FontSynthesis) -> Self {
+        match value {
+            crate::parser::FontSynthesis::None => TiqianFontSynthesis::NONE,
+            crate::parser::FontSynthesis::Weight => TiqianFontSynthesis::WEIGHT,
+            crate::parser::FontSynthesis::Style => TiqianFontSynthesis::STYLE,
+            crate::parser::FontSynthesis::All => TiqianFontSynthesis::ALL,
+        }
+    }
 }
 
 fn paragraph_style(
@@ -541,6 +554,7 @@ mod tests {
             text: "好".to_string(),
             style: TextStyle {
                 font_size: 48.0,
+                font_synthesis: crate::parser::FontSynthesis::Style,
                 stroke: Some(crate::parser::StrokeStyle {
                     stroke_color: Color::from_rgba8(255, 0, 0, 255),
                     stroke_width: 2.0,
@@ -565,6 +579,10 @@ mod tests {
         assert_eq!(input.layout_input.content.text.as_str(), "你好");
         assert_eq!(input.layout_input.content.spans.len(), 1);
         assert_eq!(input.layout_input.content.spans[0].style.font_size, 48.0);
+        assert_eq!(
+            input.layout_input.content.spans[0].style.font_synthesis,
+            TiqianFontSynthesis::STYLE
+        );
         assert_eq!(input.layout_input.rich_text.len(), 2);
         assert_eq!(input.source_map.entries.len(), 2);
         assert_eq!(

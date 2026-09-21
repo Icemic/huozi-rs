@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::parser::{
-    Attribute, BackgroundMetricPolicy, BackgroundStyle, DecorationKind, Element, InlineAttachment,
-    InlineBoxSpacing, InlineBoxStyle, InlineCodeStyle, InlineNode, InlineObject,
+    Attribute, BackgroundMetricPolicy, BackgroundStyle, DecorationKind, Element, FontSynthesis,
+    InlineAttachment, InlineBoxSpacing, InlineBoxStyle, InlineCodeStyle, InlineNode, InlineObject,
     InlineObjectBoundary, InlineScopeKind, LastLineAlignment, LinePattern, LineStyle,
     ParagraphStyleOverride, ParsedParagraph, ParsedText, RubyKind, RubyLineHeightMode, RubyStyle,
     ShadowStyle, SourceRange, StrokeStyle, TextRun, TextStyle,
@@ -191,6 +191,7 @@ fn is_text_style_tag(tag: &str) -> bool {
             | "weight"
             | "bold"
             | "italic"
+            | "fontSynthesis"
             | "locale"
             | "baseline"
             | "attach"
@@ -276,6 +277,13 @@ fn apply_text_attributes(style: &mut TextStyle, tag: &str, attributes: &[Attribu
                 }
             }
             "weight" => update_value(&attribute.value, &mut style.font_weight, "font weight"),
+            "fontSynthesis" => match attribute.value.as_str() {
+                "none" => style.font_synthesis = FontSynthesis::None,
+                "weight" => style.font_synthesis = FontSynthesis::Weight,
+                "style" => style.font_synthesis = FontSynthesis::Style,
+                "all" => style.font_synthesis = FontSynthesis::All,
+                _ => log::warn!("invalid font synthesis `{}`", attribute.value),
+            },
             "italic" | "enabled" if tag == "italic" => {
                 update_value(&attribute.value, &mut style.italic, "italic flag")
             }
@@ -756,6 +764,27 @@ mod tests {
             run.style.font_families,
             vec!["latin".to_owned(), "cjk".to_owned()]
         );
+    }
+
+    #[test]
+    fn font_synthesis_tag_and_span_attribute_override_inherited_style() {
+        let document = lower_elements(
+            parse(&Segment::dummy(
+                "[fontSynthesis=style]外层[span fontSynthesis=weight]内层[/span][/fontSynthesis]",
+            ))
+            .unwrap(),
+            &TextStyle::default(),
+            None,
+        );
+        let InlineNode::Text(outer) = &document.paragraphs[0].nodes[0] else {
+            panic!("expected outer text node");
+        };
+        let InlineNode::Text(inner) = &document.paragraphs[0].nodes[1] else {
+            panic!("expected inner text node");
+        };
+
+        assert_eq!(outer.style.font_synthesis, FontSynthesis::Style);
+        assert_eq!(inner.style.font_synthesis, FontSynthesis::Weight);
     }
 
     #[test]

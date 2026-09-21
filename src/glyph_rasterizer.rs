@@ -215,4 +215,31 @@ mod tests {
         assert!((bitmap.y_min + ink.bottom).abs() <= 1.0);
         assert!((bitmap.y_max + ink.top).abs() <= 1.0);
     }
+
+    #[test]
+    fn synthetic_oblique_bitmap_bounds_match_ink_bounds() {
+        let manager =
+            HuoziFontManager::from_sources(vec![FontSource::new(SOURCE_HAN_SANS.to_vec())])
+                .unwrap();
+        let text = Text::from("中");
+        let shaped = manager.shape(&FontBackendRequest::new(
+            text.clone(),
+            text_range(0, text.scalar_len().value()),
+            TextStyle::builder().font_size(96.0).italic(true).build(),
+            FontRole::CjkText,
+        ));
+        let glyph_id = shaped.shaping.glyph_runs[0].glyphs[0].id;
+        let bitmap = rasterize_outline(&manager, &shaped.face, glyph_id, 96.0)
+            .unwrap()
+            .unwrap();
+        let ink = manager
+            .glyph_ink_bounds(&shaped.face, glyph_id, 96.0)
+            .unwrap();
+
+        assert_eq!(shaped.face.synthesis().oblique_degrees(), Some(14.0));
+        assert!((bitmap.x_min - ink.left).abs() <= 1.0);
+        assert!((bitmap.x_max - ink.right).abs() <= 1.0);
+        assert!((bitmap.y_min + ink.bottom).abs() <= 1.0);
+        assert!((bitmap.y_max + ink.top).abs() <= 1.0);
+    }
 }

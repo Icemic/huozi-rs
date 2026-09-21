@@ -88,7 +88,7 @@ flowchart TD
 
 `SourceRange` 以 Unicode scalar value 为单位，使用半开范围 `[start, end)` 指向单个原始 `Segment.content`。它可以包含标签和转义符号的位置，不等同于 tiqian 拼接后显示文本的范围。
 
-`TextStyle` 表示 run 级字体族、字号、locale、字重、斜体、基线偏移、附着方式、填充色、描边和阴影。`InlineScopeKind` 保存背景、线条、注音、装饰、链接、技术文本、行内代码、自动间距和行内盒等范围语义。`LayoutStyle` 表示整个布局调用的宽高约束、相对基础字号的行高倍率和以 CJK 字宽表示的首行缩进；`ParagraphStyleOverride` 保存 `[br /]` 对后续段落的覆盖字段。
+`TextStyle` 表示 run 级字体族、字号、locale、字重、斜体、`fontSynthesis`、基线偏移、附着方式、填充色、描边和阴影。`fontSynthesis` 的 `none`、`weight`、`style`、`all` 分别禁止全部合成、仅允许仿粗、仅允许仿斜、允许两者，默认 `all`。`InlineScopeKind` 保存背景、线条、注音、装饰、链接、技术文本、行内代码、自动间距和行内盒等范围语义。`LayoutStyle` 表示整个布局调用的宽高约束、相对基础字号的行高倍率和以 CJK 字宽表示的首行缩进；`ParagraphStyleOverride` 保存 `[br /]` 对后续段落的覆盖字段。
 
 ### 3. 字体、fallback 与 shaping 层
 
@@ -103,7 +103,7 @@ flowchart TD
 
 对 tiqian 发出的一个 shaping 请求，字体后端先按请求的 family 顺序构造候选域；没有 family 命中时按注册 family 顺序退化。`CjkText` 与 `CjkPunctuation` 会在该域内优先尝试 `FontSourceKind::Cjk`，`LatinText` 会优先尝试 `FontSourceKind::Latin`；`Symbol`、`Emoji` 与 `Unknown` 保持基础顺序。显式 `[font]` 列表只定义候选域，角色优先级不会选择列表外的 family。每个候选部分内先按 normal、italic、oblique 的请求顺序选择 style 档，再按 CSS Fonts weight 规则排列 face。字体后端依次对候选完整执行 HarfRust shaping，第一个不含 glyph id `0` 的候选被选中；所有候选均缺字时，保留第一个候选的 shaping 结果和 `.notdef` glyph。
 
-variable font 会根据文字样式设置 `wght`，斜体请求优先设置 `ital=1`，没有 `ital` 时设置 `slnt=-14`，所有值均限制在字体声明的轴范围内。没有合适静态 face 或标准轴时退化到最近的非合成 face，不生成软件加粗或软件倾斜。每个输出 glyph 都携带包含实际 variation instance 的 `FontFaceId`；HarfRust shaping、SkRifa metrics、glyph bounds、轮廓回放和 SDF 图集使用同一实例。每个字体 face 的 HarfRust `ShaperData` 在字体目录初始化时创建并复用，variation-specific `ShaperInstance` 按请求构造。字体后端还持有 1024 项的未缩放 glyph ink bounds LRU，key 包含字体实例和 glyph id；排版时按字号缩放，连续加入新字符时旧 bounds 会被淘汰，缓存内存保持固定上界。库当前不向调用方开放任意字体轴配置。
+variable font 会根据文字样式设置 `wght`，斜体请求优先设置 `ital=1`，没有 `ital` 时设置 `slnt=-14`，所有值均限制在字体声明的轴范围内。真实静态 face 与实际生效的标准轴始终优先；仍无法满足请求时，`fontSynthesis` 可为字重请求 `>= 600` 生成固定单侧 `1/60em` 仿粗，为斜体请求生成 `14°` 右倾仿斜。HarfRust 始终只使用物理 face 与真实 variation；合成参数仅写入最终 `FontFaceId`，不增加 shaping attempt，也不伪装为 OpenType axis。每个输出 glyph 都携带包含 variation 与实际 synthesis 的 `FontFaceId`；SkRifa metrics、glyph bounds、轮廓回放和 SDF 图集使用同一实例。仿斜通过同一个 `ShearingPen` 同时变换 raster outline 与 ink bounds；仿粗在每侧扩张 `1/60em × 字号` 的 ink bounds，横向与纵向尺寸总计各增加 `1/30em × 字号`，保持 advance、baseline 与纵向 metrics 不变。每个字体 face 的 HarfRust `ShaperData` 在字体目录初始化时创建并复用，variation-specific `ShaperInstance` 按请求构造。字体后端还持有 1024 项的未缩放 glyph ink bounds LRU，key 包含字体实例和 glyph id；排版时按字号缩放，连续加入新字符时旧 bounds 会被淘汰，缓存内存保持固定上界。`ReplayableFontCatalog` 按物理资源与 collection member 回查 descriptor，不为 variation 或 synthesis 复制 descriptor。库当前不向调用方开放任意字体轴配置。
 
 ### 4. 段落输入与布局层
 
@@ -124,7 +124,7 @@ tiqian 是段落几何的唯一来源。它负责字体请求时机、shaping �
 
 相关文件：`src/huozi.rs`、`src/glyph_rasterizer.rs`、`src/sdf.rs`、`src/constant.rs`。
 
-SDF 图集以 `FontFaceId + glyph_id` 标识 glyph。缓存未命中时，活字从同一字体实例读取轮廓，栅格化为 alpha bitmap，再生成带 buffer 的 SDF。正常 glyph 使用固定 `96 px` 基准栅格；输出 quad 按实际文字字号缩放。
+SDF 图集以完整 `FontFaceId + glyph_id` 标识 glyph；normal、仿粗、仿斜与组合实例可分别缓存。缓存未命中时，活字从同一最终字体实例读取轮廓，栅格化为 alpha bitmap，再生成带 buffer 的 SDF。正常 glyph 使用固定 `96 px` 基准栅格；输出 quad 按实际文字字号缩放。
 
 `TextureAtlas` 是一个 `2048 × 2048` 的 RGBA 像素缓冲。四个颜色通道分别作为独立 page 使用。图集按 `128 × 128` 网格分配，glyph 可以占用多行、多列连续网格，以容纳连字或其他延展 glyph。缓存满时按 LRU 淘汰旧 glyph，清理其矩形区域后复用空间。
 
@@ -151,7 +151,7 @@ SDF 只处理单通道轮廓。彩色 glyph、缺少可用轮廓的 glyph 或轮
 shadow → stroke → fill
 ```
 
-`Vertex` 包含位置、UV、atlas page、SDF 阈值与过渡参数、RGBA 颜色。渲染器根据 `page` 从 atlas 的 R/G/B/A 通道取样。描边宽度、阴影扩张与偏移按逻辑像素转换为顶点参数；fragment shader 负责 SDF coverage、抗锯齿和阴影平滑。
+`Vertex` 包含位置、UV、atlas page、SDF 阈值与过渡参数、RGBA 颜色。渲染器根据 `page` 从 atlas 的 R/G/B/A 通道取样。仿粗后的 fill 轮廓是 text paint 的基准：stroke 从该轮廓继续按用户宽度外扩，shadow 从 fill 与 stroke 的外缘继续按用户扩张半径外扩；用户设置的描边宽度、阴影扩张、偏移和 `blur` 仍按各自逻辑像素参数转换。fragment shader 负责 SDF coverage、抗锯齿和阴影平滑。
 
 普通文本 glyph 是当前唯一转出的几何。背景、线条、ruby、注音、CLREQ 装饰、链接语义、行内盒和行内对象已传入 Tiqian，但当前不生成对应的 Huozi 顶点。
 

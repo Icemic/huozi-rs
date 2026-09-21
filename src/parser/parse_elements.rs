@@ -141,6 +141,7 @@ fn primary_attribute(tag: &str) -> &str {
         "background" | "underline" | "lineThrough" | "color" | "fillColor" => "color",
         "font" => "family",
         "weight" => "weight",
+        "fontSynthesis" => "fontSynthesis",
         "locale" => "locale",
         "baseline" => "baseline",
         "attach" => "attach",

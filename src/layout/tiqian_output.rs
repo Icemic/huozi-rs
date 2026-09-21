@@ -317,19 +317,26 @@ fn glyph_vertices_for_glyph(
     let buffer = 1. - CUTOFF;
     let fill_buffer = 2.0;
     let threshold_per_logical_pixel = x_scale / (RADIUS * scale_ratio);
+    let synthetic_embolden = glyph
+        .render_font_face
+        .as_ref()
+        .and_then(|face| face.synthesis().embolden_em())
+        .unwrap_or(0.0)
+        * style.font_size;
+    let fill_threshold = buffer - synthetic_embolden * threshold_per_logical_pixel;
     let fill = quad_vertices(
         quad_left,
         quad_top,
         quad_width,
         quad_height,
         atlas_glyph,
-        buffer,
+        fill_threshold,
         fill_buffer,
         0.0,
         fill_color,
     );
     let stroke = stroke_paint.map(|(argb, width)| {
-        let stroke_buffer = buffer - width * threshold_per_logical_pixel;
+        let stroke_buffer = fill_threshold - width * threshold_per_logical_pixel;
         quad_vertices(
             quad_left,
             quad_top,
@@ -337,13 +344,14 @@ fn glyph_vertices_for_glyph(
             quad_height,
             atlas_glyph,
             stroke_buffer,
-            buffer,
+            fill_threshold,
             0.0,
             argb_color(argb, color_space),
         )
     });
     let shadow = shadow_paint.map(|(argb, offset_x, offset_y, blur, spread)| {
-        let shadow_buffer = buffer - spread * threshold_per_logical_pixel;
+        let stroke_width = stroke_paint.map_or(0.0, |(_, width)| width);
+        let shadow_buffer = fill_threshold - (stroke_width + spread) * threshold_per_logical_pixel;
         let shadow_gamma = blur * threshold_per_logical_pixel;
         quad_vertices(
             quad_left + offset_x,

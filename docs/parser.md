@@ -82,6 +82,7 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 | `shadowWidth` | `width` |
 | `font` | `family` |
 | `weight` | `weight` |
+| `fontSynthesis` | `fontSynthesis` |
 | `locale` | `locale` |
 | `baseline` | `baseline` |
 | `attach` | `attach` |
@@ -166,6 +167,7 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 | `weight` | 单值 `weight`；`weight` | `i32` 字重；布局时限制到 `1..=1000`，匹配静态 face 或 variable `wght`。 |
 | `bold` | 可选 `weight` | 无属性时设为 `700`；带属性时仅处理 `weight`，后续选择规则与 `weight` 相同。 |
 | `italic` | 可选 `italic` 或 `enabled` | 无属性时设为 `true`；带属性时解析 `bool`，匹配 italic/oblique face 或标准斜体轴。 |
+| `fontSynthesis` | 单值 `fontSynthesis`；`fontSynthesis` | `none`、`weight`、`style` 或 `all`。控制缺少真实能力时允许的仿粗/仿斜 fallback；默认 `all`，局部值整体覆盖继承值。 |
 | `locale` | 单值 `locale`；`locale` | 设置 locale。 |
 | `baseline` | 单值 `baseline`；`baseline` | `f32` 基线偏移；负值向上。 |
 | `attach` | 单值 `attach`；`attach` | `none` 或 `previous`。 |
@@ -175,6 +177,8 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 ```text
 [span size=28 color="#F59E0B" shadowColor="#0008" shadowOffsetX=1 shadowOffsetY=2 shadowBlur=4]警告[/span]
 [font="Source Han Sans SC, Inter"][weight=700]混排[/weight][/font]
+[fontSynthesis=none]保持最近真实字体[/fontSynthesis]
+[span fontSynthesis=style][italic]仅允许仿斜[/italic][/span]
 [stroke color=white width=2]描边[/stroke]
 [shadow offsetX=1 offsetY=2 blur=4 color="#0008"]阴影[/shadow]
 [baseline=-4]上标位置[/baseline]
@@ -337,7 +341,7 @@ parser 采用一次从左至右的 Unicode scalar 扫描和显式 frame 栈。�
 
 | 功能 | Tiqian 布局 | Huozi 顶点输出 |
 | --- | --- | --- |
-| 字号、字体族、字重、斜体、locale、基线、附着、技术断行、自动间距、行内盒 | 生效 | 普通文字 glyph。 |
+| 字号、字体族、字重、斜体、fontSynthesis、locale、基线、附着、技术断行、自动间距、行内盒 | 生效 | 普通文字 glyph。 |
 | 背景、下划线、删除线 | 参与 rich-text layout | 不生成对应几何。 |
 | 注音和 CLREQ 装饰 | 参与 rich-text layout | 不生成对应几何。 |
 | 链接 | 保留语义 | 不处理导航或专属视觉。 |

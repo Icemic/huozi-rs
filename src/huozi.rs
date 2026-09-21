@@ -475,9 +475,10 @@ mod tests {
 
     #[test]
     fn tiqian_output_replays_glyphs_paints_and_segment_identity() {
-        let font = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
+        let font = include_bytes!("../resources/fonts/SourceHanSerifCN-Regular.otf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
         let style = HuoziTextStyle {
+            font_weight: 700,
             fill_color: csscolorparser::Color::from_rgba8(0x12, 0x34, 0x56, 0x78),
             stroke: Some(StrokeStyle {
                 stroke_color: csscolorparser::Color::from_rgba8(0x9a, 0xbc, 0xde, 0xf0),
@@ -561,7 +562,7 @@ mod tests {
                 0x78 as f32 / 255.0
             ]
         );
-        assert_eq!(glyphs[0].fill[0].buffer, 1. - CUTOFF);
+        assert!(glyphs[0].fill[0].buffer < 1. - CUTOFF);
         assert_eq!(glyphs[0].fill[0].fill_buffer, 2.0);
         assert!(glyphs[0].fill.iter().all(|vertex| vertex.page >= 0));
         assert!(glyphs[0].fill.iter().all(|vertex| {
@@ -580,7 +581,8 @@ mod tests {
                 0xf0 as f32 / 255.0
             ]
         );
-        assert_eq!(stroke[0].fill_buffer, 1. - CUTOFF);
+        assert_eq!(stroke[0].buffer, glyphs[0].fill[0].buffer - 2.0 * 0.125);
+        assert_eq!(stroke[0].fill_buffer, glyphs[0].fill[0].buffer);
         let shadow = glyphs[0].shadow.unwrap();
         assert_eq!(
             shadow[0].color,
@@ -593,6 +595,7 @@ mod tests {
         );
         assert_eq!(shadow[0].position[0] - glyphs[0].fill[0].position[0], 0.25);
         assert_eq!(shadow[0].position[1] - glyphs[0].fill[0].position[1], 0.5);
+        assert_eq!(shadow[0].buffer, stroke[0].buffer - 3.0 * 0.125);
         assert!(shadow[0].gamma > glyphs[0].fill[0].gamma);
         assert_eq!(spans.len(), 1);
         assert_eq!(spans[0].segment_id, SegmentId::Lite(7));

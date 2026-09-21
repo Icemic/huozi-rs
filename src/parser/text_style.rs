@@ -12,6 +12,7 @@ pub struct TextStyle {
     pub locale: String,
     pub font_weight: i32,
     pub italic: bool,
+    pub font_synthesis: FontSynthesis,
     pub baseline_shift: f32,
     pub inline_attachment: InlineAttachment,
     pub fill_color: Color,
@@ -27,6 +28,7 @@ impl Default for TextStyle {
             locale: "zh-Hans".to_string(),
             font_weight: 400,
             italic: false,
+            font_synthesis: FontSynthesis::All,
             baseline_shift: 0.0,
             inline_attachment: InlineAttachment::None,
             fill_color: Color::new(0., 0., 0., 1.),
@@ -34,6 +36,17 @@ impl Default for TextStyle {
             shadow: None,
         }
     }
+}
+
+/// 控制缺少真实字重或斜体能力时允许采用的软件字体合成。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FontSynthesis {
+    None,
+    Weight,
+    Style,
+    #[default]
+    All,
 }
 
 /// 行内范围与前一个文字边界的归属关系。

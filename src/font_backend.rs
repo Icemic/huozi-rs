@@ -14,10 +14,13 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 use tiqian::common::HashSet;
-use tiqian::core::font_face::{FontFaceId, FontVariationInstance, FontVariationSetting};
+use tiqian::core::font_face::{
+    FontFaceId, FontSynthesisInstance, FontVariationInstance, FontVariationSetting,
+};
 use tiqian::core::geometry::Rect;
 use tiqian::core::layout_model::{Cluster, Glyph, GlyphRun, ShapingDecisionInfo};
 use tiqian::core::text::Text;
+use tiqian::core::text_model::FontSynthesis;
 use tiqian::font::font_metrics::FontMetricSource;
 use tiqian::font::font_metrics::FontMetricsRequest;
 use tiqian::font::font_policy::{FontRole, RawFontMetrics};
@@ -116,6 +119,9 @@ struct FontFaceRecord {
 }
 
 const INK_BOUNDS_CACHE_CAPACITY: usize = 1024;
+const SYNTHETIC_BOLD_WEIGHT_THRESHOLD: i32 = 600;
+const SYNTHETIC_EMBOLDEN_EM: f32 = 1. / 60.;
+const SYNTHETIC_OBLIQUE_DEGREES: f32 = 14.0;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct InkBoundsKey {
@@ -341,7 +347,12 @@ impl HuoziFontManager {
                     {
                         continue;
                     }
-                    let candidate = font_candidate(face, requested_weight, request.style.italic);
+                    let candidate = font_candidate(
+                        face,
+                        requested_weight,
+                        request.style.italic,
+                        request.style.font_synthesis,
+                    );
                     let style_index = style_order
                         .iter()
                         .position(|style| *style == candidate.style)
@@ -407,17 +418,25 @@ impl HuoziFontManager {
     fn glyph_ink_bounds_uncached(&self, id: &FontFaceId, glyph_id: u32) -> Option<Rect> {
         let face = self.face_for_id(id);
         let font = SkrifaFontRef::from_index(&face.bytes, face.collection_index).ok()?;
-        glyph_ink_bounds(&font, id.variation_instance(), glyph_id, 1.0)
+        glyph_ink_bounds(&font, id, glyph_id, 1.0)
     }
 
     fn scale_ink_bounds(&self, id: &FontFaceId, bounds: Rect, font_size: f32) -> Rect {
         let scale = font_size / self.face_for_id(id).units_per_em as f32;
-        Rect {
+        let mut bounds = Rect {
             left: bounds.left * scale,
             top: bounds.top * scale,
             right: bounds.right * scale,
             bottom: bounds.bottom * scale,
+        };
+        if let Some(embolden_em) = id.synthesis().embolden_em() {
+            let expansion = embolden_em * font_size;
+            bounds.left -= expansion;
+            bounds.top -= expansion;
+            bounds.right += expansion;
+            bounds.bottom += expansion;
         }
+        bounds
     }
 
     #[cfg_attr(not(test), allow(dead_code))]
@@ -434,13 +453,15 @@ impl HuoziFontManager {
         let Some(glyph) = font.outline_glyphs().get(GlyphId::new(glyph_id)) else {
             return Ok(false);
         };
-        glyph.draw(
-            DrawSettings::unhinted(
-                Size::new(font_size),
-                LocationRef::new(variation_location(&font, id.variation_instance()).coords()),
-            ),
-            pen,
-        )?;
+        let location = variation_location(&font, id.variation_instance());
+        let settings =
+            DrawSettings::unhinted(Size::new(font_size), LocationRef::new(location.coords()));
+        if let Some(oblique_degrees) = id.synthesis().oblique_degrees() {
+            let mut shearing_pen = ShearingPen::new(pen, oblique_degrees);
+            glyph.draw(settings, &mut shearing_pen)?;
+        } else {
+            glyph.draw(settings, pen)?;
+        }
         Ok(true)
     }
 
@@ -608,8 +629,12 @@ impl ReplayableFontCatalog for HuoziFontManager {
     }
 
     fn face(&self, id: &FontFaceId) -> Option<&ReplayableFontFaceDescriptor> {
+        let face_index = self
+            .face_indices
+            .get(id.resource_id())
+            .and_then(|indices| indices.get(&id.collection_index()))?;
         self.descriptor_indices
-            .get(id)
+            .get(&self.faces[*face_index].id)
             .map(|index| &self.descriptors[*index])
     }
 }
@@ -734,7 +759,12 @@ fn font_variation_axis(axis: skrifa::Axis) -> FontVariationAxis {
     }
 }
 
-fn font_candidate(face: &FontFaceRecord, requested_weight: i32, italic: bool) -> FontCandidate<'_> {
+fn font_candidate(
+    face: &FontFaceRecord,
+    requested_weight: i32,
+    italic: bool,
+    font_synthesis: FontSynthesis,
+) -> FontCandidate<'_> {
     let mut settings = Vec::new();
     let weight = if let Some(axis) = face.variation_axes.weight {
         let value = (requested_weight as f32).clamp(axis.min, axis.max);
@@ -747,18 +777,26 @@ fn font_candidate(face: &FontFaceRecord, requested_weight: i32, italic: bool) ->
         if let Some(axis) = face.variation_axes.italic {
             let value = 1.0_f32.clamp(axis.min, axis.max);
             push_non_default_variation(&mut settings, "ital", value, axis.default);
-            FontFaceStyle::Italic
+            if value.to_bits() != axis.default.to_bits() {
+                FontFaceStyle::Italic
+            } else {
+                face.style
+            }
         } else if let Some(axis) = face.variation_axes.slant {
             let value = (-14.0_f32).clamp(axis.min, axis.max);
             push_non_default_variation(&mut settings, "slnt", value, axis.default);
-            FontFaceStyle::Oblique
+            if value.to_bits() != axis.default.to_bits() {
+                FontFaceStyle::Oblique
+            } else {
+                face.style
+            }
         } else {
             face.style
         }
     } else {
         face.style
     };
-    let id = if settings.is_empty() {
+    let physical_id = if settings.is_empty() {
         face.id.clone()
     } else {
         FontFaceId::new(
@@ -766,6 +804,19 @@ fn font_candidate(face: &FontFaceRecord, requested_weight: i32, italic: bool) ->
             face.collection_index,
             FontVariationInstance::new(settings),
         )
+    };
+    let needs_synthetic_weight = requested_weight >= SYNTHETIC_BOLD_WEIGHT_THRESHOLD
+        && weight < SYNTHETIC_BOLD_WEIGHT_THRESHOLD
+        && font_synthesis.contains(FontSynthesis::WEIGHT);
+    let needs_synthetic_style =
+        italic && style == FontFaceStyle::Normal && font_synthesis.contains(FontSynthesis::STYLE);
+    let id = if needs_synthetic_weight || needs_synthetic_style {
+        physical_id.with_synthesis(FontSynthesisInstance::new(
+            needs_synthetic_weight.then_some(SYNTHETIC_EMBOLDEN_EM),
+            needs_synthetic_style.then_some(SYNTHETIC_OBLIQUE_DEGREES),
+        ))
+    } else {
+        physical_id
     };
     FontCandidate {
         face,
@@ -838,6 +889,7 @@ fn feature_value(feature: &str) -> u32 {
 mod tests {
     use super::*;
     use std::collections::HashMap as StdHashMap;
+    use tiqian::core::font_face::FontSynthesisInstance;
     use tiqian::core::geometry::text_range;
     use tiqian::core::text::Text;
     use tiqian::core::text_model::TextStyle;
@@ -886,6 +938,60 @@ mod tests {
             .iter()
             .find(|setting| setting.tag() == tag)
             .map(FontVariationSetting::value)
+    }
+
+    #[derive(Default)]
+    struct RecordingPen {
+        points: Vec<(f32, f32)>,
+        close_count: usize,
+    }
+
+    impl OutlinePen for RecordingPen {
+        fn move_to(&mut self, x: f32, y: f32) {
+            self.points.push((x, y));
+        }
+
+        fn line_to(&mut self, x: f32, y: f32) {
+            self.points.push((x, y));
+        }
+
+        fn quad_to(&mut self, cx0: f32, cy0: f32, x: f32, y: f32) {
+            self.points.extend([(cx0, cy0), (x, y)]);
+        }
+
+        fn curve_to(&mut self, cx0: f32, cy0: f32, cx1: f32, cy1: f32, x: f32, y: f32) {
+            self.points.extend([(cx0, cy0), (cx1, cy1), (x, y)]);
+        }
+
+        fn close(&mut self) {
+            self.close_count += 1;
+        }
+    }
+
+    #[test]
+    fn shearing_pen_transforms_endpoints_and_bezier_controls() {
+        let mut recording = RecordingPen::default();
+        let mut pen = ShearingPen::new(&mut recording, 45.0);
+
+        pen.move_to(1.0, 2.0);
+        pen.line_to(3.0, 4.0);
+        pen.quad_to(5.0, 6.0, 7.0, 8.0);
+        pen.curve_to(9.0, 10.0, 11.0, 12.0, 13.0, 14.0);
+        pen.close();
+
+        assert_eq!(
+            recording.points,
+            vec![
+                (3.0, 2.0),
+                (7.0, 4.0),
+                (11.0, 6.0),
+                (15.0, 8.0),
+                (19.0, 10.0),
+                (23.0, 12.0),
+                (27.0, 14.0),
+            ]
+        );
+        assert_eq!(recording.close_count, 1);
     }
 
     #[cfg(feature = "woff")]
@@ -1311,10 +1417,94 @@ mod tests {
         assert_eq!(variation_value(&light_result.face, "wght"), Some(300.0));
         assert_eq!(variation_value(&bold_result.face, "wght"), Some(700.0));
         assert_ne!(light_result.face, bold_result.face);
+        assert_eq!(
+            bold_result.face.synthesis(),
+            &FontSynthesisInstance::default()
+        );
     }
 
     #[test]
-    fn keeps_non_synthetic_face_when_italic_capability_is_missing() {
+    fn replays_synthetic_identity_with_its_physical_face_descriptor() {
+        let manager = HuoziFontManager::from_sources(vec![FontSource::with_alias(
+            INTER.to_vec(),
+            "inter".to_owned(),
+        )])
+        .unwrap();
+        let physical = manager.faces[0].id.clone();
+        let synthetic = physical.with_synthesis(FontSynthesisInstance::new(
+            Some(SYNTHETIC_EMBOLDEN_EM),
+            Some(14.0),
+        ));
+
+        let descriptor = manager
+            .face(&synthetic)
+            .expect("synthetic identity must resolve its physical descriptor");
+
+        assert_eq!(descriptor.id, physical);
+    }
+
+    #[test]
+    fn synthetic_bold_expands_ink_bounds_without_changing_advance() {
+        let manager = HuoziFontManager::from_sources(vec![FontSource::with_alias(
+            SOURCE_HAN_SERIF_REGULAR.to_vec(),
+            "serif".to_owned(),
+        )])
+        .unwrap();
+        let normal = manager.shape(&request_with_style(
+            "中",
+            TextStyle::builder().font_size(96.0).build(),
+        ));
+        let bold = manager.shape(&request_with_style(
+            "中",
+            TextStyle::builder()
+                .font_size(96.0)
+                .font_weight(700)
+                .build(),
+        ));
+        let normal_glyph = &normal.shaping.glyph_runs[0].glyphs[0];
+        let bold_glyph = &bold.shaping.glyph_runs[0].glyphs[0];
+        let normal_bounds = normal_glyph
+            .bounds
+            .expect("normal glyph must have ink bounds");
+        let bold_bounds = bold_glyph
+            .bounds
+            .expect("synthetic glyph must have ink bounds");
+
+        let expansion = SYNTHETIC_EMBOLDEN_EM * 96.0;
+
+        assert_eq!(
+            bold.face.synthesis().embolden_em(),
+            Some(SYNTHETIC_EMBOLDEN_EM)
+        );
+        assert_eq!(bold_glyph.advance, normal_glyph.advance);
+        assert_eq!(bold_bounds.left, normal_bounds.left - expansion);
+        assert_eq!(bold_bounds.top, normal_bounds.top - expansion);
+        assert_eq!(bold_bounds.right, normal_bounds.right + expansion);
+        assert_eq!(bold_bounds.bottom, normal_bounds.bottom + expansion);
+    }
+
+    #[test]
+    fn combines_synthetic_weight_and_style_when_both_capabilities_are_missing() {
+        let manager = HuoziFontManager::from_sources(vec![FontSource::with_alias(
+            SOURCE_HAN_SERIF_REGULAR.to_vec(),
+            "serif".to_owned(),
+        )])
+        .unwrap();
+        let result = manager.shape(&request_with_style(
+            "中",
+            TextStyle::builder().font_weight(700).italic(true).build(),
+        ));
+
+        assert_eq!(
+            result.face.synthesis().embolden_em(),
+            Some(SYNTHETIC_EMBOLDEN_EM)
+        );
+        assert_eq!(result.face.synthesis().oblique_degrees(), Some(14.0));
+        assert_eq!(result.attempts.len(), 1);
+    }
+
+    #[test]
+    fn synthesizes_oblique_when_italic_capability_is_missing() {
         let manager = HuoziFontManager::from_sources(vec![FontSource::with_alias(
             INTER.to_vec(),
             "inter".to_owned(),
@@ -1326,7 +1516,47 @@ mod tests {
             TextStyle::builder().italic(true).build(),
         ));
 
+        assert_ne!(italic.face, normal.face);
+        assert_eq!(italic.face.synthesis().oblique_degrees(), Some(14.0));
+        assert_eq!(italic.attempts.len(), 1);
+    }
+
+    #[test]
+    fn disables_synthetic_styles_when_font_synthesis_is_none() {
+        let manager = HuoziFontManager::from_sources(vec![FontSource::with_alias(
+            INTER.to_vec(),
+            "inter".to_owned(),
+        )])
+        .unwrap();
+        let normal = manager.shape(&request("A"));
+        let italic = manager.shape(&request_with_style(
+            "A",
+            TextStyle::builder()
+                .italic(true)
+                .font_synthesis(FontSynthesis::NONE)
+                .build(),
+        ));
+
         assert_eq!(italic.face, normal.face);
+        assert_eq!(italic.face.synthesis(), &FontSynthesisInstance::default());
+    }
+
+    #[test]
+    fn disables_synthetic_weight_when_font_synthesis_excludes_weight() {
+        let manager = HuoziFontManager::from_sources(vec![FontSource::with_alias(
+            SOURCE_HAN_SERIF_REGULAR.to_vec(),
+            "serif".to_owned(),
+        )])
+        .unwrap();
+        let bold = manager.shape(&request_with_style(
+            "中",
+            TextStyle::builder()
+                .font_weight(700)
+                .font_synthesis(FontSynthesis::STYLE)
+                .build(),
+        ));
+
+        assert_eq!(bold.face.synthesis(), &FontSynthesisInstance::default());
     }
 
     #[test]
@@ -1374,7 +1604,7 @@ mod tests {
             }),
         });
 
-        let candidate = font_candidate(&face, 400, true);
+        let candidate = font_candidate(&face, 400, true, FontSynthesis::ALL);
 
         assert_eq!(variation_value(&candidate.id, "ital"), Some(1.0));
         assert_eq!(variation_value(&candidate.id, "slnt"), None);
@@ -1393,7 +1623,7 @@ mod tests {
             }),
         });
 
-        let candidate = font_candidate(&face, 400, true);
+        let candidate = font_candidate(&face, 400, true, FontSynthesis::ALL);
 
         assert_eq!(variation_value(&candidate.id, "slnt"), Some(-10.0));
         assert_eq!(candidate.style, FontFaceStyle::Oblique);
@@ -1437,11 +1667,11 @@ fn variation_location<'a>(
 
 fn glyph_ink_bounds(
     font: &SkrifaFontRef<'_>,
-    variation: &FontVariationInstance,
+    id: &FontFaceId,
     glyph_id: u32,
     scale: f32,
 ) -> Option<Rect> {
-    let location = variation_location(font, variation);
+    let location = variation_location(font, id.variation_instance());
     if let Some(color_glyph) = font.color_glyphs().get(GlyphId::new(glyph_id))
         && let Some(bounds) =
             color_glyph.bounding_box(LocationRef::new(location.coords()), Size::unscaled())
@@ -1455,15 +1685,16 @@ fn glyph_ink_bounds(
     }
     let glyph = font.outline_glyphs().get(GlyphId::new(glyph_id))?;
     let mut pen = ControlBoundsPen::new();
-    glyph
-        .draw(
-            skrifa::outline::DrawSettings::unhinted(
-                Size::unscaled(),
-                LocationRef::new(location.coords()),
-            ),
-            &mut pen,
-        )
-        .ok()?;
+    let settings = skrifa::outline::DrawSettings::unhinted(
+        Size::unscaled(),
+        LocationRef::new(location.coords()),
+    );
+    if let Some(oblique_degrees) = id.synthesis().oblique_degrees() {
+        let mut shearing_pen = ShearingPen::new(&mut pen, oblique_degrees);
+        glyph.draw(settings, &mut shearing_pen).ok()?;
+    } else {
+        glyph.draw(settings, &mut pen).ok()?;
+    }
     let bounds = pen.bounding_box()?;
     Some(Rect {
         left: bounds.x_min * scale,
@@ -1471,4 +1702,51 @@ fn glyph_ink_bounds(
         right: bounds.x_max * scale,
         bottom: -bounds.y_min * scale,
     })
+}
+
+struct ShearingPen<'a, P> {
+    pen: &'a mut P,
+    tangent: f32,
+}
+
+impl<'a, P> ShearingPen<'a, P> {
+    fn new(pen: &'a mut P, oblique_degrees: f32) -> Self {
+        Self {
+            pen,
+            tangent: oblique_degrees.to_radians().tan(),
+        }
+    }
+
+    fn transform(&self, x: f32, y: f32) -> (f32, f32) {
+        (x + self.tangent * y, y)
+    }
+}
+
+impl<P: OutlinePen> OutlinePen for ShearingPen<'_, P> {
+    fn move_to(&mut self, x: f32, y: f32) {
+        let (x, y) = self.transform(x, y);
+        self.pen.move_to(x, y);
+    }
+
+    fn line_to(&mut self, x: f32, y: f32) {
+        let (x, y) = self.transform(x, y);
+        self.pen.line_to(x, y);
+    }
+
+    fn quad_to(&mut self, cx0: f32, cy0: f32, x: f32, y: f32) {
+        let (cx0, cy0) = self.transform(cx0, cy0);
+        let (x, y) = self.transform(x, y);
+        self.pen.quad_to(cx0, cy0, x, y);
+    }
+
+    fn curve_to(&mut self, cx0: f32, cy0: f32, cx1: f32, cy1: f32, x: f32, y: f32) {
+        let (cx0, cy0) = self.transform(cx0, cy0);
+        let (cx1, cy1) = self.transform(cx1, cy1);
+        let (x, y) = self.transform(x, y);
+        self.pen.curve_to(cx0, cy0, cx1, cy1, x, y);
+    }
+
+    fn close(&mut self) {
+        self.pen.close();
+    }
 }
