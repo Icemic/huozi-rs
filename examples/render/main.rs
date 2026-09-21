@@ -43,16 +43,16 @@ huózì 活字 gM 123.!""?;:-_/+=<>==
 CJK 标点——⸺，。：；“”？、《》「」【】
 中文[color=yellow]“[/color]引号[color=yellow]”[/color]与western [color=yellow]“[/color]quote[color=yellow]”[/color]虽然是同一个字符，但需要渲染成不同的样子。
 [locale=zh-hans]骨直肩示[/locale] [locale=zh-hant]骨直肩示[/locale] [locale=zh-hk]骨直肩示[/locale] [locale=ja-jp]骨直肩示[/locale] [locale=ko-kr]骨直肩示[/locale]
-[font="思源黑体 VF"]思源黑体[/font] / [font="Source Han Serif VF"]思源宋体[/font]
-[font="思源黑体 VF"][weight=400]常规[/weight] / [bold]粗体[/bold][/font]
-[font="Inter Variable"]Inter Normal / [italic]Inter Italic[/italic][/font]
+[font="思源黑体 VF"]思源黑体[/font] / [font="Source Han Serif VF"]思源宋体[/font] ｜ [font="思源黑体 VF"][weight=400]常规[/weight] / [bold]粗体[/bold][/font] ｜ [font="Inter Variable"]Inter Normal / [italic]Inter Italic[/italic][/font]
+[font="獅尾圓體SC"][weight=400]常规ABCxyz[/weight] / [bold]仿粗体ABCxyz[/bold] / [italic]仿斜体ABCxyz[/italic] / [bold][italic]仿粗斜体ABCxyz[/italic][/bold][/font]
 "#;
 
-const DEFAULT_FONT_FALLBACKS: [&str; 4] = [
-    "InterVariable.ttf",
-    "InterVariable-Italic.ttf",
-    "SourceHanSansSC-VF.otf",
-    "SourceHanSerif-VF.otf.woff2",
+const DEFAULT_FONT_FALLBACKS: [(&str, FontSourceKind); 5] = [
+    ("InterVariable.ttf", FontSourceKind::Latin),
+    ("InterVariable-Italic.ttf", FontSourceKind::Latin),
+    ("SourceHanSansSC-VF.otf", FontSourceKind::Cjk),
+    ("SourceHanSerif-VF.otf.woff2", FontSourceKind::Cjk),
+    ("SweiGothicCJKsc-Regular.ttf", FontSourceKind::Cjk),
 ];
 
 #[cfg(target_os = "windows")]
@@ -386,24 +386,16 @@ impl State {
             texture_bind_group,
             font_fallbacks: DEFAULT_FONT_FALLBACKS
                 .iter()
-                .filter_map(|name| {
+                .filter_map(|(name, kind)| {
                     font_files
                         .iter()
                         .find(|font| font.name.eq_ignore_ascii_case(name))
+                        .map(|font| (font, *kind))
                 })
-                .map(|font| {
-                    let kind = match font.name.as_str() {
-                        "InterVariable.ttf" | "InterVariable-Italic.ttf" => FontSourceKind::Latin,
-                        "SourceHanSansSC-VF.otf" | "SourceHanSerif-VF.otf.woff2" => {
-                            FontSourceKind::Cjk
-                        }
-                        _ => unreachable!("default font fallback has an unknown source"),
-                    };
-                    FontFallback {
-                        name: font.name.clone(),
-                        kind: Some(kind),
-                        enabled: true,
-                    }
+                .map(|(font, kind)| FontFallback {
+                    name: font.name.clone(),
+                    kind: Some(kind),
+                    enabled: true,
                 })
                 .collect(),
             font_files,
