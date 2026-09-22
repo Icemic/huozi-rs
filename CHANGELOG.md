@@ -5,7 +5,102 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.22.0 (2026-09-22)
+
+### Chore
+
+ - <csr-id-ec85498f19a7b40d9ccaa9e6d810eaa7bcd47ddd/> update test and example font paths
+ - <csr-id-3a42ce888c25ee7dace2b5394716f344d73a9ba6/> update bundled fonts and licenses
+ - <csr-id-087586fa6679c4ca07096d690aa6061d44b7d94e/> move fonts and their licenses
+
+### Documentation
+
+ - <csr-id-1358f6a926b35db83f9beecc2d12e77b5387d4ca/> update project description to reflect full functionality
+ - <csr-id-0c3f16c795a041cd84171a2268d56c86899b5cae/> document optional WOFF and WOFF2 font support
+ - <csr-id-3e42c0ecd75130434e58d9c38934774f0b0a21d0/> document rich-text parser behavior
+
+### New Features
+
+ - <csr-id-832f2a99b7001bef4b66f2a415c7e0b830a831e8/> add interaction hit testing to layout output
+ - <csr-id-d67054ec72fb5f628482e88f7d40097e6f9aa435/> add paragraph alignment support
+ - <csr-id-56e39810275995365d322bfbb2fec680aef5f5dc/> add CJK fallback for synthetic font styles
+ - <csr-id-faeb79398714a60229a46da224c85b2b319a0232/> support synthetic font weight and style fallback
+ - <csr-id-712455a85b42d455f9aa837f910528b783419d49/> improve render example rich-text styling
+ - <csr-id-102adf2572d0f763a95e66a8f7bd898f503e7aef/> add font kind controls to render example
+ - <csr-id-456d7bd09737a5021a0b8adae5b43902946b16a4/> prioritize fonts by declared text role
+ - <csr-id-ce94532c895fda48f4ab0bfc3009c0c22048ec40/> load render example fonts from resources
+ - <csr-id-4349e50d9663c6a8ad829b13a6774ca4f1a0ef4d/> add optional WOFF and WOFF2 font decoding
+ - <csr-id-d59b31ac93b9129b4fb1a4a4990ac104cc0a38a9/> implement font family, weight, and italic selection
+ - <csr-id-d0d31c399b4725fe2e1b26f8ac7f619d54d83ab8/> support structured rich-text parsing and Tiqian scopes
+
+### Bug Fixes
+
+ - <csr-id-323765905964d144425032129aff32e60a4bd5d7/> apply all text style overrides during Tiqian adaptation
+
+### Other
+
+ - <csr-id-0cba03c23a5c22a80bfb988bd6d34c66259d7671/> add automated build and test workflow
+
+### Performance
+
+ - <csr-id-83229f7703d7383c092c2cc33583692ca861750c/> cache shaping data and glyph bounds
+
+### Style
+
+ - <csr-id-fac8ba502708badfa364246c5b60a712714343f4/> format layout flamegraph example
+
+### Test
+
+ - <csr-id-161754e88db973089fe0daa307729ec09d6a0522/> update render snapshots
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 22 commits contributed to the release over the course of 2 calendar days.
+ - 2 days passed between releases.
+ - 22 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Add interaction hit testing to layout output ([`832f2a9`](https://github.com/Icemic/huozi-rs/commit/832f2a99b7001bef4b66f2a415c7e0b830a831e8))
+    - Add paragraph alignment support ([`d67054e`](https://github.com/Icemic/huozi-rs/commit/d67054ec72fb5f628482e88f7d40097e6f9aa435))
+    - Format layout flamegraph example ([`fac8ba5`](https://github.com/Icemic/huozi-rs/commit/fac8ba502708badfa364246c5b60a712714343f4))
+    - Add CJK fallback for synthetic font styles ([`56e3981`](https://github.com/Icemic/huozi-rs/commit/56e39810275995365d322bfbb2fec680aef5f5dc))
+    - Support synthetic font weight and style fallback ([`faeb793`](https://github.com/Icemic/huozi-rs/commit/faeb79398714a60229a46da224c85b2b319a0232))
+    - Update project description to reflect full functionality ([`1358f6a`](https://github.com/Icemic/huozi-rs/commit/1358f6a926b35db83f9beecc2d12e77b5387d4ca))
+    - Update render snapshots ([`161754e`](https://github.com/Icemic/huozi-rs/commit/161754e88db973089fe0daa307729ec09d6a0522))
+    - Improve render example rich-text styling ([`712455a`](https://github.com/Icemic/huozi-rs/commit/712455a85b42d455f9aa837f910528b783419d49))
+    - Add automated build and test workflow ([`0cba03c`](https://github.com/Icemic/huozi-rs/commit/0cba03c23a5c22a80bfb988bd6d34c66259d7671))
+    - Cache shaping data and glyph bounds ([`83229f7`](https://github.com/Icemic/huozi-rs/commit/83229f7703d7383c092c2cc33583692ca861750c))
+    - Add font kind controls to render example ([`102adf2`](https://github.com/Icemic/huozi-rs/commit/102adf2572d0f763a95e66a8f7bd898f503e7aef))
+    - Document optional WOFF and WOFF2 font support ([`0c3f16c`](https://github.com/Icemic/huozi-rs/commit/0c3f16c795a041cd84171a2268d56c86899b5cae))
+    - Prioritize fonts by declared text role ([`456d7bd`](https://github.com/Icemic/huozi-rs/commit/456d7bd09737a5021a0b8adae5b43902946b16a4))
+    - Load render example fonts from resources ([`ce94532`](https://github.com/Icemic/huozi-rs/commit/ce94532c895fda48f4ab0bfc3009c0c22048ec40))
+    - Add optional WOFF and WOFF2 font decoding ([`4349e50`](https://github.com/Icemic/huozi-rs/commit/4349e50d9663c6a8ad829b13a6774ca4f1a0ef4d))
+    - Update test and example font paths ([`ec85498`](https://github.com/Icemic/huozi-rs/commit/ec85498f19a7b40d9ccaa9e6d810eaa7bcd47ddd))
+    - Update bundled fonts and licenses ([`3a42ce8`](https://github.com/Icemic/huozi-rs/commit/3a42ce888c25ee7dace2b5394716f344d73a9ba6))
+    - Move fonts and their licenses ([`087586f`](https://github.com/Icemic/huozi-rs/commit/087586fa6679c4ca07096d690aa6061d44b7d94e))
+    - Implement font family, weight, and italic selection ([`d59b31a`](https://github.com/Icemic/huozi-rs/commit/d59b31ac93b9129b4fb1a4a4990ac104cc0a38a9))
+    - Apply all text style overrides during Tiqian adaptation ([`3237659`](https://github.com/Icemic/huozi-rs/commit/323765905964d144425032129aff32e60a4bd5d7))
+    - Document rich-text parser behavior ([`3e42c0e`](https://github.com/Icemic/huozi-rs/commit/3e42c0ecd75130434e58d9c38934774f0b0a21d0))
+    - Support structured rich-text parsing and Tiqian scopes ([`d0d31c3`](https://github.com/Icemic/huozi-rs/commit/d0d31c399b4725fe2e1b26f8ac7f619d54d83ab8))
+</details>
+
 ## v0.21.0 (2026-09-19)
+
+<csr-id-8f652e341287185be3deb01585d242cd241332ed/>
+<csr-id-693b3210979db9ee0804fa6f4382d246c7bb5b1a/>
+<csr-id-7d045eb038b39dce7688178f60fa2bebfd3b10bd/>
+<csr-id-5bc1dfad9c73d17090a104081dcc77dcf570bd38/>
+<csr-id-a5388160a57e0e942413bba0cea9ed87dd9d8b12/>
+<csr-id-665361884a59f82d3a527c4476290f0bd5e76e62/>
 
 ### Documentation
 
@@ -52,7 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 20 commits contributed to the release over the course of 3 calendar days.
+ - 21 commits contributed to the release over the course of 3 calendar days.
  - 19 days passed between releases.
  - 20 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -64,6 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.21.0 ([`9e5abe3`](https://github.com/Icemic/huozi-rs/commit/9e5abe313c892e7d39defaedf6c5b0888c9b7792))
     - Include source and documentation in package ([`8f652e3`](https://github.com/Icemic/huozi-rs/commit/8f652e341287185be3deb01585d242cd241332ed))
     - Unwrap selected font attempts in assertions ([`a538816`](https://github.com/Icemic/huozi-rs/commit/a5388160a57e0e942413bba0cea9ed87dd9d8b12))
     - Document graceful degradation policy ([`051186c`](https://github.com/Icemic/huozi-rs/commit/051186c0cd906fcf41c173b45280037ec526d94a))
