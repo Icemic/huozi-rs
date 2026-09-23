@@ -5,7 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.22.1 (2026-09-23)
+
+### Bug Fixes
+
+ - <csr-id-ab5747f8bfccb0cba226354f24479d2fda096428/> restore SDF edge smoothing and inner coverage
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Restore SDF edge smoothing and inner coverage ([`ab5747f`](https://github.com/Icemic/huozi-rs/commit/ab5747f8bfccb0cba226354f24479d2fda096428))
+</details>
+
 ## v0.22.0 (2026-09-22)
+
+<csr-id-ec85498f19a7b40d9ccaa9e6d810eaa7bcd47ddd/>
+<csr-id-3a42ce888c25ee7dace2b5394716f344d73a9ba6/>
+<csr-id-087586fa6679c4ca07096d690aa6061d44b7d94e/>
+<csr-id-0cba03c23a5c22a80bfb988bd6d34c66259d7671/>
+<csr-id-fac8ba502708badfa364246c5b60a712714343f4/>
+<csr-id-161754e88db973089fe0daa307729ec09d6a0522/>
 
 ### Chore
 
@@ -57,8 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 22 commits contributed to the release over the course of 2 calendar days.
- - 2 days passed between releases.
+ - 23 commits contributed to the release over the course of 3 calendar days.
+ - 3 days passed between releases.
  - 22 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -69,6 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.22.0 ([`f048f4a`](https://github.com/Icemic/huozi-rs/commit/f048f4a62105eb0d25cb4747074e7d2b08a5c67a))
     - Add interaction hit testing to layout output ([`832f2a9`](https://github.com/Icemic/huozi-rs/commit/832f2a99b7001bef4b66f2a415c7e0b830a831e8))
     - Add paragraph alignment support ([`d67054e`](https://github.com/Icemic/huozi-rs/commit/d67054ec72fb5f628482e88f7d40097e6f9aa435))
     - Format layout flamegraph example ([`fac8ba5`](https://github.com/Icemic/huozi-rs/commit/fac8ba502708badfa364246c5b60a712714343f4))
