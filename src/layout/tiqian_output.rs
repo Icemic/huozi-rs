@@ -9,7 +9,9 @@ use tiqian::core::text_model::{
 };
 
 use crate::Huozi;
-use crate::constant::{CUTOFF, FONT_SIZE, GRID_SIZE, RADIUS};
+use crate::constant::{
+    CUTOFF, EDGE_SMOOTHING_HALF_WIDTH, FILL_THRESHOLD_BIAS, FONT_SIZE, GRID_SIZE, RADIUS,
+};
 use crate::glyph_vertices::GlyphVertices;
 use crate::huozi::Glyph;
 use crate::parser::SegmentId;
@@ -413,9 +415,10 @@ fn glyph_vertices_for_glyph(
     let fill_color = fill_paint
         .map(|argb| argb_color(argb, color_space))
         .unwrap_or_else(|| argb_color(0xFF1E_1E23_u32 as i32, color_space));
-    let buffer = 1. - CUTOFF;
+    let buffer = 1.0 - CUTOFF - FILL_THRESHOLD_BIAS;
     let fill_buffer = 2.0;
     let threshold_per_logical_pixel = x_scale / (RADIUS * scale_ratio);
+    let edge_gamma = EDGE_SMOOTHING_HALF_WIDTH * threshold_per_logical_pixel;
     let synthetic_embolden = glyph
         .render_font_face
         .as_ref()
@@ -431,7 +434,7 @@ fn glyph_vertices_for_glyph(
         atlas_glyph,
         fill_threshold,
         fill_buffer,
-        0.0,
+        edge_gamma,
         fill_color,
     );
     let stroke = stroke_paint.map(|(argb, width)| {
@@ -444,14 +447,14 @@ fn glyph_vertices_for_glyph(
             atlas_glyph,
             stroke_buffer,
             fill_threshold,
-            0.0,
+            edge_gamma,
             argb_color(argb, color_space),
         )
     });
     let shadow = shadow_paint.map(|(argb, offset_x, offset_y, blur, spread)| {
         let stroke_width = stroke_paint.map_or(0.0, |(_, width)| width);
         let shadow_buffer = fill_threshold - (stroke_width + spread) * threshold_per_logical_pixel;
-        let shadow_gamma = blur * threshold_per_logical_pixel;
+        let shadow_gamma = edge_gamma + blur * threshold_per_logical_pixel;
         quad_vertices(
             quad_left + offset_x,
             quad_top + offset_y,
