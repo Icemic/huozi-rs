@@ -87,7 +87,7 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 | `baseline` | `baseline` |
 | `attach` | `attach` |
 | `ruby`、`bopomofo` | `text` |
-| `link` | `target` |
+| `link` | `target`、`id` |
 | 其他标签 | 与标签同名 |
 
 因此 `[color=red]` 与 `[color color=red]` 有相同效果；`[ruby="tí qiàn"]` 与 `[ruby text="tí qiàn"]` 有相同效果。
@@ -223,12 +223,14 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 | `mourning` | 无 | 示亡号范围。 |
 | `properNoun` | 无 | 专名号范围。 |
 | `bookTitle` | 无 | 书名号范围。 |
-| `link` | `target` | `target` 必填；保留链接语义。 |
+| `link` | `target`、`id` | `target` 必填；保留链接语义。`id` 可选，供调用方识别交互元素。 |
 | `technical` | 无 | 技术文本断行范围。 |
 | `noAutoSpace` | 无 | 抑制自动间距。 |
 | `box` | `start`、`end`、`spacing` | 两端附加空间；`spacing` 为 `narrow` 或 `source`，默认 `narrow`。 |
 
 `ruby`、`bopomofo` 缺少或提供空 `text` 时不创建 scope。`link` 缺少 `target` 时不创建链接 scope；空字符串 `target=""` 仍作为链接语义保留。`box` 的属性值无效时保留对应字段的默认值，并继续创建行内盒 scope。
+
+`link` 与 `object` 的 `id` 是调用方识别符。缺少或为空时不影响解析、布局和链接 `target` 语义，只是不产生对应的 `Interaction`。`id` 不要求唯一，Huozi 不合并、去重或校验重复值。
 
 ### 行内代码
 
@@ -265,17 +267,18 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 
 ### `[object /]`
 
-`object` 需要下列属性：
+`object` 需要下列属性，并可提供可选的 `id`：
 
 | 属性 | 语义 |
 | --- | --- |
+| `id` | 可选调用方识别符；非空时产生对应的 `Interaction`。 |
 | `alt` | 非空替代文本；用于布局、复制、搜索和无障碍语义。 |
 | `width` | `f32` advance。 |
 | `ascent` | `f32` ascent。 |
 | `descent` | `f32` descent。 |
 
 ```text
-[object alt="图标" width=16 ascent=12 descent=4 /]
+[object id="portrait-42" alt="图标" width=16 ascent=12 descent=4 /]
 ```
 
 缺少任一必填属性、属性无法解析或 `alt` 为空时，当前对象会跳过。对象的 `leadingBoundary` 与 `trailingBoundary` 当前固定为 `Fixed`；标签尚未提供对应属性。
@@ -335,7 +338,7 @@ parser 采用一次从左至右的 Unicode scalar 扫描和显式 frame 栈。�
 
 ## 渲染边界
 
-背景、下划线、删除线、注音、CLREQ 装饰、链接、技术文本、自动间距、行内代码、行内盒和对象都会保留并传给 Tiqian。当前 Huozi 输出适配器只为普通文本生成 fill、stroke 和 shadow 的 SDF glyph 顶点。
+背景、下划线、删除线、注音、CLREQ 装饰、链接、技术文本、自动间距、行内代码、行内盒和对象都会保留并传给 Tiqian。当前 Huozi 输出适配器为普通文本生成 fill、stroke 和 shadow 的 SDF glyph 顶点，并重放行尾自动连字符；链接和行内对象的非空 `id` 会生成 `Interaction` 命中区域。
 
 因此当前效果如下：
 
@@ -344,6 +347,6 @@ parser 采用一次从左至右的 Unicode scalar 扫描和显式 frame 栈。�
 | 字号、字体族、字重、斜体、fontSynthesis、locale、基线、附着、技术断行、自动间距、行内盒 | 生效 | 普通文字 glyph。 |
 | 背景、下划线、删除线 | 参与 rich-text layout | 不生成对应几何。 |
 | 注音和 CLREQ 装饰 | 参与 rich-text layout | 不生成对应几何。 |
-| 链接 | 保留语义 | 不处理导航或专属视觉。 |
+| 链接 | 参与 rich-text layout，保留语义 | 非空 `id` 输出 `Interaction` 命中区域；不处理导航。 |
 | 行内代码 | 文字样式和技术断行生效 | 背景不生成几何，文字按普通 glyph 输出。 |
-| 行内对象 | 参与布局 | 不生成对象图形。 |
+| 行内对象 | 参与布局 | 非空 `id` 输出 `Interaction` 命中区域；不生成对象图形。 |
