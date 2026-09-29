@@ -158,7 +158,7 @@ CJK 标点——⸺，。：；“”？、《》「」【】
 [background color="#FFF3BF" paddingX=6 paddingY=2 radius=8]跨多个字格与行内空隙的圆角背景[/background]与[background color="rgba(56, 189, 248, 0.6)" paddingX=4 paddingY=2 radius=8 strokeColor="#0EA5E9" strokeWidth=1]相邻的另一个背景[/background]。
 [background color="#1E293B" paddingX=6 paddingY=2 radius=8 shadowColor="#000000" shadowOffsetX=2 shadowOffsetY=2 shadowBlur=2 shadowWidth=1]带描边与阴影的背景[/background]与[code paddingX=4 paddingY=2 radius=8]cargo test[/code]共用同一套图形。
 [underline color="#1677FF" thickness=1]实线下划线[/underline] ⁄ [underline color="#1677FF" thickness=1 pattern=dashed dashLength=3 gapLength=2]虚线下划线[/underline] ⁄ [underline color="#1677FF" thickness=1 pattern=dotted gapLength=2]点线下划线[/underline] ⁄ [lineThrough color="#94A3B8" thickness=1]删除线[/lineThrough]
-[ruby text="tí qiàn"]提椠[/ruby]与[bopomofo text="ㄊㄧˊ ㄑㄧㄢˋ"]提椠[/bopomofo]把注音也画出来。
+[ruby text="tí qiàn"]提椠[/ruby]与[bopomofo text="ㄊㄧˊ"]提[/bopomofo][bopomofo text="ㄑㄧㄢˋ"]椠[/bopomofo]把注音也画出来。
 [emphasis]着重号[/emphasis]、[mourning]示亡号[/mourning]、[properNoun]专名号[/properNoun]与[bookTitle]书名号[/bookTitle]各自使用 Tiqian 的最终几何。
 [link id="demo-rich-link" target="https://example.com/rich"]带背景的跨行链接会在这里换行显示，背景、线条与链接区域都按排版单元推进[/link]，[object id="demo-rich-object" alt="图标" width=24 ascent=18 descent=6 /]对象在这里占位。
 第一段结束。
@@ -542,7 +542,7 @@ impl State {
             },
             layout_config: LayoutStyle {
                 box_width: Some(1280.),
-                box_height: Some(600.),
+                box_height: Some(800.),
                 line_height: 1.5,
                 indent: 0.,
                 ..LayoutStyle::default()
@@ -895,9 +895,9 @@ impl ApplicationHandler for App {
         if self.window.is_none() {
             let window_attributes = Window::default_attributes()
                 .with_title("Huozi Render Example")
-                .with_inner_size(LogicalSize::new(1280, 720))
-                .with_max_inner_size(LogicalSize::new(1280, 720))
-                .with_min_inner_size(LogicalSize::new(1280, 720));
+                .with_inner_size(LogicalSize::new(1440, 900))
+                .with_max_inner_size(LogicalSize::new(1440, 900))
+                .with_min_inner_size(LogicalSize::new(1440, 900));
 
             let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
