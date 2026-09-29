@@ -844,6 +844,18 @@ impl State {
             }
         }
 
+        // 纹理增量必须在本帧消费完：`update()` 下一帧会用新的增量覆盖这个字段，而 epaint 在 drop
+        // 未消费的增量时会断言失败；`free` 列表若不清空，还会被每帧重复释放一次。
+        //
+        // 上传必须早于 `update_buffers`，否则首次出现的纹理在渲染时还不存在；它与是否有绘制任务
+        // 无关，因此不放在下面「有绘制任务」的分支里。
+        for (id, image_deltas) in &self.egui_textures_delta.set {
+            for image_delta in image_deltas {
+                self.egui_renderer
+                    .update_texture(&self.device, &self.queue, *id, image_delta);
+            }
+        }
+
         // Render egui (only if there are paint jobs to render)
         if !self.egui_paint_jobs.is_empty() {
             let screen_descriptor = egui_wgpu::ScreenDescriptor {
@@ -882,16 +894,6 @@ impl State {
             );
         }
 
-        // 纹理增量必须在本帧消费完：`update()` 下一帧会用新一帧的增量覆盖这个字段，而 epaint 在
-        // drop 未消费的增量时会断言失败；`free` 列表若不清空，还会被每帧重复释放一次。
-        //
-        // 上传与绘制无关，因此不放在上面「有绘制任务」的分支里。
-        for (id, image_deltas) in &self.egui_textures_delta.set {
-            for image_delta in image_deltas {
-                self.egui_renderer
-                    .update_texture(&self.device, &self.queue, *id, image_delta);
-            }
-        }
         for id in &self.egui_textures_delta.free {
             self.egui_renderer.free_texture(id);
         }
