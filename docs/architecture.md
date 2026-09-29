@@ -2,8 +2,7 @@
 
 本文档描述当前 `huozi` crate 的实现与对外边界。
 
-**最后更新**：2026-09-24  
-**状态**：持续维护文档，随功能迭代同步更新
+**最后更新**：2026-09-29 ｜ **状态**：持续维护文档，随功能迭代同步更新
 
 ## 项目定位
 
@@ -12,9 +11,10 @@
 1. 富文本标签解析、样式展开和来源范围记录。
 2. 字体选择、OpenType shaping、简体中文横排段落布局。
 3. glyph 轮廓栅格化、SDF 生成和纹理图集缓存。
-4. 与渲染器无关的 glyph 四边形顶点、索引、来源映射和交互区域输出。
+4. 从同一套 SDF 模板生成背景、线条与装饰的图形顶点。
+5. 与渲染器无关的绘制元素序列、顶点、来源映射和交互区域输出。
 
-活字不负责创建窗口、管理 GPU 设备或提交 draw call。用户需要自行创建渲染表面、上传纹理，并按 `GlyphVertices` 输出的顶点与索引自行绘制。`examples/render` 是 WGPU 渲染接入示例，不属于库的运行时依赖。
+活字不负责创建窗口、管理 GPU 设备或提交 draw call。用户需要自行创建渲染表面、上传纹理，并按输出中的顶点自行绘制。`examples/render` 是 WGPU 渲染接入示例，不属于库的运行时依赖。输出序列按逐字显示顺序排列，且每个元素都自带顶点，因此游戏只需要按进度取前缀、按绘制层拼一遍就能实现打字机效果。
 
 当前段落布局能力以简体中文横排及相关 LTR 文本为目标。竖排、完整 bidi/RTL、分页、多栏和交互查询不属于当前公开能力。
 
@@ -50,7 +50,10 @@ flowchart TD
     I --> J[LayoutResult]
     J --> K[输出适配\nHuoziTiqianOutputAdapter]
     K --> L[SDF 图集\nFontFaceId + glyph_id]
-    L --> M[GlyphVertices]
+    L --> M[UnitVertices]
+    K --> S[形状模板与图形顶点\nsrc/shape]
+    L --> S
+    S --> M
     K --> N[SegmentGlyphSpan]
     K --> Q[Interaction]
     M --> O[用户渲染器]
@@ -122,6 +125,8 @@ variable font 会根据文字样式设置 `wght`，斜体请求优先设置 `ita
 
 tiqian 是段落几何的唯一来源。它负责字体请求时机、shaping 结果消费、CLREQ 标点规则、断行、行调整和最终 placement。Huozi 不维护另一套字符 advance、标点压缩、悬挂标点、断行或两端对齐规则。`LayoutStyle.align` 的 `Start`、`Center`、`End` 映射为 Tiqian `LastLineAlignment`；段落结束行居中或靠末端，自动换行行继续使用 Tiqian 的既有正文行调整。`box_width` 未指定时，`Center` 与 `End` 退化为 `Start`，避免非有限位置。
 
+`layout_parse` 与 `layout_parse_with` 逐段调用这个适配器：每段建立自己的 tiqian 段落，段落之间的纵向坐标与视觉行号由 `DocumentBuilder` 累加。此外，输入适配在每个输入 Segment 的显示范围端点处声明 tiqian source boundary，使 cluster 不跨 Segment，每个绘制元素只属于一个 `SegmentId`；同时把富文本范围的身份写进 tiqian 层身份，供输出侧把同一个 range 的片段归为一组。
+
 ### 5. SDF 图集层
 
 相关文件：`src/huozi.rs`、`src/glyph_rasterizer.rs`、`src/sdf.rs`、`src/constant.rs`。
@@ -131,6 +136,8 @@ SDF 图集以完整 `FontFaceId + glyph_id` 标识 glyph；normal、仿粗、仿
 `TextureAtlas` 是一个 `2048 × 2048` 的 RGBA 像素缓冲。四个颜色通道分别作为独立 page 使用。图集按 `128 × 128` 网格分配，glyph 可以占用多行、多列连续网格，以容纳连字或其他延展 glyph。缓存满时按 LRU 淘汰旧 glyph，清理其矩形区域后复用空间。
 
 每次 atlas 像素发生实际变化时，`image_version` 递增。对已缓存 glyph 的重复查询不会改变版本。
+
+图集同时承载字形与非文字图形。图形模板由活字内部按需生成：圆角矩形（按整数半径）、圆点、线带、波浪周期与示亡号边框各一份，用到哪个生成哪个，在实例存续期间常驻、不参与 LRU 淘汰；空间不足时照常淘汰字形。模板的基准尺寸、过采样倍率与距离裕量都是内部数值决策，不对外暴露。
 
 SDF 只处理单通道轮廓。彩色 glyph、缺少可用轮廓的 glyph 或轮廓栅格化失败时，图集会记录警告，并使用同一 face 的 glyph id `0` 作为 SDF 降级结果。该机制不渲染字体原生的彩色图层。
 
@@ -146,10 +153,27 @@ SDF 只处理单通道轮廓。彩色 glyph、缺少可用轮廓的 glyph 或轮
 4. 将 tiqian 保留的 fill、stroke、shadow paint 写为顶点层。
 5. 按 positioned cluster 分配 `row`、`col`；同一 cluster 的多个 glyph 和行尾连字符共用同一组编号。
 6. 按来源映射恢复 `SegmentId`，生成连续的 `SegmentGlyphSpan`。
-7. 只输出完整落入 `box_height` 的行，并重放 tiqian 提供的行尾连字符 glyph。
-8. 从 tiqian 的链接语义和行内对象生成 `Interaction` 与 `InteractionArea`。
+7. 只输出完整落入 `box_height` 的行，并重放 tiqian 提供的行尾连字符 glyph、ruby 与 bopomofo。
+8. 转写 tiqian 的逐 cluster 富文本几何：背景、下划线、删除线、示亡号、专名号、书名号与着重号。
+9. 把同一个 authored range 的图形片段交给 `src/shape` 定形与切段，使每个片段自带顶点。
+10. 从 tiqian 的链接语义和行内对象生成 `Interaction` 与 `InteractionArea`，并输出对象自身的 `InlineObject` 结果。
+11. 把全部结果排成逐字显示顺序（见下）。
 
-每个 `GlyphVertices` 固定包含一个 fill quad，可选包含 stroke 和 shadow quad，以及六个逆时针三角形索引。建议绘制顺序为：
+`UnitVertices` 是具名 enum，一条平铺序列同时表达文字、背景、线条、装饰与行内对象：
+
+| 变体 | 内容 |
+| --- | --- |
+| `Text` | fill、可选 stroke 与 shadow 的 SDF 四边形、占位矩形、缩放比与文字角色。 |
+| `Background` | 一个排版单元的背景片段：矩形、四角半径与三层顶点。 |
+| `Line` | 下划线与删除线的片段：横向区间、中心线、线宽、pattern 与三层顶点。 |
+| `Decoration` | 着重号的圆点锚点与直径，或示亡号、专名号、书名号的矩形与开口标记，以及三层顶点。 |
+| `InlineObject` | 行内对象的矩形、调用方资源键与替代文本（没有顶点，由调用方按自己的资源绘制）。 |
+
+非文字变体的顶点放在 `ShapeVertices`（`shadow`、`stroke`、`fill` 三个 `Vec<Vertex>`）。每 4 个连续顶点构成一个四边形，顺序为左上、左下、右下、右上，按 `[0, 1, 2, 0, 2, 3]` 展开即可。
+
+一个 authored range 跨多个排版单元时，活字先在整段上定形，再按各单元的范围切成段：相邻片段在上一段的右边界处切开，接缝两侧正好衔接；整段的首尾不设边界，因此圆角、描边、阴影与端帽都不会被切掉。每段自带顶点，拼起来就是完整图形，逐字推进时图形跟着长。着重号按字符独立成形，不参与合并。
+
+文字变体的绘制顺序是：
 
 ```text
 shadow → stroke → fill
@@ -157,7 +181,17 @@ shadow → stroke → fill
 
 `Vertex` 包含位置、UV、atlas page、SDF 阈值与过渡参数、RGBA 颜色。渲染器根据 `page` 从 atlas 的 R/G/B/A 通道取样。仿粗后的 fill 轮廓是 text paint 的基准：stroke 从该轮廓继续按用户宽度外扩，shadow 从 fill 与 stroke 的外缘继续按用户扩张半径外扩；用户设置的描边宽度、阴影扩张、偏移和 `blur` 仍按各自逻辑像素参数转换。fragment shader 负责 SDF coverage、抗锯齿和阴影平滑。
 
-普通文本 glyph 是当前唯一转出的几何，链接和行内对象另以 `Interaction` 输出命中区域。背景、线条、ruby、注音、CLREQ 装饰、行内盒和对象自身的绘制结果已传入 Tiqian，但当前不生成对应的 Huozi 顶点。
+### 输出顺序与逐字显示
+
+`glyphs` 按**逐字显示顺序**排列，库保证该顺序：`(row, col)` 为主序，同一排版单元内按绘制层排列（背景、正文文字、线条与装饰、注音、行内对象）。因此调用方取 `glyphs[..end]` 就是“打印到第 `end` 个元素”的完整可见状态，不需要自己重排。
+
+每个元素自带顶点，但数组顺序是逐字顺序，与绘制层顺序不同，因此提交前需要按固定绘制层拼一遍：背景的阴影、描边、填充，文字的阴影、描边、填充，然后是装饰与对象。这一步是纯顶点搬运，不涉及图集与模板。
+
+文字角色 `TextRole` 区分正文、ruby 与注音符号；三者共用同一个 SDF 图集与 shader。注音直接重放 tiqian 已 shaping 的 glyph 与最终位置，不从注音文本再次 shaping。
+
+### 多段文档
+
+`DocumentBuilder` 依次布局 `ParsedText` 的每个段落：段落自身的坐标加上前面段落的累积高度与视觉行数后进入文档坐标，`row` 在整个文档内连续、不在段落边界重置。连续 `[br /]` 形成的空段占一行高度但没有绘制元素。每个段落继续使用各自的 `ParagraphStyleOverride`，每段独立调用 tiqian，不在 Huozi 中合并文本后重新模拟段落规则。
 
 ## 核心数据与来源映射
 
@@ -185,7 +219,7 @@ Segment.id
   → SegmentGlyphSpan.segment_id
 ```
 
-`SegmentGlyphSpan` 的精度是 `SegmentId → GlyphVertices` 连续下标范围。它用于用户按输入分片关联渲染结果，不提供逐 byte、逐 scalar 或逐 shaping cluster 的公开命中映射；当前只覆盖文字 glyph。
+`SegmentGlyphSpan` 的精度是 `SegmentId → UnitVertices` 连续下标范围。它用于用户按输入分片关联渲染结果，不提供逐 byte、逐 scalar 或逐 shaping cluster 的公开命中映射；范围覆盖该 segment 产生的全部绘制元素，包括文字、背景、线条、装饰与对象。同一个 `SegmentId` 在主序列中不连续时使用多个 span。
 
 显示文本范围和原始范围使用相同的 Unicode scalar 单位，但原点不同：前者指向拼接后的 tiqian 输入，后者指向单个、含标签的原始 `Segment.content`。两种范围不能直接互换。
 
@@ -203,7 +237,7 @@ Segment.id
 | `Huozi::texture_pixels()`                | 读取 atlas 尺寸和 RGBA 像素。                                  |
 | `Huozi::image_version()`                 | 获取 atlas 内容版本，用于决定是否上传纹理。                    |
 
-`get_glyph_by_id` 的 `FontFaceId` 必须来自该 `Huozi` 实例注册的字体目录。常规用户集成使用布局入口获得最终顶点；该查询接口用于需要自行管理已注册 glyph identity 的低层接入。
+`get_glyph_by_id` 的 `FontFaceId` 必须来自该 `Huozi` 实例注册的字体目录。常规用户集成使用布局入口获得全部顶点；该查询接口用于需要自行管理已注册 glyph identity 的低层接入。
 
 ### 文本解析与布局入口
 
@@ -220,7 +254,7 @@ Segment.id
 RichTextLayoutOutput { glyphs, segment_glyph_spans, interactions, width, height }
 ```
 
-`glyphs` 是当前能够绘制的元素集合，`segment_glyph_spans` 是 `SegmentId` 到 `glyphs` 连续下标范围的映射，`interactions` 是链接和行内对象的命中区域。解析入口返回字符串错误；`layout` 本身接收已结构化的文本，不再进行解析。
+`glyphs` 是按逐字显示顺序排列的绘制元素序列，`segment_glyph_spans` 是 `SegmentId` 到 `glyphs` 连续下标范围的映射，`interactions` 是链接和行内对象的命中区域。解析入口返回字符串错误；`layout` 本身接收已结构化的文本，不再进行解析。
 
 ### 输入、样式与输出类型
 
@@ -234,48 +268,51 @@ RichTextLayoutOutput { glyphs, segment_glyph_spans, interactions, width, height 
 | `StrokeStyle` / `ShadowStyle`     | 描边与阴影参数。                          |
 | `LayoutStyle`                     | 段落宽高、行高倍率、首行缩进和 `align`。  |
 | `ColorSpace`                      | 顶点颜色为线性或 sRGB 数值。              |
-| `GlyphVertices` / `Vertex`        | 可上传到渲染器的 glyph 分层四边形与顶点。 |
+| `UnitVertices` / `ShapeVertices` / `Vertex` | 一条平铺的绘制元素序列、图形顶点组与顶点格式。 |
+| `TextRole`                        | 正文、拼音注音与注音符号。                |
+| `DecorationShape` / `DecorationWave` | 装饰片段的几何与波浪参数。           |
 | `RichTextLayoutOutput`            | 四个布局入口的统一返回类型。              |
 | `Interaction` / `InteractionArea` | 链接与行内对象的命中区域及 `row`、`col`。  |
-| `SegmentGlyphSpan`                | `SegmentId` 到连续 glyph 下标范围的映射。 |
-| `Glyph` / `TextureAtlas`          | 图集项元数据和 RGBA atlas 像素。          |
+| `SegmentGlyphSpan`                | `SegmentId` 到连续下标范围的映射。        |
+| `Glyph` / `TextureAtlas`          | 图集项元数据与 RGBA 像素。                |
 
-`Vertex::desc()` 仅在启用 `wgpu` feature 时可用。`sdf` 模块公开了 `calculate_sdf`、`edt` 与 `edt1d` 以供底层算法使用；一般用户集成不需要直接调用它们。
+`Vertex::desc()` 仅在启用 `wgpu` feature 时可用。非文字图形的颜色、描边与阴影参数（内部类型 `ShapePaint`）在生成顶点时就换算进顶点字段，不再出现在公开结果里；`sdf` 模块与形状模板都是内部实现。
 
-`[br /]` 会在 `ParsedText` 中保留多个逻辑段落及后续段落样式。当前 `layout_parse` 和 `layout_parse_with` 只布局第一段，并对额外段落记录固定 `warn`；多段输出尚未提供。直接 `layout(Vec<TextSpan>)` 与 `layout_plain` 仍是单段入口。
+`[br /]` 会在 `ParsedText` 中保留多个逻辑段落及后续段落样式，四个布局入口都布局全部段落；连续 `[br /]` 形成的空段占一行高度但没有绘制元素。
 
 ## 用户接入约定
 
 典型用户流程如下：
 
 1. 将首选字体和 fallback 字体按优先级构造为 `Vec<FontSource>`；需要角色优先级时，为来源设置 `FontSourceKind`，再创建一个 `Huozi`。
-2. 使用 `layout_parse`、`layout_plain` 或 `layout` 获得 `RichTextLayoutOutput`：glyph 顶点、来源映射、交互区域和布局尺寸。
-3. 收集每个 glyph 的 shadow、stroke、fill quad，按 `shadow → stroke → fill` 顺序写入 vertex/index buffer。
-4. 比较 `image_version()`；版本改变时将 `texture_pixels().pixels()` 上传为 RGBA atlas。
+2. 使用 `layout_parse`、`layout_plain` 或 `layout` 获得 `RichTextLayoutOutput`：绘制元素序列、来源映射、交互区域和布局尺寸。
+3. 比较 `image_version()`；版本改变时将 `texture_pixels().pixels()` 上传为 RGBA atlas。
+4. 按固定绘制层顺序把可见元素的顶点拼成一份缓冲：背景的阴影、描边、填充，文字的阴影、描边、填充，然后是装饰与对象。
 5. 在 shader 中按 `Vertex.page` 选择 atlas 通道，并使用顶点携带的 SDF 参数计算 coverage。
-6. 需要交互或逐字显示时，用 `interactions` 中的 `InteractionArea.rect` 做点击命中，并按区域的 `row`、`col` 决定当前显示前缀。
+6. 需要交互时用 `interactions` 中的 `InteractionArea.rect` 做点击命中；需要逐字显示时取 `glyphs[..end]`，库保证这个前缀就是完整可见状态。
 
-同一个 `Huozi` 实例可用于多次布局，以复用字体目录、段落引擎和图集缓存。图集使用 LRU 淘汰，因此用户不能假定早期输出的 UV 永久有效：atlas 版本变化后，应以当前 atlas 内容配合当前要绘制的顶点重新提交渲染数据。
+同一个 `Huozi` 实例可用于多次布局，以复用字体目录、段落引擎、图集缓存与形状模板。图集使用 LRU 淘汰，因此用户不能假定早期输出的 UV 永久有效：atlas 版本变化后，应以当前 atlas 内容配合当前要绘制的顶点重新提交渲染数据。形状模板常驻，不参与淘汰。
 
 ## 代码组织
 
 | 目录或文件                | 职责                                                             |
 | ------------------------- | ---------------------------------------------------------------- |
 | `src/lib.rs`              | crate 模块声明与根级重导出。                                     |
-| `src/huozi.rs`            | `Huozi` 生命周期、SDF atlas、LRU 缓存和 glyph 查询。             |
-| `src/layout.rs`           | `Huozi` 的解析与布局公开入口。                                   |
+| `src/huozi.rs`            | `Huozi` 生命周期、SDF atlas、LRU 缓存、形状模板与共享的图集写入入口。 |
+| `src/layout.rs`           | `Huozi` 的解析与布局公开入口、多段组合与空段占行。               |
 | `src/layout/`             | tiqian 输入输出适配、公开布局结果与交互区域、布局样式、顶点、颜色和来源映射。 |
 | `src/parser/`             | 标签头解析、显式栈恢复、元素到结构化段落的 lowering、来源范围模型。 |
 | `src/font_backend.rs`     | 字体目录、fallback、HarfRust shaping 与 SkRifa metrics/outline。 |
 | `src/glyph_rasterizer.rs` | 字体轮廓到 alpha bitmap 的 CPU 栅格化。                          |
 | `src/sdf.rs`              | 带符号距离场及距离变换实现。                                     |
-| `src/glyph_vertices.rs`   | glyph 分层顶点输出结构。                                         |
-| `examples/render/`        | WGPU、egui、winit 的完整渲染与调试示例。                         |
+| `src/glyph_vertices.rs`   | 绘制元素 enum、文字顶点与图形顶点组。                           |
+| `src/shape/`              | 形状模板生成与缓存、图形定形与切段、图元构造。                   |
+| `examples/render/`        | WGPU、egui、winit 的渲染接入示例：取可见前缀、按绘制层拼顶点、上传纹理与调试面板。 |
 | `examples/texture.rs`     | atlas 导出和冷缓存性能测量示例。                                 |
 
 ## 验证边界
 
-库测试主要验证 Huozi 自己的输入转换、字体候选选择、glyph-id 图集、SDF quad 生成、paint 传递、来源映射、逐字编号、交互区域、行高截断和行尾连字符重放。tiqian 的 CLREQ、断行与行调整规则由 tiqian 自身测试负责，活字不维护第二套同规则预期。
+库测试主要验证 Huozi 自己的输入转换、字体候选选择、glyph-id 图集、SDF 四边形生成、paint 传递、来源映射、逐字编号与显示顺序、多段与空段坐标、高度截断、注音跟随基文、装饰几何、图形模板与顶点几何、交互区域和行尾连字符重放。tiqian 的 CLREQ、断行与行调整规则由 tiqian 自身测试负责，活字不维护第二套同规则预期。
 
 修改以下边界时，应至少运行相关库测试：
 
@@ -283,6 +320,6 @@ RichTextLayoutOutput { glyphs, segment_glyph_spans, interactions, width, height 
 | ---------------------------------- | ------------------------------------------------------- |
 | parser、`TextStyle`、`LayoutStyle` | 标签解析、source range、输入适配和公开布局入口。        |
 | 字体后端、fallback                 | 字体候选顺序、glyph replay identity、缺字降级。         |
-| SDF、atlas、顶点计算               | 图集缓存与淘汰、多格 glyph、SDF paint 顶点。            |
-| 输出适配                           | 来源映射、逐字编号、交互区域、可见行截断、连字符重放。 |
+| SDF、atlas、顶点计算               | 图集缓存与淘汰、多格 glyph、字形 SDF 顶点、形状模板与图形顶点几何。 |
+| 输出适配                           | 来源映射、逐字编号与显示顺序、多段坐标、交互区域、可见行截断、连字符与注音重放、图形分段正确性。 |
 | WGPU shader 或示例                 | 库测试、`cargo check --example render` 和人工渲染检查。 |

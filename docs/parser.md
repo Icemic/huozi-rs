@@ -263,7 +263,7 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 第一段[br indent=2 lineHeight=36 blockIndent=1 /]第二段
 ```
 
-`parse_text` 与 `parse_text_with` 保留全部 `ParsedParagraph`。当前 `layout_parse` 和 `layout_parse_with` 只把第一段交给 Tiqian，并在存在后续段落时输出固定 `warn`；多段布局输出尚未提供。
+`parse_text` 与 `parse_text_with` 保留全部 `ParsedParagraph`，四个布局入口都布局全部段落；连续 `[br /]` 形成的空段占一行高度但没有绘制元素。
 
 ### `[object /]`
 
@@ -338,15 +338,16 @@ parser 采用一次从左至右的 Unicode scalar 扫描和显式 frame 栈。�
 
 ## 渲染边界
 
-背景、下划线、删除线、注音、CLREQ 装饰、链接、技术文本、自动间距、行内代码、行内盒和对象都会保留并传给 Tiqian。当前 Huozi 输出适配器为普通文本生成 fill、stroke 和 shadow 的 SDF glyph 顶点，并重放行尾自动连字符；链接和行内对象的非空 `id` 会生成 `Interaction` 命中区域。
+背景、下划线、删除线、注音、CLREQ 装饰、链接、技术文本、自动间距、行内代码、行内盒和对象都会保留并传给 Tiqian。Huozi 输出适配器把它们全部转写成 `RichTextLayoutOutput` 的绘制元素：文字与注音自带 SDF 四边形，背景、线条与装饰由 `src/shape` 生成三层顶点，链接和行内对象的非空 `id` 还会生成 `Interaction` 命中区域。
 
 因此当前效果如下：
 
-| 功能 | Tiqian 布局 | Huozi 顶点输出 |
+| 功能 | Tiqian 布局 | Huozi 输出 |
 | --- | --- | --- |
 | 字号、字体族、字重、斜体、fontSynthesis、locale、基线、附着、技术断行、自动间距、行内盒 | 生效 | 普通文字 glyph。 |
-| 背景、下划线、删除线 | 参与 rich-text layout | 不生成对应几何。 |
-| 注音和 CLREQ 装饰 | 参与 rich-text layout | 不生成对应几何。 |
+| 背景、下划线、删除线 | 参与 rich-text layout | `Background` / `Line` 片段，自带三层顶点。 |
+| 注音 | 参与 rich-text layout | `Text`（`role` 为 Ruby 或 Bopomofo），自带三层顶点。 |
+| CLREQ 装饰 | 参与 rich-text layout | `Decoration`，自带三层顶点。 |
 | 链接 | 参与 rich-text layout，保留语义 | 非空 `id` 输出 `Interaction` 命中区域；不处理导航。 |
-| 行内代码 | 文字样式和技术断行生效 | 背景不生成几何，文字按普通 glyph 输出。 |
-| 行内对象 | 参与布局 | 非空 `id` 输出 `Interaction` 命中区域；不生成对象图形。 |
+| 行内代码 | 文字样式和技术断行生效 | 背景走 `Background`，文字按普通 glyph 输出。 |
+| 行内对象 | 参与布局 | 输出 `InlineObject` 矩形；非空 `id` 另有 `Interaction`；不生成对象图形。 |
