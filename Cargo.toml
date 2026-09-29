@@ -28,7 +28,7 @@ nom-language = {version = "0.1"}
 nom_locate_usv = {version = "5.1.0", features = ["runtime-dispatch-simd"]}
 serde = {version = "1", features = ["derive"]}
 skrifa = "0.46"
-tiqian = "0.5"
+tiqian = "0.6"
 wgpu = {version = "30.0", optional = true}
 wuff = {version = "0.2.9", optional = true}
 

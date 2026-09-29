@@ -1,5 +1,6 @@
 use huozi::{
     FontSource, Huozi,
+    glyph_vertices::{TextVertices, UnitVertices},
     layout::{ColorSpace, LayoutStyle, ParagraphAlignment},
     parser::{Segment, SegmentId, TextRun, TextSpan, TextStyle},
 };
@@ -8,6 +9,14 @@ const TEST_FONT: &[u8] = include_bytes!("../resources/fonts/SourceHanSansSC-VF.o
 
 fn engine() -> Huozi {
     Huozi::new(vec![FontSource::new(TEST_FONT.to_vec())]).unwrap()
+}
+
+/// 取出文字变体的顶点；这些用例只断言普通文字。
+fn text(element: &UnitVertices) -> &TextVertices {
+    match element {
+        UnitVertices::Text(vertices) => vertices,
+        other => panic!("expected a text element, got {other:?}"),
+    }
 }
 
 #[test]
@@ -32,7 +41,7 @@ fn layout_parse_uses_tiqian_for_rich_text_and_source_spans() {
         .unwrap();
 
     assert_eq!(output.glyphs.len(), 1);
-    assert_eq!(output.glyphs[0].scale_ratio, 0.5);
+    assert_eq!(text(&output.glyphs[0]).scale_ratio, 0.5);
     assert_eq!(output.segment_glyph_spans.len(), 1);
     assert_eq!(output.segment_glyph_spans[0].segment_id, SegmentId::Lite(3));
     assert_eq!(output.segment_glyph_spans[0].glyph_range, 0..1);
@@ -69,7 +78,7 @@ fn layout_plain_positions_short_line_for_each_align_value() {
                 ColorSpace::SRGB,
             )
             .unwrap();
-        output.glyphs[0].fill[0].position[0]
+        text(&output.glyphs[0]).fill[0].position[0]
     };
 
     let start = plain_position_for(ParagraphAlignment::Start);
@@ -92,7 +101,7 @@ fn layout_plain_positions_short_line_for_each_align_value() {
         &text_spans,
         ColorSpace::SRGB,
     );
-    assert_eq!(output.glyphs[0].fill[0].position[0], center);
+    assert_eq!(text(&output.glyphs[0]).fill[0].position[0], center);
 
     let output = engine()
         .layout_parse(
@@ -103,7 +112,7 @@ fn layout_plain_positions_short_line_for_each_align_value() {
             None,
         )
         .unwrap();
-    assert_eq!(output.glyphs[0].fill[0].position[0], end);
+    assert_eq!(text(&output.glyphs[0]).fill[0].position[0], end);
 
     let output = engine()
         .layout_parse_with::<'{', '}'>(
@@ -114,7 +123,7 @@ fn layout_plain_positions_short_line_for_each_align_value() {
             None,
         )
         .unwrap();
-    assert_eq!(output.glyphs[0].fill[0].position[0], center);
+    assert_eq!(text(&output.glyphs[0]).fill[0].position[0], center);
 }
 
 #[test]
@@ -132,7 +141,7 @@ fn layout_plain_degrades_unbounded_center_alignment_to_start() {
                 ColorSpace::SRGB,
             )
             .unwrap();
-        output.glyphs[0].fill[0].position[0]
+        text(&output.glyphs[0]).fill[0].position[0]
     };
 
     let start = position_for(ParagraphAlignment::Start);
@@ -167,11 +176,23 @@ fn layout_plain_keeps_auto_wrapped_lines_unshifted() {
     let center = glyphs_for(ParagraphAlignment::Center);
     let end = glyphs_for(ParagraphAlignment::End);
 
-    assert!(start.last().unwrap().row > start[0].row);
-    assert_eq!(center[0].fill[0].position[0], start[0].fill[0].position[0]);
-    assert_eq!(end[0].fill[0].position[0], start[0].fill[0].position[0]);
-    assert!(start.last().unwrap().fill[0].position[0] < center.last().unwrap().fill[0].position[0]);
-    assert!(center.last().unwrap().fill[0].position[0] < end.last().unwrap().fill[0].position[0]);
+    assert!(text(start.last().unwrap()).row > text(&start[0]).row);
+    assert_eq!(
+        text(&center[0]).fill[0].position[0],
+        text(&start[0]).fill[0].position[0]
+    );
+    assert_eq!(
+        text(&end[0]).fill[0].position[0],
+        text(&start[0]).fill[0].position[0]
+    );
+    assert!(
+        text(start.last().unwrap()).fill[0].position[0]
+            < text(center.last().unwrap()).fill[0].position[0]
+    );
+    assert!(
+        text(center.last().unwrap()).fill[0].position[0]
+            < text(end.last().unwrap()).fill[0].position[0]
+    );
 }
 
 #[test]
@@ -192,10 +213,10 @@ fn layout_parse_outputs_one_link_area_per_positioned_cluster() {
     let interaction = &output.interactions[0];
     assert_eq!(interaction.id, "entry-42");
     assert_eq!(interaction.areas.len(), 2);
-    assert_eq!(interaction.areas[0].row, output.glyphs[0].row);
-    assert_eq!(interaction.areas[0].col, output.glyphs[0].col);
-    assert_eq!(interaction.areas[1].row, output.glyphs[1].row);
-    assert_eq!(interaction.areas[1].col, output.glyphs[1].col);
+    assert_eq!(interaction.areas[0].row, text(&output.glyphs[0]).row);
+    assert_eq!(interaction.areas[0].col, text(&output.glyphs[0]).col);
+    assert_eq!(interaction.areas[1].row, text(&output.glyphs[1]).row);
+    assert_eq!(interaction.areas[1].col, text(&output.glyphs[1]).col);
     assert!(interaction.areas.iter().all(|area| area.rect.width() > 0.0));
     assert!(
         interaction

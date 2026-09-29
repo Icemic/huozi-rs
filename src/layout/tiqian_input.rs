@@ -8,7 +8,7 @@ use tiqian::core::text_model::{
     InlineAttachment as TiqianInlineAttachment, InlineBoxOuterSpacing,
     InlineObjectBoundaryAdjustment, LastLineAlignment as TiqianLastLineAlignment, LayoutInput,
     LineLengthGrid, ParagraphStyle, RichTextBackgroundMetricPolicy, RichTextBackgroundPaint,
-    RichTextLinePaint, RichTextLinePattern, RichTextPaint,
+    RichTextLayer, RichTextLayerKind, RichTextLinePaint, RichTextLinePattern, RichTextPaint,
     RubyLineHeightMode as TiqianRubyLineHeightMode, TextStyle as TiqianTextStyle,
 };
 use tiqian::core::units::Ic;
@@ -17,12 +17,61 @@ use crate::layout::{LayoutStyle, ParagraphAlignment};
 use crate::parser::{
     BackgroundMetricPolicy, DecorationKind, InlineBoxSpacing, InlineNode, InlineObject,
     InlineScopeKind, LinePattern, LineStyle, ParagraphStyleOverride, ParsedParagraph, RubyKind,
-    RubyLineHeightMode, SourceRange, TextSpan, TextStyle,
+    RubyLineHeightMode, SegmentId, SourceRange, TextSpan, TextStyle,
 };
 
 pub(crate) struct HuoziTiqianInput {
     pub(crate) layout_input: LayoutInput,
     pub(crate) source_map: HuoziSourceMap,
+    /// 本段之后下一个可用的连续范围身份。
+    pub(crate) continuity: u32,
+}
+
+/// 行内内容降级过程中累积的状态。
+struct LoweringState {
+    source_map_entries: Vec<HuoziSourceMapEntry>,
+    /// 输入 segment 切换处的显示偏移，作为 Tiqian cluster 边界。
+    boundaries: Vec<ScalarOffset>,
+    last_segment_id: Option<SegmentId>,
+    display_offset: i32,
+    continuity: u32,
+}
+
+impl LoweringState {
+    fn new(continuity: u32) -> Self {
+        Self {
+            source_map_entries: Vec::new(),
+            boundaries: Vec::new(),
+            last_segment_id: None,
+            display_offset: 0,
+            continuity,
+        }
+    }
+
+    /// 分配一个连续范围身份，使同一次布局内的每个 authored range 可区分。
+    fn next_continuity(&mut self) -> u32 {
+        let value = self.continuity;
+        self.continuity += 1;
+        value
+    }
+
+    /// 记录一段显示文本，并在输入 segment 切换时声明一个 cluster 边界。
+    fn push_text(&mut self, source_range: &SourceRange, length: i32) -> TextRange {
+        let range = TextRange::new(
+            ScalarOffset::new(self.display_offset),
+            ScalarOffset::new(self.display_offset + length),
+        );
+        if self.last_segment_id != source_range.segment_id {
+            self.boundaries.push(range.start());
+            self.last_segment_id = source_range.segment_id.clone();
+        }
+        self.source_map_entries.push(HuoziSourceMapEntry {
+            display_range: range,
+            source_range: source_range.clone(),
+        });
+        self.display_offset += length;
+        range
+    }
 }
 
 pub(crate) struct HuoziTiqianInputAdapter;
@@ -33,9 +82,6 @@ impl HuoziTiqianInputAdapter {
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
     ) -> HuoziTiqianInput {
-        let mut source_map_entries = Vec::new();
-        let mut display_offset = 0_i32;
-
         let max_width = layout_style
             .box_width
             .map_or(f32::INFINITY, |width| width as f32);
@@ -57,47 +103,48 @@ impl HuoziTiqianInputAdapter {
             .text_style(tiqian_text_style(initial_text_style))
             .paragraph_style(paragraph_style);
 
+        let mut state = LoweringState::new(0);
         for text_span in text_spans {
             for text_run in &text_span.runs {
                 let run_length = text_run.text.chars().count() as i32;
-                let range = TextRange::new(
-                    ScalarOffset::new(display_offset),
-                    ScalarOffset::new(display_offset + run_length),
-                );
+                state.push_text(&text_run.source_range, run_length);
                 let style = tiqian_text_style_override(&text_run.style);
                 let paints = tiqian_paints(&text_run.style);
 
                 builder.with_text_style(style, |builder| {
                     builder.with_paints(&paints, |builder| builder.push(&text_run.text));
                 });
-                source_map_entries.push(HuoziSourceMapEntry {
-                    display_range: range,
-                    source_range: text_run.source_range.clone(),
-                });
-                display_offset += run_length;
             }
         }
+        let source_map = HuoziSourceMap {
+            entries: state.source_map_entries,
+        };
+        builder.source_boundaries(state.boundaries);
 
         HuoziTiqianInput {
             layout_input: builder
                 .build()
                 .expect("Huozi 输入转换不会留下未关闭的 tiqian builder scope"),
-            source_map: HuoziSourceMap {
-                entries: source_map_entries,
-            },
+            source_map,
+            continuity: state.continuity,
         }
     }
 
+    /// 适配一个结构化段落。
+    ///
+    /// `max_height` 是该段可用的文档高度；`continuity_base` 是本段起可用的连续范围身份起点。
     pub(crate) fn adapt_paragraph(
         paragraph: &ParsedParagraph,
         layout_style: &LayoutStyle,
         initial_text_style: &TextStyle,
+        max_height: f32,
+        continuity_base: u32,
     ) -> HuoziTiqianInput {
         let max_width = layout_style
             .box_width
             .map_or(f32::INFINITY, |width| width as f32);
         let constraints = match layout_style.box_height {
-            Some(max_height) => LayoutConstraints::with_max_height(max_width, max_height as f32),
+            Some(_) => LayoutConstraints::with_max_height(max_width, max_height),
             None => LayoutConstraints::with_defaults(max_width),
         };
         let mut builder = ParagraphBuilder::new(constraints);
@@ -109,23 +156,19 @@ impl HuoziTiqianInputAdapter {
                 &paragraph.paragraph_style,
             ));
 
-        let mut source_map_entries = Vec::new();
-        let mut display_offset = 0_i32;
-        append_nodes(
-            &mut builder,
-            &paragraph.nodes,
-            &mut source_map_entries,
-            &mut display_offset,
-            false,
-        );
+        let mut state = LoweringState::new(continuity_base);
+        append_nodes(&mut builder, &paragraph.nodes, &mut state, false);
+        let source_map = HuoziSourceMap {
+            entries: state.source_map_entries,
+        };
+        builder.source_boundaries(state.boundaries);
 
         HuoziTiqianInput {
             layout_input: builder
                 .build()
                 .expect("Huozi 结构化输入不会留下未关闭的 tiqian builder scope"),
-            source_map: HuoziSourceMap {
-                entries: source_map_entries,
-            },
+            source_map,
+            continuity: state.continuity,
         }
     }
 }
@@ -133,35 +176,24 @@ impl HuoziTiqianInputAdapter {
 fn append_nodes(
     builder: &mut ParagraphBuilder,
     nodes: &[InlineNode],
-    source_map_entries: &mut Vec<HuoziSourceMapEntry>,
-    display_offset: &mut i32,
+    state: &mut LoweringState,
     inside_ruby: bool,
 ) {
     for node in nodes {
         match node {
             InlineNode::Text(run) => {
                 let length = run.text.chars().count() as i32;
-                let range = TextRange::new(
-                    ScalarOffset::new(*display_offset),
-                    ScalarOffset::new(*display_offset + length),
-                );
+                state.push_text(&run.source_range, length);
                 let style = tiqian_text_style_override(&run.style);
                 let paints = tiqian_paints(&run.style);
                 builder.with_text_style(style, |builder| {
                     builder.with_paints(&paints, |builder| builder.push(&run.text));
                 });
-                source_map_entries.push(HuoziSourceMapEntry {
-                    display_range: range,
-                    source_range: run.source_range.clone(),
-                });
-                *display_offset += length;
             }
             InlineNode::Object(object) if inside_ruby => {
                 log::warn!("inline object inside ruby ignored");
             }
-            InlineNode::Object(object) => {
-                append_object(builder, object, source_map_entries, display_offset)
-            }
+            InlineNode::Object(object) => append_object(builder, object, state),
             InlineNode::Scope { kind, children } if children.is_empty() => {
                 log::warn!("empty rich-text scope ignored");
             }
@@ -173,15 +205,15 @@ fn append_nodes(
                         style.stroke.as_ref(),
                         style.shadow.as_ref(),
                     );
-                    builder.with_background(background, &paints, |builder| {
-                        append_nodes(
-                            builder,
-                            children,
-                            source_map_entries,
-                            display_offset,
-                            inside_ruby,
-                        )
-                    });
+                    let id = state.next_continuity();
+                    builder.with_rich_text(
+                        &[RichTextLayer {
+                            kind: RichTextLayerKind::Background { background },
+                            paints,
+                            id: Some(id),
+                        }],
+                        |builder| append_nodes(builder, children, state, inside_ruby),
+                    );
                 }
                 InlineScopeKind::Underline(style) => {
                     let paints = tiqian_paints_from_parts(
@@ -189,16 +221,18 @@ fn append_nodes(
                         style.stroke.as_ref(),
                         style.shadow.as_ref(),
                     );
+                    let id = state.next_continuity();
                     builder.with_paints(&paints, |builder| {
-                        builder.with_underline(tiqian_line(style), |builder| {
-                            append_nodes(
-                                builder,
-                                children,
-                                source_map_entries,
-                                display_offset,
-                                inside_ruby,
-                            )
-                        });
+                        builder.with_rich_text(
+                            &[RichTextLayer {
+                                kind: RichTextLayerKind::Underline {
+                                    line: tiqian_line(style),
+                                },
+                                paints: paints.clone(),
+                                id: Some(id),
+                            }],
+                            |builder| append_nodes(builder, children, state, inside_ruby),
+                        );
                     });
                 }
                 InlineScopeKind::LineThrough(style) => {
@@ -207,16 +241,18 @@ fn append_nodes(
                         style.stroke.as_ref(),
                         style.shadow.as_ref(),
                     );
+                    let id = state.next_continuity();
                     builder.with_paints(&paints, |builder| {
-                        builder.with_line_through(tiqian_line(style), |builder| {
-                            append_nodes(
-                                builder,
-                                children,
-                                source_map_entries,
-                                display_offset,
-                                inside_ruby,
-                            )
-                        });
+                        builder.with_rich_text(
+                            &[RichTextLayer {
+                                kind: RichTextLayerKind::LineThrough {
+                                    line: tiqian_line(style),
+                                },
+                                paints: paints.clone(),
+                                id: Some(id),
+                            }],
+                            |builder| append_nodes(builder, children, state, inside_ruby),
+                        );
                     });
                 }
                 InlineScopeKind::Ruby(style) => {
@@ -229,40 +265,23 @@ fn append_nodes(
                     .locale(style.locale.clone())
                     .build();
                     builder.with_ruby(annotation, |builder| {
-                        append_nodes(builder, children, source_map_entries, display_offset, true)
+                        append_nodes(builder, children, state, true)
                     });
                 }
                 InlineScopeKind::Decoration(kind) => {
-                    builder.with_decoration(tiqian_decoration(*kind), |builder| {
-                        append_nodes(
-                            builder,
-                            children,
-                            source_map_entries,
-                            display_offset,
-                            inside_ruby,
-                        )
+                    let id = state.next_continuity();
+                    builder.with_decoration_with_id(id, tiqian_decoration(*kind), |builder| {
+                        append_nodes(builder, children, state, inside_ruby)
                     });
                 }
                 InlineScopeKind::Link { id, target } => {
                     builder.with_link(id.clone(), target.clone(), |builder| {
-                        append_nodes(
-                            builder,
-                            children,
-                            source_map_entries,
-                            display_offset,
-                            inside_ruby,
-                        )
+                        append_nodes(builder, children, state, inside_ruby)
                     });
                 }
                 InlineScopeKind::Technical => {
                     builder.with_technical(|builder| {
-                        append_nodes(
-                            builder,
-                            children,
-                            source_map_entries,
-                            display_offset,
-                            inside_ruby,
-                        )
+                        append_nodes(builder, children, state, inside_ruby)
                     });
                 }
                 InlineScopeKind::InlineCode(style) => {
@@ -271,31 +290,19 @@ fn append_nodes(
                         style.background.stroke.as_ref(),
                         style.background.shadow.as_ref(),
                     );
+                    let id = state.next_continuity();
                     builder.with_paints(&paints, |builder| {
-                        builder.with_inline_code(
+                        builder.with_inline_code_with_id(
+                            id,
                             tiqian_text_style_override(&style.text_style),
                             tiqian_background(&style.background),
-                            |builder| {
-                                append_nodes(
-                                    builder,
-                                    children,
-                                    source_map_entries,
-                                    display_offset,
-                                    inside_ruby,
-                                )
-                            },
+                            |builder| append_nodes(builder, children, state, inside_ruby),
                         );
                     });
                 }
                 InlineScopeKind::AutoSpaceSuppressed => {
                     builder.with_auto_space_suppressed(|builder| {
-                        append_nodes(
-                            builder,
-                            children,
-                            source_map_entries,
-                            display_offset,
-                            inside_ruby,
-                        )
+                        append_nodes(builder, children, state, inside_ruby)
                     });
                 }
                 InlineScopeKind::InlineBox(style) => {
@@ -308,15 +315,7 @@ fn append_nodes(
                                 InlineBoxSpacing::Source => InlineBoxOuterSpacing::Source,
                             },
                         ),
-                        |builder| {
-                            append_nodes(
-                                builder,
-                                children,
-                                source_map_entries,
-                                display_offset,
-                                inside_ruby,
-                            )
-                        },
+                        |builder| append_nodes(builder, children, state, inside_ruby),
                     );
                 }
             },
@@ -324,17 +323,8 @@ fn append_nodes(
     }
 }
 
-fn append_object(
-    builder: &mut ParagraphBuilder,
-    object: &InlineObject,
-    source_map_entries: &mut Vec<HuoziSourceMapEntry>,
-    display_offset: &mut i32,
-) {
+fn append_object(builder: &mut ParagraphBuilder, object: &InlineObject, state: &mut LoweringState) {
     let length = object.alt.chars().count() as i32;
-    let range = TextRange::new(
-        ScalarOffset::new(*display_offset),
-        ScalarOffset::new(*display_offset + length),
-    );
     let metrics = InlineObjectMetrics::builder(object.width, object.ascent, object.descent)
         .leading_boundary(InlineObjectBoundaryAdjustment::FIXED)
         .trailing_boundary(InlineObjectBoundaryAdjustment::FIXED)
@@ -343,11 +333,7 @@ fn append_object(
         .inline_object(object.id.clone(), &object.alt, metrics)
         .is_ok()
     {
-        source_map_entries.push(HuoziSourceMapEntry {
-            display_range: range,
-            source_range: object.source_range.clone(),
-        });
-        *display_offset += length;
+        state.push_text(&object.source_range, length);
     } else {
         log::warn!("inline object ignored by tiqian builder");
     }
@@ -783,6 +769,8 @@ mod tests {
                 ..LayoutStyle::default()
             },
             &TextStyle::default(),
+            f32::INFINITY,
+            0,
         );
 
         assert_eq!(
@@ -836,6 +824,8 @@ mod tests {
             &paragraph,
             &LayoutStyle::default(),
             &TextStyle::default(),
+            f32::INFINITY,
+            0,
         );
 
         assert_eq!(input.layout_input.content.text.as_str(), "甲锚");

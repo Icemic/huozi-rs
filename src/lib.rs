@@ -8,7 +8,8 @@ pub mod glyph_vertices;
 mod huozi;
 pub mod layout;
 pub mod parser;
-pub mod sdf;
+mod sdf;
+mod shape;
 
 pub use crate::font_backend::{FontSource, FontSourceKind};
 pub use crate::huozi::*;

@@ -2,7 +2,8 @@ use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
     FontSourceKind, Huozi,
     constant::TEXTURE_SIZE,
-    layout::{ColorSpace, Interaction, LayoutStyle, Vertex},
+    glyph_vertices::UnitVertices,
+    layout::{ColorSpace, Interaction, LayoutStyle, RichTextLayoutOutput, Vertex},
     parser::{Segment, TextStyle},
 };
 use log::{error, info};
@@ -37,7 +38,116 @@ mod mvp;
 mod texture;
 mod ui;
 
-const DEFAULT_TEXT: &str = r#"一个功能完善的中日韩文字排印引擎，为[shadow offsetX=1.5 offsetY=1.5 blur=0 width=0.4 color="rgba(255, 64, 153, 1.0)"]游戏富文本[/shadow]特别设计。[link id="demo-interaction" target="https://example.com/interaction"]点击这里显示交互提示[/link]
+/// 逐字显示进度：`glyphs` 的结束下标，`None` 表示显示全部。
+type Progress = Option<usize>;
+
+/// 固定的绘制层次序。
+///
+/// 层的先后决定半透明重叠、描边与阴影是否正确：背景在文字之下，装饰在文字之上。文字与图形都按
+/// 这套层次序提交，区别只在各自有哪些层。
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DrawLayer {
+    BackgroundShadow,
+    BackgroundStroke,
+    BackgroundFill,
+    TextShadow,
+    TextStroke,
+    TextFill,
+    Decoration,
+}
+
+/// 按绘制层顺序把可见元素拼成一份顶点与索引缓冲。
+///
+/// 外层遍历层、内层遍历元素，因此同一层内保持逐字顺序，层与层之间保持固定的先后。文字与图形走
+/// 同一条路径，区别只是 [`push_layer`] 里各自有哪些层。
+fn assemble(visible: &[UnitVertices]) -> (Vec<Vertex>, Vec<u32>) {
+    const DRAW_LAYERS: [DrawLayer; 7] = [
+        DrawLayer::BackgroundShadow,
+        DrawLayer::BackgroundStroke,
+        DrawLayer::BackgroundFill,
+        DrawLayer::TextShadow,
+        DrawLayer::TextStroke,
+        DrawLayer::TextFill,
+        DrawLayer::Decoration,
+    ];
+    let mut vertices = Vec::new();
+    let mut indices = Vec::new();
+    for layer in DRAW_LAYERS {
+        for element in visible {
+            push_layer(&mut vertices, &mut indices, element, layer);
+        }
+    }
+    (vertices, indices)
+}
+
+/// 追加一个元素在某一层的顶点；该元素没有这一层时什么都不做。
+fn push_layer(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u32>,
+    element: &UnitVertices,
+    layer: DrawLayer,
+) {
+    match (element, layer) {
+        (UnitVertices::Background(background), DrawLayer::BackgroundShadow) => {
+            push_quads(vertices, indices, &background.vertices.shadow);
+        }
+        (UnitVertices::Background(background), DrawLayer::BackgroundStroke) => {
+            push_quads(vertices, indices, &background.vertices.stroke);
+        }
+        (UnitVertices::Background(background), DrawLayer::BackgroundFill) => {
+            push_quads(vertices, indices, &background.vertices.fill);
+        }
+        (UnitVertices::Text(text), DrawLayer::TextShadow) => {
+            push_quads(
+                vertices,
+                indices,
+                text.shadow.as_ref().map_or(&[], |quad| &quad[..]),
+            );
+        }
+        (UnitVertices::Text(text), DrawLayer::TextStroke) => {
+            push_quads(
+                vertices,
+                indices,
+                text.stroke.as_ref().map_or(&[], |quad| &quad[..]),
+            );
+        }
+        (UnitVertices::Text(text), DrawLayer::TextFill) => {
+            push_quads(vertices, indices, &text.fill);
+        }
+        // 线条与装饰共处一层，元素内部按阴影、描边、填充。
+        (UnitVertices::Line(line), DrawLayer::Decoration) => {
+            push_quads(vertices, indices, &line.vertices.shadow);
+            push_quads(vertices, indices, &line.vertices.stroke);
+            push_quads(vertices, indices, &line.vertices.fill);
+        }
+        (UnitVertices::Decoration(decoration), DrawLayer::Decoration) => {
+            push_quads(vertices, indices, &decoration.vertices.shadow);
+            push_quads(vertices, indices, &decoration.vertices.stroke);
+            push_quads(vertices, indices, &decoration.vertices.fill);
+        }
+        // 行内对象由调用方按自己的资源绘制，Huozi 只给出位置。
+        _ => {}
+    }
+}
+
+/// 追加一串四边形；每 4 个连续顶点构成一个，索引按逆时针展开。
+fn push_quads(vertices: &mut Vec<Vertex>, indices: &mut Vec<u32>, quads: &[Vertex]) {
+    let base = vertices.len() as u32;
+    vertices.extend_from_slice(quads);
+    for quad in 0..(quads.len() / 4) as u32 {
+        let offset = base + quad * 4;
+        indices.extend([
+            offset,
+            offset + 1,
+            offset + 2,
+            offset,
+            offset + 2,
+            offset + 3,
+        ]);
+    }
+}
+
+const DEFAULT_TEXT: &str = r##"一个功能完善的中日韩文字排印引擎，为[shadow offsetX=1.5 offsetY=1.5 blur=0 width=0.4 color="rgba(255, 64, 153, 1.0)"]游戏富文本[/shadow]特别设计。[link id="demo-interaction" target="https://example.com/interaction"]点击这里显示交互提示[/link]
 A fully functional typography engine for CJK languages, especially designed for game rich-text.
 huózì 活字 gM 123.!""?;:-_/+=<>==
 CJK 标点——⸺，。：；“”？、《》「」【】
@@ -45,7 +155,15 @@ CJK 标点——⸺，。：；“”？、《》「」【】
 [locale=zh-hans]骨直肩示[/locale] [locale=zh-hant]骨直肩示[/locale] [locale=zh-hk]骨直肩示[/locale] [locale=ja-jp]骨直肩示[/locale] [locale=ko-kr]骨直肩示[/locale]
 [font="思源黑体 VF"]思源黑体[/font] / [font="Source Han Serif VF"]思源宋体[/font] ｜ [font="思源黑体 VF"][weight=400]常规[/weight] / [bold]粗体[/bold][/font] ｜ [font="Inter Variable"]Inter Normal / [italic]Inter Italic[/italic][/font]
 [font="獅尾圓體SC"][weight=400]常规ABCxyz[/weight] / [bold]仿粗体ABCxyz[/bold] / [italic]仿斜体ABCxyz[/italic] / [bold][italic]仿粗斜体ABCxyz[/italic][/bold][/font]
-"#;
+[background color="#FFF3BF" paddingX=6 paddingY=2 radius=8]跨多个字格与行内空隙的圆角背景[/background]与[background color="rgba(56, 189, 248, 0.6)" paddingX=4 paddingY=2 radius=8 strokeColor="#0EA5E9" strokeWidth=1]相邻的另一个背景[/background]。
+[background color="#1E293B" paddingX=6 paddingY=2 radius=8 shadowColor="#000000" shadowOffsetX=2 shadowOffsetY=2 shadowBlur=2 shadowWidth=1]带描边与阴影的背景[/background]与[code paddingX=4 paddingY=2 radius=8]cargo test[/code]共用同一套图形。
+[underline color="#1677FF" thickness=1]实线下划线[/underline] ⁄ [underline color="#1677FF" thickness=1 pattern=dashed dashLength=3 gapLength=2]虚线下划线[/underline] ⁄ [underline color="#1677FF" thickness=1 pattern=dotted gapLength=2]点线下划线[/underline] ⁄ [lineThrough color="#94A3B8" thickness=1]删除线[/lineThrough]
+[ruby text="tí qiàn"]提椠[/ruby]与[bopomofo text="ㄊㄧˊ ㄑㄧㄢˋ"]提椠[/bopomofo]把注音也画出来。
+[emphasis]着重号[/emphasis]、[mourning]示亡号[/mourning]、[properNoun]专名号[/properNoun]与[bookTitle]书名号[/bookTitle]各自使用 Tiqian 的最终几何。
+[link id="demo-rich-link" target="https://example.com/rich"]带背景的跨行链接会在这里换行显示，背景、线条与链接区域都按排版单元推进[/link]，[object id="demo-rich-object" alt="图标" width=24 ascent=18 descent=6 /]对象在这里占位。
+第一段结束。
+[br /][br /]空段之后是新的一段，逐字进度会跨过空段。
+"##;
 
 const DEFAULT_FONT_FALLBACKS: [(&str, FontSourceKind); 5] = [
     ("InterVariable.ttf", FontSourceKind::Latin),
@@ -105,9 +223,17 @@ pub struct State {
     stroke_enabled: bool,
     shadow_enabled: bool,
     config_changed: bool,
+    /// 逐字进度发生变化；只需要重建顶点缓冲，不需要重新排版。
+    progress_changed: bool,
     interactions: Vec<Interaction>,
     cursor_position: Option<(f32, f32)>,
     interaction_notice: Option<String>,
+    /// 逐字显示进度：`glyphs` 的结束下标；`None` 表示显示全部。
+    progress: Progress,
+    /// 上一次布局输出的绘制元素总数，供逐字滑条使用。
+    element_count: usize,
+    /// 上次完整布局的结果；逐字进度变化时复用它重建缓冲，避免重复排版。
+    layout_output: Option<RichTextLayoutOutput>,
 
     // Store egui render data
     egui_paint_jobs: Vec<egui::ClippedPrimitive>,
@@ -425,9 +551,13 @@ impl State {
             stroke_enabled: true,
             shadow_enabled: false,
             config_changed: false,
+            progress_changed: false,
             interactions: Vec::new(),
             cursor_position: None,
             interaction_notice: None,
+            progress: None,
+            element_count: 0,
+            layout_output: None,
             egui_paint_jobs: Vec::new(),
             egui_textures_delta: Default::default(),
         }
@@ -469,8 +599,10 @@ impl State {
             .egui_context
             .tessellate(full_output.shapes, full_output.pixels_per_point);
 
-        // Check if text or config changed and re-render
-        if self.config_changed {
+        // 逐字进度不改变布局，只改变可见前缀，因此走重建缓冲的路径；其余改动重新排版。
+        if std::mem::take(&mut self.progress_changed) {
+            self.rebuild_buffers();
+        } else if self.config_changed {
             self.render_huozi_text();
         }
     }
@@ -485,6 +617,7 @@ impl State {
                 .filter(|font| font.enabled)
                 .collect::<Vec<_>>();
             if enabled_fonts.is_empty() {
+                self.layout_output = None;
                 self.vertex_buffer = None;
                 self.index_buffer = None;
                 self.num_indices = None;
@@ -537,62 +670,13 @@ impl State {
             ColorSpace::SRGB,
             None,
         ) {
-            Ok(output) => {
+            Ok(mut output) => {
                 info!("text layouting finished, {:?}", started_at.elapsed(),);
 
                 info!(
                     "total_width: {}, total_height: {}",
                     output.width, output.height
                 );
-
-                let mut vertices: Vec<Vertex> = Vec::with_capacity(output.glyphs.len() * 4 * 3);
-                let mut indices: Vec<u16> = Vec::with_capacity(output.glyphs.len() * 6);
-
-                let mut index_offset = 0;
-
-                for glyph in &output.glyphs {
-                    if let Some(shadow) = glyph.shadow {
-                        vertices.extend(shadow);
-                        indices.extend(glyph.indices.iter().map(|i| i + index_offset));
-                        index_offset += shadow.len() as u16;
-                    }
-                }
-
-                for glyph in &output.glyphs {
-                    if let Some(stroke) = glyph.stroke {
-                        vertices.extend(stroke);
-                        indices.extend(glyph.indices.iter().map(|i| i + index_offset));
-                        index_offset += stroke.len() as u16;
-                    }
-                }
-
-                for glyph in &output.glyphs {
-                    vertices.extend(glyph.fill);
-                    indices.extend(glyph.indices.iter().map(|i| i + index_offset));
-
-                    index_offset += glyph.fill.len() as u16;
-                }
-
-                let vertex_buffer =
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("Vertex Buffer"),
-                            contents: bytemuck::cast_slice(&vertices),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        });
-                let index_buffer =
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("Index Buffer"),
-                            contents: bytemuck::cast_slice(&indices),
-                            usage: wgpu::BufferUsages::INDEX,
-                        });
-                let num_indices = indices.len() as u32;
-
-                self.vertex_buffer = Some(vertex_buffer);
-                self.index_buffer = Some(index_buffer);
-                self.num_indices = Some(num_indices);
-                self.interactions = output.interactions;
 
                 let texture = huozi.texture_pixels();
                 self.texture.write_pixels(
@@ -601,12 +685,69 @@ impl State {
                     texture.width(),
                     texture.height(),
                 );
+
+                self.interactions = std::mem::take(&mut output.interactions);
+                self.layout_output = Some(output);
+                self.apply_layout_output();
             }
             Err(err_msg) => {
+                self.layout_output = None;
+                self.vertex_buffer = None;
+                self.index_buffer = None;
+                self.num_indices = None;
                 self.interactions.clear();
                 error!("{}", err_msg);
             }
         }
+    }
+
+    /// 用缓存的布局结果重建顶点与索引缓冲，不重新布局、不重传图集纹理。
+    ///
+    /// 逐字进度只改变哪些元素可见，不影响 shaping、断行与图集内容；若走完整布局路径，每移动一次
+    /// 滑条都会重跑一次排版（约数百毫秒）。
+    fn rebuild_buffers(&mut self) {
+        if self.layout_output.is_none() {
+            // 还没有布局结果时（例如字体刚被禁用）退回完整路径，由它处理建实例与报错。
+            self.render_huozi_text();
+            return;
+        }
+        self.apply_layout_output();
+    }
+
+    /// 根据当前进度把缓存的布局结果组装成缓冲。
+    fn apply_layout_output(&mut self) {
+        let Some(output) = self.layout_output.as_ref() else {
+            error!("Huozi instance is not initialized");
+            return;
+        };
+
+        // 逐字进度超出文档时回到完整显示，避免文本变短后卡在空进度。
+        let total = output.glyphs.len();
+        self.element_count = total;
+        if self.progress.is_some_and(|count| count >= total) {
+            self.progress = None;
+        }
+        let end = self.progress.unwrap_or(total);
+
+        let (vertices, indices) = assemble(&output.glyphs[..end]);
+        let vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let index_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(&indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+
+        self.vertex_buffer = Some(vertex_buffer);
+        self.index_buffer = Some(index_buffer);
+        self.num_indices = Some(indices.len() as u32);
     }
 
     fn render(&mut self) -> RenderOutcome {
@@ -654,7 +795,7 @@ impl State {
                 render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
                 render_pass.set_bind_group(1, &self.texture_bind_group, &[]);
                 render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-                render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 render_pass.draw_indexed(0..num_indices, 0, 0..1);
             }
         }

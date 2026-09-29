@@ -1,13 +1,13 @@
 use tiqian::core::geometry::Rect;
 
-use crate::glyph_vertices::GlyphVertices;
+use crate::glyph_vertices::UnitVertices;
 
 use super::SegmentGlyphSpan;
 
 /// 富文本布局的公开输出。
 #[derive(Debug, Clone)]
 pub struct RichTextLayoutOutput {
-    pub glyphs: Vec<GlyphVertices>,
+    pub glyphs: Vec<UnitVertices>,
     pub segment_glyph_spans: Vec<SegmentGlyphSpan>,
     pub interactions: Vec<Interaction>,
     pub width: u32,

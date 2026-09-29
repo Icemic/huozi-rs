@@ -1,15 +1,17 @@
 use log::warn;
 use lru::LruCache;
+use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use tiqian::layout::paragraph_layout_engine::{
     ParagraphLayoutEngine, ParagraphLayoutEngineBuilder,
 };
 
-use crate::constant::{BUFFER, FONT_SIZE, GRID_SIZE, TEXTURE_SIZE};
+use crate::constant::{FONT_SIZE, GRID_SIZE, TEXTURE_SIZE};
 use crate::font_backend::{FontSource, HuoziFontManager};
 use crate::glyph_metrics::GlyphMetrics;
 use crate::glyph_rasterizer::{GlyphBitmap, rasterize_outline};
 use crate::sdf::calculate_sdf;
+use crate::shape::{ShapeKey, ShapeTemplate};
 use tiqian::core::font_face::FontFaceId;
 
 pub use crate::layout::ColorSpace;
@@ -35,6 +37,23 @@ pub struct Glyph {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 enum AtlasKey {
     ShapedGlyph { face: FontFaceId, glyph_id: u32 },
+}
+
+/// 一个已经写入图集的位图占用的网格位置。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct AtlasSlot {
+    /// 图集页（RGBA 通道）下标，直接用于 `Vertex::page`。
+    pub(crate) page: i32,
+    /// 网格块在页内的线性下标；`index % line_count` 是列，其余是行。
+    pub(crate) index: u32,
+    pub(crate) grid_width: u32,
+    pub(crate) grid_height: u32,
+    /// 网格块左上角在图集中的像素坐标。
+    pub(crate) grid_x: i32,
+    pub(crate) grid_y: i32,
+    /// 位图左上角在图集中的像素坐标；块内居中，因此与 `grid_*` 之间是一圈余量。
+    pub(crate) offset_x: i32,
+    pub(crate) offset_y: i32,
 }
 
 pub struct TextureAtlas {
@@ -85,6 +104,8 @@ pub struct Huozi {
     cache: lru::LruCache<AtlasKey, Glyph>,
     fallback_glyph_ids: LruCache<AtlasKey, u32>,
     occupied_grid_rows: Vec<u32>,
+    /// 常驻的形状模板，按需生成。不参与 LRU 淘汰，因此调用方可以长期复用它们的 UV。
+    pub(crate) shapes: HashMap<ShapeKey, ShapeTemplate>,
     /// increase this flag when the cache is changed
     image_version: u64,
 }
@@ -128,6 +149,7 @@ impl Huozi {
             cache,
             fallback_glyph_ids: LruCache::new(cache_capacity),
             occupied_grid_rows: vec![0; (grid_line_count * ATLAS_PAGE_COUNT) as usize],
+            shapes: HashMap::new(),
             image_version: 0,
         })
     }
@@ -200,30 +222,55 @@ impl Huozi {
             y_max: bitmap.y_max,
             ..Default::default()
         };
-        let grid_width = (bitmap.width + 2 * BUFFER)
-            .div_ceil(GRID_SIZE as u32)
-            .max(1);
-        let grid_height = (bitmap.height + 2 * BUFFER)
-            .div_ceil(GRID_SIZE as u32)
-            .max(1);
         let (bitmap, width, height) = calculate_sdf(&bitmap.alpha, bitmap.width, bitmap.height);
+        let slot = self.write_atlas_bitmap(&bitmap, width, height);
+        let texture_size = self.texture.width as f32;
+        let grid_size = GRID_SIZE as f32;
+        // 字形路径的 UV 覆盖整个网格块：块内余量承载描边外扩、阴影偏移与模糊。
         let glyph = Glyph {
             ch: '\0',
             font_face: Some(face.clone()),
             glyph_id,
             metrics,
-            page: 0,
-            index: 0,
-            grid_width: 0,
-            grid_height: 0,
-            u_min: 0.0,
-            u_max: 0.0,
-            v_min: 0.0,
-            v_max: 0.0,
+            page: slot.page,
+            index: slot.index,
+            grid_width: slot.grid_width,
+            grid_height: slot.grid_height,
+            u_min: slot.grid_x as f32 / texture_size,
+            u_max: (slot.grid_x as f32 + grid_size * slot.grid_width as f32) / texture_size,
+            v_min: slot.grid_y as f32 / texture_size,
+            v_max: (slot.grid_y as f32 + grid_size * slot.grid_height as f32) / texture_size,
         };
+        if let Some((_, expired_glyph)) = self.cache.push(key, glyph.clone()) {
+            self.release_grid_rect(&expired_glyph);
+        }
+        glyph
+    }
+
+    fn cache_fallback_glyph(&mut self, face: &FontFaceId, requested_key: AtlasKey) -> Glyph {
+        let glyph = self.get_glyph_by_id(face, 0);
+        self.fallback_glyph_ids.put(requested_key, 0);
+        glyph
+    }
+
+    /// 把一个单通道位图写入图集，返回它占用的位置。
+    ///
+    /// 按整格预留网格块，位图在块内居中。块由 `ceil` 得出，两侧余量最多相差一个 texel。空间不足
+    /// 时照常淘汰字形，直到腾出一块。
+    pub(crate) fn write_atlas_bitmap(
+        &mut self,
+        bitmap: &[u8],
+        width: u32,
+        height: u32,
+    ) -> AtlasSlot {
+        debug_assert_eq!(bitmap.len(), (width * height) as usize);
+        let width = width.max(1);
+        let height = height.max(1);
+        let grid_width = width.div_ceil(GRID_SIZE as u32).max(1);
+        let grid_height = height.div_ceil(GRID_SIZE as u32).max(1);
         let grid_size = GRID_SIZE as i32;
         let line_count = self.texture.width() as i32 / grid_size;
-        let (page, index_in_page) = loop {
+        let (page, index) = loop {
             if let Some(grid_rect) = self.reserve_grid_rect(grid_width, grid_height) {
                 break grid_rect;
             }
@@ -233,52 +280,33 @@ impl Huozi {
                 .expect("SDF atlas has no cached glyph available for eviction");
             self.release_grid_rect(&expired_glyph);
         };
-        if let Some((_, expired_glyph)) = self.cache.push(key.clone(), glyph) {
-            self.release_grid_rect(&expired_glyph);
-        }
-        let grid_x = grid_size * (index_in_page % line_count);
-        let grid_y = grid_size * (index_in_page / line_count);
+        let grid_x = grid_size * (index % line_count);
+        let grid_y = grid_size * (index / line_count);
         let offset_x =
             grid_x + ((GRID_SIZE * grid_width as f32) / 2.0 - width as f32 / 2.0).ceil() as i32;
         let offset_y =
             grid_y + ((GRID_SIZE * grid_height as f32) / 2.0 - height as f32 / 2.0).ceil() as i32;
-        let source_x_start = (grid_x - offset_x).max(0) as usize;
-        let source_x_end = (grid_x + grid_size * grid_width as i32 - offset_x)
-            .min(width as i32)
-            .max(0) as usize;
         let texture_width = self.texture.width as usize;
         let channel = page as usize;
         for (source_y, row) in bitmap.chunks_exact(width as usize).enumerate() {
-            let y = source_y as i32 + offset_y;
-            if y < grid_y || y >= grid_y + grid_size * grid_height as i32 {
-                continue;
-            }
-            let x = offset_x + source_x_start as i32;
-            let mut texture_index = ((y as usize * texture_width + x as usize) * 4) + channel;
-            for &value in &row[source_x_start..source_x_end] {
-                self.texture.pixels[texture_index] = value;
-                texture_index += 4;
+            let mut target =
+                ((offset_y as usize + source_y) * texture_width + offset_x as usize) * 4 + channel;
+            for &value in row {
+                self.texture.pixels[target] = value;
+                target += 4;
             }
         }
-        let texture_width = self.texture.width as f32;
-        let glyph = self.cache.get_mut(&key).unwrap();
-        glyph.page = page;
-        glyph.index = index_in_page as u32;
-        glyph.grid_width = grid_width;
-        glyph.grid_height = grid_height;
-        glyph.u_min = grid_x as f32 / texture_width;
-        glyph.v_min = grid_y as f32 / texture_width;
-        glyph.u_max = (grid_x + grid_size * grid_width as i32) as f32 / texture_width;
-        glyph.v_max = (grid_y + grid_size * grid_height as i32) as f32 / texture_width;
-        let glyph = glyph.clone();
         self.image_version += 1;
-        glyph
-    }
-
-    fn cache_fallback_glyph(&mut self, face: &FontFaceId, requested_key: AtlasKey) -> Glyph {
-        let glyph = self.get_glyph_by_id(face, 0);
-        self.fallback_glyph_ids.put(requested_key, 0);
-        glyph
+        AtlasSlot {
+            page,
+            index: index as u32,
+            grid_width,
+            grid_height,
+            grid_x,
+            grid_y,
+            offset_x,
+            offset_y,
+        }
     }
 
     fn reserve_grid_rect(&mut self, width: u32, height: u32) -> Option<(i32, i32)> {
@@ -348,6 +376,7 @@ mod tests {
     use super::*;
     use crate::FontSource;
     use crate::constant::CUTOFF;
+    use crate::glyph_vertices::UnitVertices;
     use crate::layout::tiqian_input::HuoziTiqianInputAdapter;
     use crate::layout::tiqian_output::HuoziTiqianOutputAdapter;
     use crate::layout::{ColorSpace, LayoutStyle};
@@ -446,7 +475,8 @@ mod tests {
         let vertices = output.glyphs;
 
         assert_eq!(vertices.len(), 1);
-        let texture_width = vertices[0].fill[3].tex_coords[0] - vertices[0].fill[0].tex_coords[0];
+        let glyph = text_vertices(&vertices[0]);
+        let texture_width = glyph.fill[3].tex_coords[0] - glyph.fill[0].tex_coords[0];
         assert!(texture_width > GRID_SIZE as f32 / TEXTURE_SIZE as f32);
     }
 
@@ -551,16 +581,20 @@ mod tests {
             &layout_result,
             &source_map,
             &ColorSpace::SRGB,
+            0,
+            0.0,
+            f32::INFINITY,
         );
         let glyphs = output.glyphs;
-        let spans = output.segment_glyph_spans;
+        let spans = crate::layout::tiqian_output::segment_glyph_spans(&output.glyph_segments);
         let width = output.width;
         let height = output.height;
 
         assert_eq!(glyphs.len(), 1);
-        assert_eq!(glyphs[0].fill.len(), 4);
+        let glyph = text_vertices(&glyphs[0]);
+        assert_eq!(glyph.fill.len(), 4);
         assert_eq!(
-            glyphs[0].fill[0].color,
+            glyph.fill[0].color,
             [
                 0x12 as f32 / 255.0,
                 0x34 as f32 / 255.0,
@@ -568,16 +602,16 @@ mod tests {
                 0x78 as f32 / 255.0
             ]
         );
-        assert!(glyphs[0].fill[0].buffer < 1. - CUTOFF);
-        assert_eq!(glyphs[0].fill[0].fill_buffer, 2.0);
-        assert!(glyphs[0].fill.iter().all(|vertex| vertex.page >= 0));
-        assert!(glyphs[0].fill.iter().all(|vertex| {
+        assert!(glyph.fill[0].buffer < 1. - CUTOFF);
+        assert_eq!(glyph.fill[0].fill_buffer, 2.0);
+        assert!(glyph.fill.iter().all(|vertex| vertex.page >= 0));
+        assert!(glyph.fill.iter().all(|vertex| {
             vertex.tex_coords[0] >= 0.0
                 && vertex.tex_coords[0] <= 1.0
                 && vertex.tex_coords[1] >= 0.0
                 && vertex.tex_coords[1] <= 1.0
         }));
-        let stroke = glyphs[0].stroke.unwrap();
+        let stroke = glyph.stroke.unwrap();
         assert_eq!(
             stroke[0].color,
             [
@@ -587,9 +621,9 @@ mod tests {
                 0xf0 as f32 / 255.0
             ]
         );
-        assert_eq!(stroke[0].buffer, glyphs[0].fill[0].buffer - 2.0 * 0.125);
-        assert_eq!(stroke[0].fill_buffer, glyphs[0].fill[0].buffer);
-        let shadow = glyphs[0].shadow.unwrap();
+        assert_eq!(stroke[0].buffer, glyph.fill[0].buffer - 2.0 * 0.125);
+        assert_eq!(stroke[0].fill_buffer, glyph.fill[0].buffer);
+        let shadow = glyph.shadow.unwrap();
         assert_eq!(
             shadow[0].color,
             [
@@ -599,15 +633,15 @@ mod tests {
                 0x44 as f32 / 255.0
             ]
         );
-        assert_eq!(shadow[0].position[0] - glyphs[0].fill[0].position[0], 0.25);
-        assert_eq!(shadow[0].position[1] - glyphs[0].fill[0].position[1], 0.5);
+        assert_eq!(shadow[0].position[0] - glyph.fill[0].position[0], 0.25);
+        assert_eq!(shadow[0].position[1] - glyph.fill[0].position[1], 0.5);
         assert_eq!(shadow[0].buffer, stroke[0].buffer - 3.0 * 0.125);
-        assert!(shadow[0].gamma > glyphs[0].fill[0].gamma);
+        assert!(shadow[0].gamma > glyph.fill[0].gamma);
         assert_eq!(spans.len(), 1);
         assert_eq!(spans[0].segment_id, SegmentId::Lite(7));
         assert_eq!(spans[0].glyph_range, 0..1);
-        assert_eq!(width, layout_result.size.width.round() as u32);
-        assert_eq!(height, 48);
+        assert_eq!(width, layout_result.size.width);
+        assert_eq!(height, 48.0);
     }
 
     #[test]
@@ -673,16 +707,22 @@ mod tests {
             &layout_result,
             &source_map,
             &ColorSpace::SRGB,
+            0,
+            0.0,
+            f32::INFINITY,
         );
         let glyphs = output.glyphs;
-        let spans = output.segment_glyph_spans;
+        let spans = crate::layout::tiqian_output::segment_glyph_spans(&output.glyph_segments);
 
         assert_eq!(glyphs.len(), glyph_count);
-        assert_eq!(glyphs[0].row, 0);
-        assert_eq!(glyphs[0].col, 0);
-        assert_eq!(glyphs[1].row, 0);
-        assert_eq!(glyphs[1].col, 0);
-        assert_ne!(glyphs[0].fill[0].position[0], glyphs[1].fill[0].position[0]);
+        assert_eq!(text_vertices(&glyphs[0]).row, 0);
+        assert_eq!(text_vertices(&glyphs[0]).col, 0);
+        assert_eq!(text_vertices(&glyphs[1]).row, 0);
+        assert_eq!(text_vertices(&glyphs[1]).col, 0);
+        assert_ne!(
+            text_vertices(&glyphs[0]).fill[0].position[0],
+            text_vertices(&glyphs[1]).fill[0].position[0]
+        );
         assert_eq!(spans[0].segment_id, SegmentId::Lite(8));
         assert_eq!(spans[0].glyph_range, 0..glyph_count);
     }
@@ -764,14 +804,17 @@ mod tests {
             &layout_result,
             &source_map,
             &ColorSpace::SRGB,
+            0,
+            0.0,
+            f32::INFINITY,
         );
         let glyphs = output.glyphs;
-        let spans = output.segment_glyph_spans;
+        let spans = crate::layout::tiqian_output::segment_glyph_spans(&output.glyph_segments);
 
         assert_eq!(glyphs.len(), 2);
-        assert_eq!(glyphs[1].x, 48);
-        assert_eq!(glyphs[1].row, 0);
-        assert_eq!(glyphs[1].col, 0);
+        assert_eq!(text_vertices(&glyphs[1]).x, 48);
+        assert_eq!(text_vertices(&glyphs[1]).row, 0);
+        assert_eq!(text_vertices(&glyphs[1]).col, 0);
         assert_eq!(spans[0].segment_id, SegmentId::Lite(10));
         assert_eq!(spans[0].glyph_range, 0..2);
     }
@@ -842,13 +885,59 @@ mod tests {
             &layout_result,
             &source_map,
             &ColorSpace::SRGB,
+            0,
+            0.0,
+            40.0,
         );
         let glyphs = output.glyphs;
-        let spans = output.segment_glyph_spans;
+        let spans = crate::layout::tiqian_output::segment_glyph_spans(&output.glyph_segments);
         let height = output.height;
 
         assert!(glyphs.is_empty());
         assert!(spans.is_empty());
-        assert_eq!(height, 0);
+        assert_eq!(height, 0.0);
+    }
+
+    /// 图集写入沿用字形路径的放置约定：按整格预留网格块，位图在块内居中。
+    ///
+    /// 若改成靠块左上角放置，块内余量会全部堆在右侧与下侧；模板的描边与阴影外扩范围也会随之
+    /// 不对称。
+    #[test]
+    fn atlas_bitmap_is_centered_in_its_grid_block() {
+        let font = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
+        let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
+        let grid_size = GRID_SIZE as i32;
+
+        // 一个单格尺寸，一个跨两格的尺寸；两者块内都会留下余量。
+        for (width, height) in [(40_u32, 20_u32), (140, 20)] {
+            let bitmap = vec![0_u8; (width * height) as usize];
+            let slot = huozi.write_atlas_bitmap(&bitmap, width, height);
+
+            let left = slot.offset_x - slot.grid_x;
+            let right =
+                slot.grid_x + grid_size * slot.grid_width as i32 - slot.offset_x - width as i32;
+            assert!(left >= 0 && right >= 0, "位图超出了网格块");
+            assert!(
+                (left - right).abs() <= 1,
+                "{width}x{height} 的左右余量不对称：{left} vs {right}"
+            );
+
+            let top = slot.offset_y - slot.grid_y;
+            let bottom =
+                slot.grid_y + grid_size * slot.grid_height as i32 - slot.offset_y - height as i32;
+            assert!(top >= 0 && bottom >= 0, "位图超出了网格块");
+            assert!(
+                (top - bottom).abs() <= 1,
+                "{width}x{height} 的上下余量不对称：{top} vs {bottom}"
+            );
+        }
+    }
+
+    /// 取出文字变体；测试遇到其他变体说明该用例假设已被破坏。
+    fn text_vertices(element: &UnitVertices) -> &crate::glyph_vertices::TextVertices {
+        match element {
+            UnitVertices::Text(text) => text,
+            other => panic!("expected a text element, got {other:?}"),
+        }
     }
 }
