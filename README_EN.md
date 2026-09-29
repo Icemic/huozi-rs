@@ -25,7 +25,7 @@ Huozi (Rust) is a new generation version of [huozi.js](https://github.com/Icemic
 - Supports TTF, OTF, OTC, and TTC, as well as optional WOFF and WOFF2
 - Supports ordered font fallback
 - Supports shaping and glyph-id SDF atlases
-- Supports various text effects, including underline, strikethrough, color, etc. (under development)
+- Supports various text effects, including underline, strikethrough, color, etc.
 - Outputs as images or textures, and provides vertex coordinates and texture coordinates for easy integration with any rendering engine
 - Provides comprehensive support for [W3C Requirements for Chinese Text Layout](https://www.w3.org/TR/clreq/), including kinsoku, punctuation spacing, line breaking, and line adjustment
 
@@ -43,12 +43,12 @@ Run `cargo run --example render --release` to see the following GUI window:
 - [x] Multiple font formats
 - [x] Multiple fonts, Font Fallback
 - [x] Color
-- [ ] Underline, Strikethrough
-- [ ] Emphasis marks, Wavy underline
+- [x] Underline, Strikethrough
+- [x] Emphasis marks, Wavy underline
 - [x] Output as image or texture, providing vertex and texture coordinates
 - [x] W3C Chinese Layout Requirements (currently supports Simplified Chinese horizontal paragraphs; other modes are under development)
 - [x] Ligatures
-- [ ] Oblique, bold
+- [x] Oblique, bold
 - [x] Supports Windows, macOS, Linux, Android, iOS, Web (WebAssembly) platforms
 
 Issues and Pull Requests are welcome!
