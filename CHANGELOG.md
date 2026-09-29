@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.23.0 (2026-09-29)
+
+### Chore
+
+ - <csr-id-7516c630561c69dbc3753e72df287f5452b64887/> update render example dimensions and bopomofo samples
+
+### Documentation
+
+ - <csr-id-ea059a915cdcb7967960f054d3f6b626c8dced48/> mark text effects as supported
+ - <csr-id-1b9ecdef9835de0fb3fc1acd34456c788551250b/> document interaction hit testing support
+
+### New Features
+
+ - <csr-id-ac457c8e66378aa8430d2d2850ac6c8c808f028a/> add scrolling to the render canvas
+ - <csr-id-695bb77136f49061dae3d7fd0e794d53275fbc9f/> add rich-text geometry output and incremental rendering
+
+### Bug Fixes
+
+ - <csr-id-b00d1af59707c5f94a61d2e99024ee4048ccff38/> upload egui textures before updating render buffers
+
+### Refactor
+
+ - <csr-id-a0b2a6a1ba6851f0b9b4a6275f2b19e122de1c09/> split render controls into focused UI modules
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 8 commits contributed to the release over the course of 4 calendar days.
+ - 6 days passed between releases.
+ - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Mark text effects as supported ([`ea059a9`](https://github.com/Icemic/huozi-rs/commit/ea059a915cdcb7967960f054d3f6b626c8dced48))
+    - Upload egui textures before updating render buffers ([`b00d1af`](https://github.com/Icemic/huozi-rs/commit/b00d1af59707c5f94a61d2e99024ee4048ccff38))
+    - Add scrolling to the render canvas ([`ac457c8`](https://github.com/Icemic/huozi-rs/commit/ac457c8e66378aa8430d2d2850ac6c8c808f028a))
+    - Update docs ([`0c94726`](https://github.com/Icemic/huozi-rs/commit/0c9472681d6c6f09bcd782e2a171b83c1c6f3b80))
+    - Update render example dimensions and bopomofo samples ([`7516c63`](https://github.com/Icemic/huozi-rs/commit/7516c630561c69dbc3753e72df287f5452b64887))
+    - Split render controls into focused UI modules ([`a0b2a6a`](https://github.com/Icemic/huozi-rs/commit/a0b2a6a1ba6851f0b9b4a6275f2b19e122de1c09))
+    - Add rich-text geometry output and incremental rendering ([`695bb77`](https://github.com/Icemic/huozi-rs/commit/695bb77136f49061dae3d7fd0e794d53275fbc9f))
+    - Document interaction hit testing support ([`1b9ecde`](https://github.com/Icemic/huozi-rs/commit/1b9ecdef9835de0fb3fc1acd34456c788551250b))
+</details>
+
 ## v0.22.1 (2026-09-23)
 
 ### Bug Fixes
@@ -15,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -26,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.22.1 ([`3baf7b8`](https://github.com/Icemic/huozi-rs/commit/3baf7b8e3b503c0ee6c3d81601fae8e987d80059))
     - Restore SDF edge smoothing and inner coverage ([`ab5747f`](https://github.com/Icemic/huozi-rs/commit/ab5747f8bfccb0cba226354f24479d2fda096428))
 </details>
 
