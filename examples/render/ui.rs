@@ -66,7 +66,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
         render_interaction_notice(state, ui);
 
         // 底部面板：左侧文本输入，右侧配置分组。
-        egui::Panel::bottom("text_input_panel")
+        let panel = egui::Panel::bottom("text_input_panel")
             .resizable(true)
             .default_size(360.0)
             .show(ui, |ui| {
@@ -90,5 +90,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                 });
                 ui.add_space(6.);
             });
+        // 面板上边缘就是渲染区域的可见底边，滚动范围以它为准。
+        state.viewport_height = panel.response.rect.top();
     })
 }

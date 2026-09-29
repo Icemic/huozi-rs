@@ -41,6 +41,9 @@ mod ui;
 /// 逐字显示进度：`glyphs` 的结束下标，`None` 表示显示全部。
 type Progress = Option<usize>;
 
+/// 滚轮一格的滚动距离（逻辑像素）。
+const SCROLL_LINE_HEIGHT: f32 = 54.0;
+
 /// 固定的绘制层次序。
 ///
 /// 层的先后决定半透明重叠、描边与阴影是否正确：背景在文字之下，装饰在文字之上。文字与图形都按
@@ -234,6 +237,12 @@ pub struct State {
     element_count: usize,
     /// 上次完整布局的结果；逐字进度变化时复用它重建缓冲，避免重复排版。
     layout_output: Option<RichTextLayoutOutput>,
+    /// 渲染区域的垂直滚动量（逻辑像素）：顶点按 `y - scroll` 绘制。
+    scroll: f32,
+    /// 渲染区域的可见高度（逻辑像素），由底部面板的上边缘决定。
+    viewport_height: f32,
+    /// 滚动量发生变化；只需要重建顶点缓冲，不需要重新排版。
+    scroll_changed: bool,
 
     // Store egui render data
     egui_paint_jobs: Vec<egui::ClippedPrimitive>,
@@ -558,6 +567,9 @@ impl State {
             progress: None,
             element_count: 0,
             layout_output: None,
+            scroll: 0.0,
+            viewport_height: 0.0,
+            scroll_changed: false,
             egui_paint_jobs: Vec::new(),
             egui_textures_delta: Default::default(),
         }
@@ -599,11 +611,37 @@ impl State {
             .egui_context
             .tessellate(full_output.shapes, full_output.pixels_per_point);
 
-        // 逐字进度不改变布局，只改变可见前缀，因此走重建缓冲的路径；其余改动重新排版。
-        if std::mem::take(&mut self.progress_changed) {
+        // 面板高度变化后，原来的滚动位置可能超出新的可视范围。
+        let max_scroll = self.max_scroll();
+        if self.scroll > max_scroll {
+            self.scroll = max_scroll;
+            self.scroll_changed = true;
+        }
+
+        // 逐字进度与滚动量都不改变布局，只改变可见范围，因此走重建缓冲的路径；其余改动重新排版。
+        let progress_changed = std::mem::take(&mut self.progress_changed);
+        let scroll_changed = std::mem::take(&mut self.scroll_changed);
+        if progress_changed || scroll_changed {
             self.rebuild_buffers();
         } else if self.config_changed {
             self.render_huozi_text();
+        }
+    }
+
+    /// 内容可以向上滚动的最大距离；内容不足一屏时为 0。
+    fn max_scroll(&self) -> f32 {
+        self.layout_output
+            .as_ref()
+            .map_or(0.0, |output| output.height as f32 - self.viewport_height)
+            .max(0.0)
+    }
+
+    /// 按滚轮增量滚动渲染区域。`delta` 与 winit 的约定一致：正值表示向上滚。
+    fn scroll_by(&mut self, delta: f32) {
+        let scroll = (self.scroll - delta).clamp(0.0, self.max_scroll());
+        if scroll != self.scroll {
+            self.scroll = scroll;
+            self.scroll_changed = true;
         }
     }
 
@@ -729,7 +767,13 @@ impl State {
         }
         let end = self.progress.unwrap_or(total);
 
-        let (vertices, indices) = assemble(&output.glyphs[..end]);
+        let (mut vertices, indices) = assemble(&output.glyphs[..end]);
+        // 顶点在布局坐标里生成；滚动就是把这些坐标整体上移，图集与样式都不受影响。
+        if self.scroll != 0.0 {
+            for vertex in &mut vertices {
+                vertex.position[1] -= self.scroll;
+            }
+        }
         let vertex_buffer = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -802,14 +846,6 @@ impl State {
 
         // Render egui (only if there are paint jobs to render)
         if !self.egui_paint_jobs.is_empty() {
-            // Update textures
-            for (id, image_deltas) in &self.egui_textures_delta.set {
-                for image_delta in image_deltas {
-                    self.egui_renderer
-                        .update_texture(&self.device, &self.queue, *id, image_delta);
-                }
-            }
-
             let screen_descriptor = egui_wgpu::ScreenDescriptor {
                 size_in_pixels: [self.config.width, self.config.height],
                 pixels_per_point: self.egui_context.pixels_per_point(),
@@ -846,10 +882,20 @@ impl State {
             );
         }
 
-        // Free egui textures
+        // 纹理增量必须在本帧消费完：`update()` 下一帧会用新一帧的增量覆盖这个字段，而 epaint 在
+        // drop 未消费的增量时会断言失败；`free` 列表若不清空，还会被每帧重复释放一次。
+        //
+        // 上传与绘制无关，因此不放在上面「有绘制任务」的分支里。
+        for (id, image_deltas) in &self.egui_textures_delta.set {
+            for image_delta in image_deltas {
+                self.egui_renderer
+                    .update_texture(&self.device, &self.queue, *id, image_delta);
+            }
+        }
         for id in &self.egui_textures_delta.free {
             self.egui_renderer.free_texture(id);
         }
+        self.egui_textures_delta.clear();
 
         self.queue.submit(iter::once(encoder.finish()));
         self.queue.present(output);
@@ -988,6 +1034,25 @@ impl ApplicationHandler for App {
                     ));
                 }
             }
+            WindowEvent::MouseWheel { delta, .. } => {
+                if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref()) {
+                    // 指针在底部面板上时，滚轮归面板里的输入框滚动区处理。
+                    let over_canvas = state
+                        .cursor_position
+                        .is_none_or(|(_, y)| y < state.viewport_height);
+                    if over_canvas {
+                        let scale_factor = window.scale_factor() as f32;
+                        let delta = match delta {
+                            MouseScrollDelta::LineDelta(_, y) => y * SCROLL_LINE_HEIGHT,
+                            MouseScrollDelta::PixelDelta(position) => {
+                                position.y as f32 / scale_factor
+                            }
+                        };
+                        state.scroll_by(delta);
+                        window.request_redraw();
+                    }
+                }
+            }
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
                 button: MouseButton::Left,
@@ -996,6 +1061,8 @@ impl ApplicationHandler for App {
                 if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref())
                     && let Some((x, y)) = state.cursor_position
                     && let Some(interaction) = state.interactions.iter().find(|interaction| {
+                        // 交互区域记录在布局坐标里，滚动只改变绘制位置，比较前先换算。
+                        let y = y + state.scroll;
                         interaction.areas.iter().any(|area| {
                             area.rect.left <= x
                                 && x <= area.rect.right
