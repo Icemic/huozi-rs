@@ -169,8 +169,8 @@ CJK 标点——⸺，。：；“”？、《》「」【】
 "##;
 
 const DEFAULT_FONT_FALLBACKS: [(&str, FontSourceKind); 5] = [
-    ("InterVariable.ttf", FontSourceKind::Latin),
-    ("InterVariable-Italic.ttf", FontSourceKind::Latin),
+    ("InterVariable.ttf", FontSourceKind::Western),
+    ("InterVariable-Italic.ttf", FontSourceKind::Western),
     ("SourceHanSansSC-VF.otf", FontSourceKind::Cjk),
     ("SourceHanSerif-VF.otf.woff2", FontSourceKind::Cjk),
     ("SweiGothicCJKsc-Regular.ttf", FontSourceKind::Cjk),

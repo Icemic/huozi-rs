@@ -35,7 +35,7 @@ use tiqian::shaping::text_shaper::{ShapingResult, ShapingSource};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FontSourceKind {
     Cjk,
-    Latin,
+    Western,
 }
 
 #[derive(Clone, Debug)]
@@ -332,7 +332,7 @@ impl HuoziFontManager {
         let mut candidates = Vec::new();
         let target_kind = match request.role {
             FontRole::CjkText | FontRole::CjkPunctuation => Some(FontSourceKind::Cjk),
-            FontRole::LatinText => Some(FontSourceKind::Latin),
+            FontRole::LatinText => Some(FontSourceKind::Western),
             FontRole::Symbol | FontRole::Emoji | FontRole::Unknown => None,
         };
 
@@ -1165,7 +1165,7 @@ mod tests {
     fn prioritizes_cjk_kind_for_cjk_text_and_punctuation() {
         let manager = HuoziFontManager::from_sources(vec![
             FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
-                .with_kind(FontSourceKind::Latin),
+                .with_kind(FontSourceKind::Western),
             FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned())
                 .with_kind(FontSourceKind::Cjk),
         ])
@@ -1181,12 +1181,12 @@ mod tests {
     }
 
     #[test]
-    fn prioritizes_latin_kind_for_latin_text() {
+    fn prioritizes_western_kind_for_latin_text() {
         let manager = HuoziFontManager::from_sources(vec![
             FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned())
                 .with_kind(FontSourceKind::Cjk),
             FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
-                .with_kind(FontSourceKind::Latin),
+                .with_kind(FontSourceKind::Western),
         ])
         .unwrap();
 
@@ -1200,7 +1200,7 @@ mod tests {
     fn prioritizes_kind_within_explicit_family_list() {
         let manager = HuoziFontManager::from_sources(vec![
             FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
-                .with_kind(FontSourceKind::Latin),
+                .with_kind(FontSourceKind::Western),
             FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned())
                 .with_kind(FontSourceKind::Cjk),
         ])
@@ -1231,7 +1231,7 @@ mod tests {
     fn keeps_explicit_single_family_from_leaking_to_other_families() {
         let manager = HuoziFontManager::from_sources(vec![
             FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
-                .with_kind(FontSourceKind::Latin),
+                .with_kind(FontSourceKind::Western),
             FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned())
                 .with_kind(FontSourceKind::Cjk),
         ])
@@ -1251,7 +1251,7 @@ mod tests {
     fn keeps_base_order_for_roles_without_a_target_kind() {
         let manager = HuoziFontManager::from_sources(vec![
             FontSource::with_alias(FIRA_CODE.to_vec(), "fira".to_owned())
-                .with_kind(FontSourceKind::Latin),
+                .with_kind(FontSourceKind::Western),
             FontSource::with_alias(SOURCE_HAN_SANS.to_vec(), "source-han".to_owned())
                 .with_kind(FontSourceKind::Cjk),
         ])

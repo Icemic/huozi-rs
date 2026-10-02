@@ -41,9 +41,9 @@ fn main() {
 
     let font_sources = vec![
         FontSource::new(include_bytes!("../resources/fonts/InterVariable.ttf").to_vec())
-            .with_kind(FontSourceKind::Latin),
+            .with_kind(FontSourceKind::Western),
         FontSource::new(include_bytes!("../resources/fonts/InterVariable-Italic.ttf").to_vec())
-            .with_kind(FontSourceKind::Latin),
+            .with_kind(FontSourceKind::Western),
         FontSource::new(include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf").to_vec())
             .with_kind(FontSourceKind::Cjk),
     ];

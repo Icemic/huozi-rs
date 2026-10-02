@@ -70,7 +70,7 @@ fn render_font_list(state: &mut State, ui: &mut egui::Ui) -> bool {
                             egui::Button::new(kind_label(font.kind))
                                 .min_size(egui::vec2(18.0, 18.0)),
                         )
-                        .on_hover_text("Cycle kind: unset, CJK, Latin")
+                        .on_hover_text("Cycle kind: unset, CJK, Western")
                         .clicked()
                     {
                         font.kind = next_kind(font.kind);
@@ -173,20 +173,20 @@ fn render_add_font_row(state: &mut State, ui: &mut egui::Ui) -> bool {
     changed
 }
 
-/// 角色标记：未声明、CJK 或 Latin。
+/// 角色标记：未声明、CJK 或 Western。
 fn kind_label(kind: Option<FontSourceKind>) -> &'static str {
     match kind {
         None => "*",
         Some(FontSourceKind::Cjk) => "C",
-        Some(FontSourceKind::Latin) => "L",
+        Some(FontSourceKind::Western) => "W",
     }
 }
 
-/// 角色按钮的循环顺序：未声明 → CJK → Latin → 未声明。
+/// 角色按钮的循环顺序：未声明 → CJK → Western → 未声明。
 fn next_kind(kind: Option<FontSourceKind>) -> Option<FontSourceKind> {
     match kind {
         None => Some(FontSourceKind::Cjk),
-        Some(FontSourceKind::Cjk) => Some(FontSourceKind::Latin),
-        Some(FontSourceKind::Latin) => None,
+        Some(FontSourceKind::Cjk) => Some(FontSourceKind::Western),
+        Some(FontSourceKind::Western) => None,
     }
 }
