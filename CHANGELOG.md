@@ -5,7 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.24.0 (2026-10-02)
+
+### Refactor
+
+ - <csr-id-82478937babf967cd4371658ce90475159f320fc/> rename Latin font kind to Western
+
+### Test
+
+ - <csr-id-c232336e8fc8d5ad7eaeeaf6379ff4d0f2d10286/> update render snapshot
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 2 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Rename Latin font kind to Western ([`8247893`](https://github.com/Icemic/huozi-rs/commit/82478937babf967cd4371658ce90475159f320fc))
+    - Update render snapshot ([`c232336`](https://github.com/Icemic/huozi-rs/commit/c232336e8fc8d5ad7eaeeaf6379ff4d0f2d10286))
+</details>
+
 ## v0.23.0 (2026-09-29)
+
+<csr-id-7516c630561c69dbc3753e72df287f5452b64887/>
+<csr-id-a0b2a6a1ba6851f0b9b4a6275f2b19e122de1c09/>
 
 ### Chore
 
@@ -33,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 8 commits contributed to the release over the course of 4 calendar days.
+ - 9 commits contributed to the release over the course of 4 calendar days.
  - 6 days passed between releases.
  - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -45,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.23.0 ([`82c7076`](https://github.com/Icemic/huozi-rs/commit/82c70769345d955b218ceb3cc1ca57d4b0bad754))
     - Mark text effects as supported ([`ea059a9`](https://github.com/Icemic/huozi-rs/commit/ea059a915cdcb7967960f054d3f6b626c8dced48))
     - Upload egui textures before updating render buffers ([`b00d1af`](https://github.com/Icemic/huozi-rs/commit/b00d1af59707c5f94a61d2e99024ee4048ccff38))
     - Add scrolling to the render canvas ([`ac457c8`](https://github.com/Icemic/huozi-rs/commit/ac457c8e66378aa8430d2d2850ac6c8c808f028a))
