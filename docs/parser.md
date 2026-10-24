@@ -255,12 +255,21 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 | `blockIndent` | `f32`，所有行的起始缩进。 |
 | `align` | `start`、`center`、`end`。 |
 | `lineLengthGrid` | `bool`。 |
+| `whiteSpace` | `collapse`、`preserveBreaks`、`preserve`、`breakSpaces`。 |
+| `textWrap` | `wrap`、`noWrap`。 |
+| `tabSize` | `f32`，Tab stop 以段落默认字体空格 advance 的倍数表示。 |
 | `rubyLineHeightMode` | `perLine`、`uniformParagraph`。 |
 | `inlineObjectMinimumClearance` | `f32`。 |
 | `emphasisDotGap` | `f32`。 |
 
 ```text
 第一段[br indent=2 lineHeight=36 blockIndent=1 /]第二段
+```
+
+空白与换行也可通过 `LayoutStyle` 为整次布局设置默认值，`br` 属性只覆盖它之后的段落。
+
+```text
+正文[br whiteSpace=preserve textWrap=noWrap tabSize=4 /]保留空白的单行段落
 ```
 
 `parse_text` 与 `parse_text_with` 保留全部 `ParsedParagraph`，四个布局入口都布局全部段落；连续 `[br /]` 形成的空段占一行高度但没有绘制元素。

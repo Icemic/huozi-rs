@@ -9,11 +9,15 @@ use tiqian::core::text_model::{
     InlineObjectBoundaryAdjustment, LastLineAlignment as TiqianLastLineAlignment, LayoutInput,
     LineLengthGrid, ParagraphStyle, RichTextBackgroundMetricPolicy, RichTextBackgroundPaint,
     RichTextLayer, RichTextLayerKind, RichTextLinePaint, RichTextLinePattern, RichTextPaint,
-    RubyLineHeightMode as TiqianRubyLineHeightMode, TextStyle as TiqianTextStyle,
+    RubyLineHeightMode as TiqianRubyLineHeightMode, TabSize as TiqianTabSize,
+    TextWrapMode as TiqianTextWrapMode, TextStyle as TiqianTextStyle,
+    WhiteSpaceMode as TiqianWhiteSpaceMode,
 };
 use tiqian::core::units::Ic;
 
-use crate::layout::{LayoutStyle, ParagraphAlignment};
+use crate::layout::{
+    LayoutStyle, ParagraphAlignment, TabSize, TextWrapMode, WhiteSpaceMode,
+};
 use crate::parser::{
     BackgroundMetricPolicy, DecorationKind, InlineBoxSpacing, InlineNode, InlineObject,
     InlineScopeKind, LinePattern, LineStyle, ParagraphStyleOverride, ParsedParagraph, RubyKind,
@@ -97,6 +101,9 @@ impl HuoziTiqianInputAdapter {
                 count: layout_style.indent as f32,
             }))
             .last_line_alignment(tiqian_last_line_alignment(layout_style, None))
+            .white_space(tiqian_white_space(layout_style.white_space))
+            .text_wrap(tiqian_text_wrap(layout_style.text_wrap))
+            .tab_size(tiqian_tab_size(layout_style.tab_size))
             .build();
         let mut builder = ParagraphBuilder::new(constraints);
         builder
@@ -413,6 +420,19 @@ fn paragraph_style(
         .line_length_grid(LineLengthGrid::with_enabled(
             override_style.line_length_grid.unwrap_or(true),
         ))
+        .white_space(tiqian_white_space(
+            override_style.white_space.unwrap_or(layout_style.white_space),
+        ))
+        .text_wrap(tiqian_text_wrap(
+            override_style.text_wrap.unwrap_or(layout_style.text_wrap),
+        ))
+        .tab_size(tiqian_tab_size(
+            override_style
+                .tab_size
+                .map_or(layout_style.tab_size, |multiple| {
+                    TabSize::SpaceAdvanceMultiple(multiple as f64)
+                }),
+        ))
         .ruby_line_height_mode(match override_style.ruby_line_height_mode {
             Some(RubyLineHeightMode::UniformParagraph) => {
                 TiqianRubyLineHeightMode::UniformParagraph
@@ -444,6 +464,31 @@ fn tiqian_last_line_alignment(
         ParagraphAlignment::Start => TiqianLastLineAlignment::Start,
         ParagraphAlignment::Center => TiqianLastLineAlignment::Center,
         ParagraphAlignment::End => TiqianLastLineAlignment::End,
+    }
+}
+
+fn tiqian_white_space(mode: WhiteSpaceMode) -> TiqianWhiteSpaceMode {
+    match mode {
+        WhiteSpaceMode::Collapse => TiqianWhiteSpaceMode::Collapse,
+        WhiteSpaceMode::PreserveBreaks => TiqianWhiteSpaceMode::PreserveBreaks,
+        WhiteSpaceMode::Preserve => TiqianWhiteSpaceMode::Preserve,
+        WhiteSpaceMode::BreakSpaces => TiqianWhiteSpaceMode::BreakSpaces,
+    }
+}
+
+fn tiqian_text_wrap(mode: TextWrapMode) -> TiqianTextWrapMode {
+    match mode {
+        TextWrapMode::Wrap => TiqianTextWrapMode::Wrap,
+        TextWrapMode::NoWrap => TiqianTextWrapMode::NoWrap,
+    }
+}
+
+fn tiqian_tab_size(size: TabSize) -> TiqianTabSize {
+    match size {
+        TabSize::SpaceAdvanceMultiple(multiple) => {
+            TiqianTabSize::SpaceAdvanceMultiple(multiple as f32)
+        }
+        TabSize::LayoutUnits(units) => TiqianTabSize::LayoutUnits(units as f32),
     }
 }
 

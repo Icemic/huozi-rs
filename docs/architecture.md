@@ -93,7 +93,7 @@ flowchart TD
 
 `SourceRange` 以 Unicode scalar value 为单位，使用半开范围 `[start, end)` 指向单个原始 `Segment.content`。它可以包含标签和转义符号的位置，不等同于 tiqian 拼接后显示文本的范围。
 
-`TextStyle` 表示 run 级字体族、字号、locale、字重、斜体、`fontSynthesis`、基线偏移、附着方式、填充色、描边和阴影。`fontSynthesis` 的 `none`、`weight`、`style`、`all` 分别禁止全部合成、仅允许仿粗、仅允许仿斜、允许两者，默认 `all`。`InlineScopeKind` 保存背景、线条、注音、装饰、链接、技术文本、行内代码、自动间距和行内盒等范围语义。`LayoutStyle` 表示整个布局调用的宽高约束、相对基础字号的行高倍率、以 CJK 字宽表示的首行缩进和段落 `align`；`ParagraphStyleOverride` 保存 `[br /]` 对后续段落的覆盖字段。
+`TextStyle` 表示 run 级字体族、字号、locale、字重、斜体、`fontSynthesis`、基线偏移、附着方式、填充色、描边和阴影。`fontSynthesis` 的 `none`、`weight`、`style`、`all` 分别禁止全部合成、仅允许仿粗、仅允许仿斜、允许两者，默认 `all`。`InlineScopeKind` 保存背景、线条、注音、装饰、链接、技术文本、行内代码、自动间距和行内盒等范围语义。`LayoutStyle` 表示整个布局调用的宽高约束、相对基础字号的行高倍率、以 CJK 字宽表示的首行缩进、段落 `align`，以及空白模式 `whiteSpace`、换行控制 `textWrap` 和 Tab stop `tabSize`；`ParagraphStyleOverride` 保存 `[br /]` 对后续段落的同组覆盖字段。
 
 ### 3. 字体、fallback 与 shaping 层
 

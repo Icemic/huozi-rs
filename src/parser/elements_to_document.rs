@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use crate::layout::ParagraphAlignment;
+use crate::layout::{ParagraphAlignment, TextWrapMode, WhiteSpaceMode};
 use crate::parser::{
     Attribute, BackgroundMetricPolicy, BackgroundStyle, DecorationKind, Element, FontSynthesis,
     InlineAttachment, InlineBoxSpacing, InlineBoxStyle, InlineCodeStyle, InlineNode, InlineObject,
@@ -660,6 +660,33 @@ fn apply_paragraph_attributes(style: &mut ParagraphStyleOverride, attributes: &[
                 &attribute.value,
                 &mut style.line_length_grid,
                 "line length grid",
+            ),
+            "whiteSpace" => {
+                style.white_space = match attribute.value.as_str() {
+                    "collapse" => Some(WhiteSpaceMode::Collapse),
+                    "preserveBreaks" => Some(WhiteSpaceMode::PreserveBreaks),
+                    "preserve" => Some(WhiteSpaceMode::Preserve),
+                    "breakSpaces" => Some(WhiteSpaceMode::BreakSpaces),
+                    _ => {
+                        log::warn!("invalid paragraph white space `{}`", attribute.value);
+                        style.white_space
+                    }
+                }
+            }
+            "textWrap" => {
+                style.text_wrap = match attribute.value.as_str() {
+                    "wrap" => Some(TextWrapMode::Wrap),
+                    "noWrap" => Some(TextWrapMode::NoWrap),
+                    _ => {
+                        log::warn!("invalid paragraph text wrap `{}`", attribute.value);
+                        style.text_wrap
+                    }
+                }
+            }
+            "tabSize" => update_optional_value(
+                &attribute.value,
+                &mut style.tab_size,
+                "paragraph tab size",
             ),
             "rubyLineHeightMode" => {
                 style.ruby_line_height_mode = match attribute.value.as_str() {
