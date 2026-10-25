@@ -1,6 +1,4 @@
-use harfrust::{
-    Direction, Feature, FontRef as HarfRustFontRef, ShaperData, ShaperInstance, Tag, UnicodeBuffer,
-};
+use harfrust::{Buffer, Direction, Feature, Font as HarfRustFont, Script, ShaperFont, Tag};
 use log::warn;
 use lru::LruCache;
 use skrifa::attribute::{Attributes, Style};
@@ -99,6 +97,18 @@ struct FontVariationAxes {
     slant: Option<FontVariationAxis>,
 }
 
+/// 把 `Arc<[u8]>` 适配成 `read-fonts` 的 `Blob` 所需的 trait object。
+///
+/// `Blob` 没有 `From<Arc<[u8]>>` 实现，而字体字节已在 `FontFaceRecord::bytes`
+/// 中共享；经由本类型转换可避免为 shaping 复制整份字体数据。
+struct SharedFontBytes(Arc<[u8]>);
+
+impl AsRef<[u8]> for SharedFontBytes {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 struct FontFaceRecord {
     id: FontFaceId,
     source_index: usize,
@@ -115,7 +125,9 @@ struct FontFaceRecord {
     leading: i16,
     typo_ascent: Option<i16>,
     typo_descent: Option<i16>,
-    shaper_data: ShaperData,
+    /// HarfRust 的字体模型。持有字体字节并通过内部缓存共享表解析结果，
+    /// 供 shaping 时反复构造 `ShaperFont`。
+    shaper_font: HarfRustFont,
 }
 
 const INK_BOUNDS_CACHE_CAPACITY: usize = 1024;
@@ -195,7 +207,9 @@ impl HuoziFontManager {
                 );
                 let os2 = font.os2().ok();
                 let attributes = Attributes::new(&font);
-                let harfrust_font = HarfRustFontRef::from_index(&bytes, collection_index)
+                let harfrust_blob: Arc<dyn AsRef<[u8]> + Send + Sync> =
+                    Arc::new(SharedFontBytes(Arc::clone(&bytes)));
+                let harfrust_font = HarfRustFont::new(harfrust_blob, collection_index)
                     .expect("SkRifa 可读取的已注册字体应当也可供 HarfRust 读取");
                 let mut family_names = font_family_names(&font);
                 if let Some(alias) = source_alias.as_deref() {
@@ -222,7 +236,7 @@ impl HuoziFontManager {
                     leading: hhea.line_gap().into(),
                     typo_ascent: os2.as_ref().map(|table| table.s_typo_ascender()),
                     typo_descent: os2.as_ref().map(|table| table.s_typo_descender()),
-                    shaper_data: ShaperData::new(&harfrust_font),
+                    shaper_font: harfrust_font,
                 };
                 descriptors.push(
                     ReplayableFontFaceDescriptor::builder(
@@ -478,8 +492,7 @@ impl HuoziFontManager {
         candidate: &FontCandidate<'_>,
     ) -> (ShapingResult, u32) {
         let face = candidate.face;
-        let font = HarfRustFontRef::from_index(&face.bytes, face.collection_index)
-            .expect("registered face must remain readable by HarfRust");
+        let font = &face.shaper_font;
         let variation_settings: Vec<_> = candidate
             .id
             .variation_instance()
@@ -487,26 +500,23 @@ impl HuoziFontManager {
             .iter()
             .map(|setting| (Tag::new(&feature_tag(setting.tag())), setting.value()))
             .collect();
-        let instance = ShaperInstance::from_variations(&font, variation_settings);
-        let shaper = face
-            .shaper_data
-            .shaper(&font)
-            .instance(Some(&instance))
-            .build();
-        let mut buffer = UnicodeBuffer::new();
+        // 每次 shaping 按候选的变量实例构造字体实例；表解析结果由 `Font` 内部缓存共享。
+        let instance = font.instance_builder().variations(variation_settings).build();
+        let shaper = ShaperFont::new(&instance);
+        let mut buffer = Buffer::new();
         buffer.push_str(request.display_text.as_str());
         buffer.guess_segment_properties();
         buffer.set_direction(Direction::LeftToRight);
         if request.role == FontRole::CjkPunctuation {
-            buffer.set_script(harfrust::script::HAN);
+            buffer.set_script(Some(Script::HAN));
         }
-        buffer.set_language(
+        buffer.set_language(Some(
             request
                 .style
                 .locale
                 .parse()
                 .unwrap_or_else(|_| "c".parse().expect("fallback language must parse")),
-        );
+        ));
         let features: Vec<_> = request
             .open_type_features
             .iter()
@@ -514,13 +524,19 @@ impl HuoziFontManager {
                 Feature::new(Tag::new(&feature_tag(feature)), feature_value(feature), ..)
             })
             .collect();
-        let output = shaper.shape(buffer, harfrust::ShapeOptions::new().features(&features));
+        if let Err(error) = harfrust::shape(
+            &shaper,
+            &mut buffer,
+            harfrust::ShapeOptions::new().features(&features),
+        ) {
+            warn!("harfrust shaping failed for face {}: {error:?}", face.id);
+        }
         let scale = request.style.font_size / face.units_per_em as f32;
         let mut pen_x = 0_i64;
-        let glyphs: Vec<_> = output
+        let glyphs: Vec<_> = buffer
             .glyph_infos()
             .iter()
-            .zip(output.glyph_positions())
+            .zip(buffer.glyph_positions())
             .map(|(info, position)| {
                 let glyph = Glyph::builder(
                     info.glyph_id,
@@ -1646,9 +1662,7 @@ mod tests {
             leading: 0,
             typo_ascent: Some(800),
             typo_descent: Some(-200),
-            shaper_data: ShaperData::new(
-                &HarfRustFontRef::from_index(INTER, 0).expect("测试字体必须有效"),
-            ),
+            shaper_font: HarfRustFont::new(INTER, 0).expect("测试字体必须有效"),
         }
     }
 }
