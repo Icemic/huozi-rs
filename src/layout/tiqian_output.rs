@@ -426,7 +426,7 @@ fn append_decorations(
     let decoration_paints = decoration_paint_layers(result);
     let mut fragments = Vec::new();
     let mut segments = Vec::new();
-    for decision in &result.debug.decoration_decisions {
+    for decision in &result.layout.decorations.emphasis_dots {
         if !decision.applied || decision.dot_diameter <= 0.0 {
             continue;
         }
@@ -535,7 +535,7 @@ fn append_annotations(
     visible: &HashMap<TextRange, VisibleCluster>,
     color_space: &ColorSpace,
 ) {
-    for decision in &result.debug.ruby_decisions {
+    for decision in &result.layout.annotations.ruby {
         let Some(position) = base_position(result, visible, decision.base_range) else {
             continue;
         };
@@ -572,7 +572,7 @@ fn append_annotations(
         }
     }
 
-    for decision in &result.debug.bopomofo_decisions {
+    for decision in &result.layout.annotations.bopomofo {
         let Some(position) = base_position(result, visible, decision.base_range) else {
             continue;
         };
@@ -681,7 +681,7 @@ fn append_inline_objects(
     source_map: &HuoziSourceMap,
     visible: &HashMap<TextRange, VisibleCluster>,
 ) {
-    for decision in &result.debug.inline_object_decisions {
+    for decision in &result.layout.inline_objects {
         let Some(object) = result
             .input
             .inline_objects
