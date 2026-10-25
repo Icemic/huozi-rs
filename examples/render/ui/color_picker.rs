@@ -1,8 +1,6 @@
 use csscolorparser::Color;
 use egui::color_picker::show_color_at;
-use egui::{
-    Color32, Popup, PopupCloseBehavior, Response, Sense, StrokeKind, Ui, WidgetInfo, WidgetType,
-};
+use egui::{Color32, Popup, PopupCloseBehavior, Response, Sense, StrokeKind, Ui, WidgetInfo};
 
 /// A color picker button that shows a popup color picker when clicked.
 ///
