@@ -44,7 +44,7 @@ pub fn color_picker_srgba(ui: &mut Ui, color: &mut Color) -> Response {
 fn color_button(ui: &mut Ui, color: Color32, open: bool) -> Response {
     let size = ui.spacing().interact_size;
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
-    response.widget_info(|| WidgetInfo::new(WidgetType::ColorButton));
+    response.widget_info(|| WidgetInfo::new(egui::Role::Button));
 
     if ui.is_rect_visible(rect) {
         let visuals = if open {

@@ -34,9 +34,9 @@ wuff = {version = "0.2.9", optional = true}
 
 [dev-dependencies]
 cfg-if = "1"
-egui = "0.36.1"
-egui-wgpu = "0.36.1"
-egui-winit = "0.36.1"
+egui = "0.37"
+egui-wgpu = "0.37"
+egui-winit = "0.37"
 env_logger = "0.11"
 image = {version = "0.25", default-features = false, features = ["png"]}
 pollster = "1.0"
