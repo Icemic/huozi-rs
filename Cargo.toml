@@ -19,10 +19,10 @@ woff = ["dep:wuff"]
 ab_glyph_rasterizer = "0.1"
 anyhow = "1"
 bytemuck = {version = "1.4", features = ["derive"]}
-csscolorparser = {version = "0.8.0", features = ["serde"]}
+csscolorparser = {version = "0.9.0", features = ["serde"]}
 harfrust = "0.13"
 log = "0.4"
-lru = "0.18.2"
+lru = "0.19"
 nom = {version = "8.0"}
 nom-language = {version = "0.1"}
 nom_locate_usv = {version = "5.1.0", features = ["runtime-dispatch-simd"]}
