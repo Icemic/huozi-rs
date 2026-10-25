@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.25.0 (2026-10-26)
+
+### Chore
+
+ - <csr-id-f4b63173cd9c377df56ac786858c5fc1865f55a9/> remove unused WidgetType import
+ - <csr-id-194dc874753b09415045765ae31cd03d8fb06f49/> upgrade harfrust and skrifa
+ - <csr-id-0fbbf9cbb3414d552e9530d967e9a5b460de8f10/> upgrade egui to 0.37
+ - <csr-id-fcd4e260cad154df37071e7d0d0fe2db3cd326a9/> update dependencies
+ - <csr-id-7613d642c44c80df0524de122b4ecc1cba1bbaad/> update csscolorparser and lru dependencies
+ - <csr-id-afe7c547a91cdda11fe60adab15c92432bd58240/> update tiqian to 0.7
+
+### New Features
+
+ - <csr-id-454855170122fe017e8acaab689d74f47711027e/> add whitespace, wrapping, and tab size controls
+
+### Refactor
+
+ - <csr-id-563b8204fa50734f16f5d3200704abcca5cfa986/> read layout decisions from layout results
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 8 commits contributed to the release over the course of 1 calendar day.
+ - 24 days passed between releases.
+ - 8 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Remove unused WidgetType import ([`f4b6317`](https://github.com/Icemic/huozi-rs/commit/f4b63173cd9c377df56ac786858c5fc1865f55a9))
+    - Upgrade harfrust and skrifa ([`194dc87`](https://github.com/Icemic/huozi-rs/commit/194dc874753b09415045765ae31cd03d8fb06f49))
+    - Upgrade egui to 0.37 ([`0fbbf9c`](https://github.com/Icemic/huozi-rs/commit/0fbbf9cbb3414d552e9530d967e9a5b460de8f10))
+    - Update dependencies ([`fcd4e26`](https://github.com/Icemic/huozi-rs/commit/fcd4e260cad154df37071e7d0d0fe2db3cd326a9))
+    - Update csscolorparser and lru dependencies ([`7613d64`](https://github.com/Icemic/huozi-rs/commit/7613d642c44c80df0524de122b4ecc1cba1bbaad))
+    - Update tiqian to 0.7 ([`afe7c54`](https://github.com/Icemic/huozi-rs/commit/afe7c547a91cdda11fe60adab15c92432bd58240))
+    - Read layout decisions from layout results ([`563b820`](https://github.com/Icemic/huozi-rs/commit/563b8204fa50734f16f5d3200704abcca5cfa986))
+    - Add whitespace, wrapping, and tab size controls ([`4548551`](https://github.com/Icemic/huozi-rs/commit/454855170122fe017e8acaab689d74f47711027e))
+</details>
+
 ## v0.24.0 (2026-10-02)
 
 ### Refactor
@@ -19,8 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
- - 2 days passed between releases.
+ - 3 commits contributed to the release.
+ - 3 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -31,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.24.0 ([`b238984`](https://github.com/Icemic/huozi-rs/commit/b2389846ecb68cb8cfdf87caca0277c0ad977e98))
     - Rename Latin font kind to Western ([`8247893`](https://github.com/Icemic/huozi-rs/commit/82478937babf967cd4371658ce90475159f320fc))
     - Update render snapshot ([`c232336`](https://github.com/Icemic/huozi-rs/commit/c232336e8fc8d5ad7eaeeaf6379ff4d0f2d10286))
 </details>
@@ -39,10 +85,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-7516c630561c69dbc3753e72df287f5452b64887/>
 <csr-id-a0b2a6a1ba6851f0b9b4a6275f2b19e122de1c09/>
-
-### Chore
-
- - <csr-id-7516c630561c69dbc3753e72df287f5452b64887/> update render example dimensions and bopomofo samples
 
 ### Documentation
 
@@ -57,10 +99,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
  - <csr-id-b00d1af59707c5f94a61d2e99024ee4048ccff38/> upload egui textures before updating render buffers
-
-### Refactor
-
- - <csr-id-a0b2a6a1ba6851f0b9b4a6275f2b19e122de1c09/> split render controls into focused UI modules
 
 ### Commit Statistics
 
@@ -100,6 +138,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 1 day passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -122,12 +161,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-0cba03c23a5c22a80bfb988bd6d34c66259d7671/>
 <csr-id-fac8ba502708badfa364246c5b60a712714343f4/>
 <csr-id-161754e88db973089fe0daa307729ec09d6a0522/>
-
-### Chore
-
- - <csr-id-ec85498f19a7b40d9ccaa9e6d810eaa7bcd47ddd/> update test and example font paths
- - <csr-id-3a42ce888c25ee7dace2b5394716f344d73a9ba6/> update bundled fonts and licenses
- - <csr-id-087586fa6679c4ca07096d690aa6061d44b7d94e/> move fonts and their licenses
 
 ### Documentation
 
@@ -153,21 +186,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-323765905964d144425032129aff32e60a4bd5d7/> apply all text style overrides during Tiqian adaptation
 
-### Other
-
- - <csr-id-0cba03c23a5c22a80bfb988bd6d34c66259d7671/> add automated build and test workflow
-
 ### Performance
 
  - <csr-id-83229f7703d7383c092c2cc33583692ca861750c/> cache shaping data and glyph bounds
-
-### Style
-
- - <csr-id-fac8ba502708badfa364246c5b60a712714343f4/> format layout flamegraph example
-
-### Test
-
- - <csr-id-161754e88db973089fe0daa307729ec09d6a0522/> update render snapshots
 
 ### Commit Statistics
 
@@ -241,31 +262,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-f0c1cd60b68a24c9c7131ec4ba1ae6f62ad5a441/> schedule redraws after egui event handling
  - <csr-id-cdd795569e75e1a05f741a9f9b0e8cbd78ee83f2/> use Unicode scalar offsets for parser source ranges
 
-### Other
-
- - <csr-id-8f652e341287185be3deb01585d242cd241332ed/> include source and documentation in package
-
 ### Performance
 
  - <csr-id-d31c962cbf930ebd2765511054f04743172cbe62/> use f32 for SDF calculations and improve benchmark diagnostics
-
-### Refactor
-
- - <csr-id-693b3210979db9ee0804fa6f4382d246c7bb5b1a/> make SDF calculation stateless
- - <csr-id-7d045eb038b39dce7688178f60fa2bebfd3b10bd/> replace legacy font dependencies
- - <csr-id-5bc1dfad9c73d17090a104081dcc77dcf570bd38/> migrate font extraction and layout to tiqian
-
-### Test
-
- - <csr-id-a5388160a57e0e942413bba0cea9ed87dd9d8b12/> unwrap selected font attempts in assertions
- - <csr-id-665361884a59f82d3a527c4476290f0bd5e76e62/> cover layout entrypoints and drop obsolete punctuation tests
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 21 commits contributed to the release over the course of 3 calendar days.
- - 19 days passed between releases.
+ - 20 days passed between releases.
  - 20 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -305,12 +311,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-a40f9eb280979677a8cd05558b2af1adeeb65634/>
 <csr-id-910adf79b11336c335e25ba86674fb36da6cd134/>
 
-### Refactor
-
- - <csr-id-4ae221f1c2522e27cb100e5b2dde63c632993a0d/> write glyph pixels directly to texture atlas
- - <csr-id-a40f9eb280979677a8cd05558b2af1adeeb65634/> write texture data from raw pixels
- - <csr-id-910adf79b11336c335e25ba86674fb36da6cd134/> replace image dependency with custom texture atlas
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -337,10 +337,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-42a591c2c9013ac1161f3a7fc4b5699b458a3af9/>
 
-### Chore
-
- - <csr-id-42a591c2c9013ac1161f3a7fc4b5699b458a3af9/> upgrade lru and pollster dependencies
-
 ### New Features
 
  - <csr-id-143a6da895a65bddc5a6f573685b9d1307a4c9ad/> upgrade wgpu and egui dependencies
@@ -350,7 +346,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 3 commits contributed to the release.
- - 19 days passed between releases.
+ - 20 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -410,14 +406,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-80b80cb7b2c21ca70090b15bec6428ec7fe5ebab/> test
 
-### Other
-
- - <csr-id-22fd84f511ea23539204bc8031f8d462f195113c/> expose debug controls
-
-### Test
-
- - <csr-id-a77f52ef8f7c18b7caa4f88cdb34958fed81e62d/> remove inline punctuation tests
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -459,7 +447,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 5 days passed between releases.
+ - 6 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -478,11 +466,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-58b9c95ad99c83c91dab1a707fbfbc0870685307/>
 <csr-id-5315c057b431498a9bbd6d2c061727539ffa91c5/>
-
-### Chore
-
- - <csr-id-58b9c95ad99c83c91dab1a707fbfbc0870685307/> update deps
- - <csr-id-5315c057b431498a9bbd6d2c061727539ffa91c5/> update egui and fix compatibility
 
 ### Bug Fixes
 
@@ -527,16 +510,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-2c30899fdbe882c318ee02c8f5074047fb60b6ae/> pass input as &str to convert errors
 
-### Test
-
- - <csr-id-af28df86d478ec06dd30d64f631274848a5fd69a/> add test for parsing failure with invalid segment
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 3 commits contributed to the release.
- - 53 days passed between releases.
+ - 54 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -641,32 +620,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-6b1868ff09798a5a5d01487ea827591807af299c/> test case
  - <csr-id-bdfd1434c48d7fd1675e2f2aa7caaaba08441b4b/> add LFS tracking for snapshot files
 
-### Refactor
-
- - <csr-id-a4c35e5639c3b8d87d4617916b35ce0403d2e92b/> update layout functions to include SegmentGlyphSpan for segment-based glyph management
- - <csr-id-1bbcac6c85bf814198d59cff3d99c2f9ef8db8d4/> add segment_id to Element and update related parsing logic
- - <csr-id-f21e6a97b29ac15d24853278e5637ea7a7ad7a6a/> replace string parsing with segment-based parsing in layout and parser
- - <csr-id-1ddee733c18c58f8c9558aca8ced2c27b34fbe04/> add documentation comments for text parsing and layout functions
- - <csr-id-bea4470493a8db98199a1df962565306d34f5878/> update SourceRange to use Option<SegmentId> and adjust TextRun to use SourceRange directly
- - <csr-id-85f47eb5535b185247ad8dcb3e3477ea11f1c66d/> update test inputs to use bracketed syntax for elements
- - <csr-id-2d9a7068dd0f8ca5d9b2d80984a3a30f27dbd6fe/> move ColorSpace and get_color_value to a new color_space module
- - <csr-id-e7d0fffa95f498e58cd0620dd903497466ffe24f/> move SegmentId definition to segment module and update source_range to use it
- - <csr-id-37d792a0b9521ccd7f2462e6b91f0ae832773579/> move to_spans tests to mod file from separate test; set to_spans as crate public
- - <csr-id-197d43b3df4ee0c9ae2a3643341f8ce1b8e2c86e/> remove parser feature condition
- - <csr-id-ae1e3e4b3158272f68922ec3489a85bbeacb33db/> Split functionality into separate files
- - <csr-id-d6bebc64fc340bcdbfcae7beee4db2b6b8c49213/> change text parameter type from Vec<String> to &str in parsing functions
- - <csr-id-54908a4a52b788c0a0c04a3a9d343d3d216eb1aa/> rename TextSection to TextRun
-
-### Test
-
- - <csr-id-2b06fba0ea7cdc56c842a0b517ae70041536e51e/> add tests for text parsing
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 28 commits contributed to the release over the course of 19 calendar days.
- - 19 days passed between releases.
+ - 20 days passed between releases.
  - 25 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -741,18 +700,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-aa81d3855edcf080f0f6c28e145541a18b9f5991/> ensure buffer value is non-negative before passing to shader
  - <csr-id-6c5499ae1bc75eb54ba1237476ed01c137422eb1/> update RADIUS constant from 16 to 24 for better stroke and shadow
 
-### Refactor
-
- - <csr-id-9965186256147e10fc87dca5d6e7413d8dc09fda/> update egui ui
- - <csr-id-3840a9f0e3688793f43efbc9a5799c6de7b8696e/> add grid_count to Glyph struct and adjust layout calculations for glyph rendering
- - <csr-id-86852f5d2544aa149c4deff3ead411471b9f1aa1/> Remove last_rendered_text field and simplify text rendering logic
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 26 commits contributed to the release over the course of 2 calendar days.
- - 3 days passed between releases.
+ - 4 days passed between releases.
  - 23 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -795,15 +748,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-1ee6e7dc00a8edb67031b8d464219bf4bba2dfb7/>
 
-### Chore
-
- - <csr-id-1ee6e7dc00a8edb67031b8d464219bf4bba2dfb7/> remove png feature of `image` crate in deps
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 1 day passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -830,7 +780,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 3 commits contributed to the release.
- - 3 days passed between releases.
+ - 4 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -977,10 +927,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-ef2edac8d0cbb517d709bdfc706573172dd50950/>
 <csr-id-3c77fa16189fd7237c3dc50d684e0c6c76391492/>
 
-### Chore
-
- - <csr-id-fe08e4fecbabe57da06876fbad36aa2526279a08/> update roadmap
-
 ### New Features
 
 <csr-id-a75e83cf1f9ea836164791d7218c2b25c2de9822/>
@@ -997,18 +943,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-dc9525021521ef5cbb9d9b16bc6d6165b3c6299b/> apply consistent scaling to both x and y axes
  - <csr-id-aa3595d150e1e3184517e1a034a78f21216d63d1/> update ab_glyph version and adjust default features in Cargo.toml
 
-### Refactor
-
- - <csr-id-55800ade7b9b1f52d35a90c33d3e739edcd09484/> remove rusttype.rs
- - <csr-id-ef2edac8d0cbb517d709bdfc706573172dd50950/> optimizes performance
- - <csr-id-3c77fa16189fd7237c3dc50d684e0c6c76391492/> remove unused code and example function
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 10 commits contributed to the release over the course of 45 calendar days.
- - 46 days passed between releases.
+ - 47 days passed between releases.
  - 9 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -1053,7 +993,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 8 commits contributed to the release.
- - 17 days passed between releases.
+ - 18 days passed between releases.
  - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -1079,15 +1019,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-30933fff198c564bac4da833839befb450d2758d/>
 <csr-id-9273541ecd536ce9df96609fc47cf7025cbb56e3/>
 <csr-id-b71b1d09d23621da8c62398fd0b293d5b151ef79/>
-
-### Chore
-
- - <csr-id-30933fff198c564bac4da833839befb450d2758d/> add TsangerYuYang font assets with LFS support
- - <csr-id-9273541ecd536ce9df96609fc47cf7025cbb56e3/> Remove unused variables and update comment format
-
-### Chore
-
- - <csr-id-b71b1d09d23621da8c62398fd0b293d5b151ef79/> add comprehensive changelog documentation
 
 ### New Features
 
@@ -1124,10 +1055,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v0.8.0 (2024-12-19)
 
 <csr-id-849d16cdb1a250ed5219747d3d6e02450089a6ec/>
-
-### Chore
-
- - <csr-id-849d16cdb1a250ed5219747d3d6e02450089a6ec/> Release huozi version 0.8.0
 
 ### New Features
 
@@ -1169,18 +1096,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-79a67baaaa980e7a1edc405e9625a56f496c0241/>
 <csr-id-70abde19be0a2e134c702fbe908816814f30574f/>
 
-### Chore
-
- - <csr-id-f3fb438776f557ca5bc61f9181206cb954f4b01e/> Release huozi version 0.7.0
- - <csr-id-79a67baaaa980e7a1edc405e9625a56f496c0241/> fix Cargo.toml
- - <csr-id-70abde19be0a2e134c702fbe908816814f30574f/> update example for android compatibility
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 5 commits contributed to the release over the course of 20 calendar days.
- - 20 days passed between releases.
+ - 21 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -1201,10 +1122,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v0.6.0 (2024-07-07)
 
 <csr-id-8139e3141b3010d21b8b9ecc3bd2172a1e918e84/>
-
-### Chore
-
- - <csr-id-8139e3141b3010d21b8b9ecc3bd2172a1e918e84/> Release huozi version 0.6.0
 
 ### Commit Statistics
 
@@ -1229,10 +1146,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v0.5.2 (2024-03-05)
 
 <csr-id-c323551fa196476244e77e43fbf3f9c56aeec3ee/>
-
-### Chore
-
- - <csr-id-c323551fa196476244e77e43fbf3f9c56aeec3ee/> Release huozi version 0.5.2
 
 ### Commit Statistics
 
@@ -1259,17 +1172,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-3914f70736992f3ce6d19b31bdfbbf4e78d4f403/>
 <csr-id-29276b37326ff7694471bbe938f1001edc4fede3/>
 
-### Chore
-
- - <csr-id-3914f70736992f3ce6d19b31bdfbbf4e78d4f403/> Release huozi version 0.5.1
- - <csr-id-29276b37326ff7694471bbe938f1001edc4fede3/> Release huozi version 0.5.0
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 4 commits contributed to the release.
- - 20 days passed between releases.
+ - 21 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -1290,10 +1198,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-466c0a75c8cc2de5eb65f2525b6b9e17624b3dcc/>
 
-### Chore
-
- - <csr-id-466c0a75c8cc2de5eb65f2525b6b9e17624b3dcc/> Release huozi version 0.4.2
-
 ### New Features
 
  - <csr-id-109604f68f8400e2d6c2d39c7ed5b9de07fc74c6/> Add image version tracking to the cache
@@ -1303,6 +1207,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 1 day passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -1326,76 +1231,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-cf73c122bd0ad34d9495ccb39bf05cc15b4b3a4e/>
 <csr-id-f4eda510ecba5c0a56c4006798ba3b6021005fb0/>
 <csr-id-760bfea80da5cc408f5b083550512ffd2bf30d5a/>
-
-### Chore
-
- - <csr-id-9611f3a97ef85dfedc773199363f652647b83a73/> Release huozi version 0.4.1
-
-### Other
-
- - <csr-id-10c52143972473b87f05dd50e8d966a2b9a3e5c1/> move font assets into examples/
-
-### Bug Fixes
-
- - <csr-id-f7f3ed1d68f149118026ef5e5834b111839153d8/> coordinate calculation
- - <csr-id-3904d319a31bdf01c2c6050477f984728300cc72/> lint
- - <csr-id-d3367a0f61bdc872710aca0ee75985e014358372/> switch to use stable toolchain
- - <csr-id-0042f6658a483e9343fa5a2cf2dda898a1d7e411/> adjust default values
- - <csr-id-1eba8f7e9826721361e2536143d28ced10941e33/> bump versions
- - <csr-id-f8ac1f4c300525122c08d125587fbb43a195f88b/> assets
- - <csr-id-053003defdb84833d1e2d735bf2c7ccecfbe6fba/> remove fonts with copyright problem
- - <csr-id-ba851f0b0bb54412ad4b85ea52ee72ee51744aab/> context name
- - <csr-id-bdf4ac1da381962f4ce04372d3d60dd84af23978/> remove useless EOF check
- - <csr-id-8331ecd3b3a60c3b9e070e643efedd38a8c58ec7/> lint
- - <csr-id-4e1fd9161a3572585fec8dafc61323d697864fbc/> texture gen example
- - <csr-id-c34827e2ad9d4559a483f999aeb50033745e1706/> shader buffer size
- - <csr-id-a06bd725395b60b12fb3896c19a12ad4795b8194/> critical bug causes render wrong
- - <csr-id-9061e7abae2679bdd1e2dcd8e6888d05cdba4e5f/> texture use constant as size
- - <csr-id-051dd8007fd59fd28704d20418ef86370709c076/> use fake INFINITY in edt algorithm
- - <csr-id-e9c7dbc88dafdbe688ef72dd85e35e6fc17b3d3f/> shader
- - <csr-id-b719c0b7b3aee04ff1e1800bfb9f1c90562da3d3/> gamma value
- - <csr-id-3b91363e38f6e9a00ec1c48ccd50cd6be8c36c62/> handling \n and \r
- - <csr-id-f80b686181658a29694b0b050fb3c64ff5b8ccdb/> sdf generation params
- - <csr-id-1dcfcbd5b64dae8f5d416cd734a2fb52b725c2f2/> remove `page` in uniforms
- - <csr-id-33265928eb2547fc5f0890b05259c4cf4bbb8744/> wired border around rendered glyph
- - <csr-id-5691faf1cff2a3a2ad9d6815ead206a1f0bf6fff/> texture format
- - <csr-id-e4dcdfd72639186ca0a22b4131ae9b25eaa414bc/> tidy up
-
-### New Features
-
- - <csr-id-3dc0732bbe0d367aac698d71e2e189bea831b684/> bump all deps' version
- - <csr-id-937c6f5c798b709f84e0f4e53e5ca83522db0054/> use open source fonts as samples
- - <csr-id-e00d96b5bfc72696d8d5fc33f9c47c1522794ca1/> huozi add parse api
- - <csr-id-6ae68e7c622ca8b57384912d1c71c3bb18dbe044/> adjust parse return value
- - <csr-id-9ba08faca72090b1a79cf614a72c4e4ca90ff3db/> move parser tests to mod
- - <csr-id-a5ddb201b3f387f503102a571aed6a4d907c7465/> parser
- - <csr-id-d7b3239421213b6312b31940bb0cd20608e9fb2c/> move layout func to Huozi impl
- - <csr-id-15d65f1df63693709a76d86d22dba99d81727211/> warn if glyph not exists
- - <csr-id-4645e32f18284fc12ac3cc2e1ae27a3cc07a93c6/> properly handles characters larger than 1em in width
- - <csr-id-5fb4c2f4453a9a166c376a5e39e23df0e0b2b16f/> make `wgpu` optional
- - <csr-id-e48cda3a49bfa22587cbe1a5cc16236057d4f54c/> better texture generation example
- - <csr-id-6ca41fc8a66aab188480365671e60afc15a636e3/> implement color to [f32;4] with trait
- - <csr-id-b204ed93a6c9630469e1a56e19c4844fdde826f8/> support stroke and shadow
- - <csr-id-d3057d794ca712edb51a24da58ee3d9466de4e87/> add layouting time log
- - <csr-id-3e69da196173c1439183432b4deb0a434240da19/> move color and buffer to vertex attribute
- - <csr-id-810413de40e7129c2fe65127c69b8f029f7ff204/> add features
- - <csr-id-f3418f8fa02b8920a8bd0d71b11fea713d227571/> switch font extractor via features
- - <csr-id-9a54ad624b028ea8880092da883433ed775c6b39/> font extractor, ab_glyph implement
- - <csr-id-1d490c64ca5ba4cc9cc035bc168b2434ac21d128/> better texture vertex calculation with font size
- - <csr-id-94d51a074b56cc8b6235e21a3a964c88b6d7eb1c/> log font load time and sdf texture gen time
- - <csr-id-8e935ea48ce1f8aa8e3232e84a32392e0cbd28d9/> basic layout
- - <csr-id-87723c4bb9866edf7dc3f5e1149d363a17f4357a/> tidy up codebase
- - <csr-id-9d8b9dcdd83c18efc073ebb9b13de5cc1e8ef58b/> cache sdf glyph with lru
- - <csr-id-58dbfc96fab5c5109528d0088168d6a0db27a90b/> render example
- - <csr-id-26008f4df915ce48b26ad783bf52935a85b9d47e/> sdf texture gen
-
-### Chore
-
- - <csr-id-8c89261042bd9d74297a1af623a19f327594a698/> Release huozi version 0.4.0
- - <csr-id-0846e566036bf908fa5a959ed4d2be4786df5443/> Release huozi version 0.3.0
- - <csr-id-cf73c122bd0ad34d9495ccb39bf05cc15b4b3a4e/> Release huozi version 0.2.0
- - <csr-id-f4eda510ecba5c0a56c4006798ba3b6021005fb0/> add ignore files in package
- - <csr-id-760bfea80da5cc408f5b083550512ffd2bf30d5a/> add package metadata
 
 ### Commit Statistics
 
@@ -1422,16 +1257,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-8c89261042bd9d74297a1af623a19f327594a698/>
 
-### Chore
-
- - <csr-id-8c89261042bd9d74297a1af623a19f327594a698/> Release huozi version 0.4.0
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 48 days passed between releases.
+ - 49 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -1449,10 +1280,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v0.3.0 (2023-12-15)
 
 <csr-id-0846e566036bf908fa5a959ed4d2be4786df5443/>
-
-### Chore
-
- - <csr-id-0846e566036bf908fa5a959ed4d2be4786df5443/> Release huozi version 0.3.0
 
 ### Commit Statistics
 
@@ -1477,10 +1304,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## v0.2.0 (2023-08-24)
 
 <csr-id-cf73c122bd0ad34d9495ccb39bf05cc15b4b3a4e/>
-
-### Chore
-
- - <csr-id-cf73c122bd0ad34d9495ccb39bf05cc15b4b3a4e/> Release huozi version 0.2.0
 
 ### New Features
 
@@ -1522,11 +1345,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-760bfea80da5cc408f5b083550512ffd2bf30d5a/>
 <csr-id-10c52143972473b87f05dd50e8d966a2b9a3e5c1/>
 
-### Chore
-
- - <csr-id-f4eda510ecba5c0a56c4006798ba3b6021005fb0/> add ignore files in package
- - <csr-id-760bfea80da5cc408f5b083550512ffd2bf30d5a/> add package metadata
-
 ### New Features
 
  - <csr-id-937c6f5c798b709f84e0f4e53e5ca83522db0054/> use open source fonts as samples
@@ -1576,10 +1394,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-33265928eb2547fc5f0890b05259c4cf4bbb8744/> wired border around rendered glyph
  - <csr-id-5691faf1cff2a3a2ad9d6815ead206a1f0bf6fff/> texture format
  - <csr-id-e4dcdfd72639186ca0a22b4131ae9b25eaa414bc/> tidy up
-
-### Other
-
- - <csr-id-10c52143972473b87f05dd50e8d966a2b9a3e5c1/> move font assets into examples/
 
 ### Commit Statistics
 
