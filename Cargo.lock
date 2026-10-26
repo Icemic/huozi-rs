@@ -2048,6 +2048,9 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+dependencies = [
+ "portable-atomic",
+]
 
 [[package]]
 name = "once_cell_polyfill"
@@ -2935,13 +2938,15 @@ dependencies = [
 
 [[package]]
 name = "tiqian"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4b194004db294323089ec9e2599c80a7b5647b03e318e0b172bdc5317eacdf3"
+checksum = "74b8c526af702be621a1b6b074f68ffda85ce089ad2a73f7fc9c208a97b99b27"
 dependencies = [
  "hashbrown 0.17.1",
  "icu_properties",
  "log",
+ "once_cell",
+ "portable-atomic-util",
 ]
 
 [[package]]
