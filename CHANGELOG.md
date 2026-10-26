@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.26.0 (2026-10-27)
+
+### Chore
+
+ - <csr-id-2ed703713437ec8e9b4b5093108e85b2d11d562b/> upgrade tiqian to 0.8
+ - <csr-id-9247ebce9e17792be42688fd34889f5712b7c859/> remove font inspection examples
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 1 day passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Upgrade tiqian to 0.8 ([`2ed7037`](https://github.com/Icemic/huozi-rs/commit/2ed703713437ec8e9b4b5093108e85b2d11d562b))
+    - Remove font inspection examples ([`9247ebc`](https://github.com/Icemic/huozi-rs/commit/9247ebce9e17792be42688fd34889f5712b7c859))
+</details>
+
 ## v0.25.0 (2026-10-26)
 
 ### Chore
@@ -28,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 8 commits contributed to the release over the course of 1 calendar day.
+ - 9 commits contributed to the release over the course of 1 calendar day.
  - 24 days passed between releases.
  - 8 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -40,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.25.0 ([`808c76b`](https://github.com/Icemic/huozi-rs/commit/808c76b9d859a8a2e7b1a368d56e4922ba909bda))
     - Remove unused WidgetType import ([`f4b6317`](https://github.com/Icemic/huozi-rs/commit/f4b63173cd9c377df56ac786858c5fc1865f55a9))
     - Upgrade harfrust and skrifa ([`194dc87`](https://github.com/Icemic/huozi-rs/commit/194dc874753b09415045765ae31cd03d8fb06f49))
     - Upgrade egui to 0.37 ([`0fbbf9c`](https://github.com/Icemic/huozi-rs/commit/0fbbf9cbb3414d552e9530d967e9a5b460de8f10))
