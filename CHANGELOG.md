@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.26.1 (2026-10-27)
+
+### Chore
+
+ - <csr-id-4cea80027d5f1ea503125a5838e0b9586a62aec3/> upgrade tiqian to 0.9 and adapt shaping metadata
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Upgrade tiqian to 0.9 and adapt shaping metadata ([`4cea800`](https://github.com/Icemic/huozi-rs/commit/4cea80027d5f1ea503125a5838e0b9586a62aec3))
+</details>
+
 ## v0.26.0 (2026-10-27)
 
 ### Chore
@@ -16,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 1 day passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -28,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.26.0 ([`7c7c25d`](https://github.com/Icemic/huozi-rs/commit/7c7c25dc8a2ccdda577a0a34a0bd7e7ba66bbbdc))
     - Upgrade tiqian to 0.8 ([`2ed7037`](https://github.com/Icemic/huozi-rs/commit/2ed703713437ec8e9b4b5093108e85b2d11d562b))
     - Remove font inspection examples ([`9247ebc`](https://github.com/Icemic/huozi-rs/commit/9247ebce9e17792be42688fd34889f5712b7c859))
 </details>
