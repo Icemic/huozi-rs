@@ -2938,9 +2938,9 @@ dependencies = [
 
 [[package]]
 name = "tiqian"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74b8c526af702be621a1b6b074f68ffda85ce089ad2a73f7fc9c208a97b99b27"
+checksum = "8b65b2a7ff0d3b4dfdf2b46ca27ff9fdef59b4eda59502b7b9bf29ff9a0ca0f0"
 dependencies = [
  "hashbrown 0.17.1",
  "icu_properties",

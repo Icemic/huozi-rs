@@ -28,7 +28,7 @@ use tiqian::shaping::font_backend::{
 use tiqian::shaping::replayable_font_backend::{
     FontBackendCapabilityReport, ReplayableFontCatalog, ReplayableFontFaceDescriptor,
 };
-use tiqian::shaping::text_shaper::{ShapingResult, ShapingSource};
+use tiqian::shaping::text_shaper::ShapingResult;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FontSourceKind {
@@ -554,23 +554,10 @@ impl HuoziFontManager {
         let advance = pen_x as f32 * scale;
         let missing_glyphs = glyphs.iter().filter(|glyph| glyph.id == 0).count() as u32;
         let source_text = Text::from(request.text.slice(request.range));
-        let decision = ShapingDecisionInfo::builder(
-            request.range,
-            source_text.clone(),
-            request.display_text.clone(),
-            Some(candidate.id.clone()),
-            glyphs.len() as i32,
-            advance,
-            format!("{:?}", ShapingSource::HarfBuzz),
-            "HuoziFontManager:complete-shaping".to_owned(),
-        )
-        .glyphs_without_ink_bounds(glyphs.len() as i32)
-        .missing_glyphs(missing_glyphs as i32)
-        .language(Some(request.style.locale.clone()))
-        .feature_evidence(
-            (!request.open_type_features.is_empty()).then(|| request.open_type_features.join(",")),
-        )
-        .build();
+        let decision = ShapingDecisionInfo::builder(request.range)
+            .glyphs_without_ink_bounds(glyphs.len() as i32)
+            .missing_glyphs(missing_glyphs as i32)
+            .build();
         let cluster = Cluster::with_display_text(
             request.range,
             source_text,
