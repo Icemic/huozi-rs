@@ -1,6 +1,6 @@
 //! Layout 配置分组。
 
-use huozi::layout::ParagraphAlignment;
+use huozi::layout::{FirstLineIndent, ParagraphAlignment};
 
 use crate::State;
 use crate::ui::grid::render_grid_ui;
@@ -34,11 +34,20 @@ pub fn render_layout_ui(state: &mut State, ui: &mut egui::Ui) {
         ui.end_row();
 
         ui.label("Indent:");
-        ui.add(
-            egui::DragValue::new(&mut state.layout_config.indent)
-                .speed(1.0)
-                .range(0.0..=200.0),
-        );
+        let mut indent = match state.layout_config.indent {
+            FirstLineIndent::Fixed(count) => count,
+            FirstLineIndent::Auto => 0.0,
+        };
+        if ui
+            .add(
+                egui::DragValue::new(&mut indent)
+                    .speed(1.0)
+                    .range(0.0..=200.0),
+            )
+            .changed()
+        {
+            state.layout_config.indent = FirstLineIndent::Fixed(indent);
+        }
         ui.end_row();
 
         ui.label("Align:");

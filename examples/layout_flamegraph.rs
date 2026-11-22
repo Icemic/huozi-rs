@@ -2,7 +2,7 @@ use std::hint::black_box;
 use std::time::{Duration, Instant};
 
 use csscolorparser::Color;
-use huozi::layout::{ColorSpace, LayoutStyle};
+use huozi::layout::{ColorSpace, FirstLineIndent, LayoutStyle};
 use huozi::parser::{Segment, ShadowStyle, StrokeStyle, TextStyle};
 use huozi::{FontSource, FontSourceKind, Huozi};
 
@@ -69,7 +69,7 @@ fn main() {
         box_width: Some(1280.0),
         box_height: Some(600.0),
         line_height: 1.5,
-        indent: 0.0,
+        indent: FirstLineIndent::Fixed(0.0),
         ..LayoutStyle::default()
     };
     let text_style = TextStyle {

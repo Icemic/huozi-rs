@@ -250,11 +250,14 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 
 | 属性 | 类型和值 |
 | --- | --- |
-| `indent` | `f32`，首行缩进。 |
+| `indent` | `f32` 首行缩进，或 `auto` 表示交由自适应策略按行长决定。 |
 | `lineHeight` | `f32`，绝对行高。 |
 | `blockIndent` | `f32`，所有行的起始缩进。 |
+| `firstLineIndentPolicy` | `shortBelow,short,long`，三个数值分别表示窄行阈值（字）、窄行缩进（字）与宽行缩进（字）。 |
 | `align` | `start`、`center`、`end`。 |
 | `lineLengthGrid` | `bool`。 |
+| `lineLengthGridBodyAlignment` | `default`、`start`、`center`、`end`；`default` 表示跟随段落末行对齐。 |
+| `writingMode` | `horizontalTb`、`verticalRl`；当前布局仅透传。 |
 | `whiteSpace` | `collapse`、`preserveBreaks`、`preserve`、`breakSpaces`。 |
 | `textWrap` | `wrap`、`noWrap`。 |
 | `tabSize` | `f32`，Tab stop 以段落默认字体空格 advance 的倍数表示。 |

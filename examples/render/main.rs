@@ -3,7 +3,7 @@ use huozi::{
     FontSourceKind, Huozi,
     constant::TEXTURE_SIZE,
     glyph_vertices::UnitVertices,
-    layout::{ColorSpace, Interaction, LayoutStyle, RichTextLayoutOutput, Vertex},
+    layout::{ColorSpace, FirstLineIndent, Interaction, LayoutStyle, RichTextLayoutOutput, Vertex},
     parser::{Segment, TextStyle},
 };
 use log::{error, info};
@@ -553,7 +553,7 @@ impl State {
                 box_width: Some(1280.),
                 box_height: Some(800.),
                 line_height: 1.5,
-                indent: 0.,
+                indent: FirstLineIndent::Fixed(0.),
                 ..LayoutStyle::default()
             },
             text_config: text_style_default(),

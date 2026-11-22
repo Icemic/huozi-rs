@@ -1,7 +1,12 @@
 use csscolorparser::Color;
 
-use crate::layout::{ParagraphAlignment, TextWrapMode, WhiteSpaceMode};
+use crate::layout::{
+    FirstLineIndent, MeasureAdaptiveFirstLineIndent, ParagraphAlignment, TextWrapMode,
+    WhiteSpaceMode, WritingMode,
+};
 use crate::parser::{ShadowStyle, SourceRange, StrokeStyle, TextRun, TextStyle};
+
+pub use crate::layout::RubyLineHeightMode;
 
 /// 解析后的富文本内容，按段落保留标签声明。
 #[derive(Debug, Clone, Default)]
@@ -19,24 +24,21 @@ pub struct ParsedParagraph {
 /// 后续段落相对前一段的样式覆盖。
 #[derive(Debug, Clone, Default)]
 pub struct ParagraphStyleOverride {
-    pub indent: Option<f32>,
+    pub indent: Option<FirstLineIndent>,
+    pub first_line_indent_policy: Option<MeasureAdaptiveFirstLineIndent>,
     pub line_height: Option<f32>,
     pub block_indent: Option<f32>,
     pub last_line_alignment: Option<ParagraphAlignment>,
+    pub writing_mode: Option<WritingMode>,
     pub line_length_grid: Option<bool>,
+    /// 外层 `None` 表示未设置；`Some(None)` 表示重置为跟随段落末行对齐。
+    pub line_length_grid_body_alignment: Option<Option<ParagraphAlignment>>,
     pub white_space: Option<WhiteSpaceMode>,
     pub text_wrap: Option<TextWrapMode>,
     pub tab_size: Option<f32>,
     pub ruby_line_height_mode: Option<RubyLineHeightMode>,
     pub inline_object_minimum_clearance: Option<f32>,
     pub emphasis_dot_gap: Option<f32>,
-}
-
-/// 注音影响行高的方式。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RubyLineHeightMode {
-    PerLine,
-    UniformParagraph,
 }
 
 /// 按输入顺序排列的行内内容。

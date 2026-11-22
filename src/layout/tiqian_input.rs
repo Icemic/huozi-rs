@@ -7,21 +7,24 @@ use tiqian::core::text_model::{
     DecorationKind as TiqianDecorationKind, FontSynthesis as TiqianFontSynthesis,
     InlineAttachment as TiqianInlineAttachment, InlineBoxOuterSpacing,
     InlineObjectBoundaryAdjustment, LastLineAlignment as TiqianLastLineAlignment, LayoutInput,
-    LineLengthGrid, ParagraphStyle, RichTextBackgroundMetricPolicy, RichTextBackgroundPaint,
-    RichTextLayer, RichTextLayerKind, RichTextLinePaint, RichTextLinePattern, RichTextPaint,
+    LineLengthGrid as TiqianLineLengthGrid,
+    MeasureAdaptiveFirstLineIndent as TiqianMeasureAdaptiveFirstLineIndent, ParagraphStyle,
+    RichTextBackgroundMetricPolicy, RichTextBackgroundPaint, RichTextLayer, RichTextLayerKind,
+    RichTextLinePaint, RichTextLinePattern, RichTextPaint,
     RubyLineHeightMode as TiqianRubyLineHeightMode, TabSize as TiqianTabSize,
-    TextWrapMode as TiqianTextWrapMode, TextStyle as TiqianTextStyle,
-    WhiteSpaceMode as TiqianWhiteSpaceMode,
+    TextStyle as TiqianTextStyle, TextWrapMode as TiqianTextWrapMode,
+    WhiteSpaceMode as TiqianWhiteSpaceMode, WritingMode as TiqianWritingMode,
 };
 use tiqian::core::units::Ic;
 
 use crate::layout::{
-    LayoutStyle, ParagraphAlignment, TabSize, TextWrapMode, WhiteSpaceMode,
+    FirstLineIndent, LayoutStyle, LineLengthGrid, MeasureAdaptiveFirstLineIndent,
+    ParagraphAlignment, RubyLineHeightMode, TabSize, TextWrapMode, WhiteSpaceMode, WritingMode,
 };
 use crate::parser::{
     BackgroundMetricPolicy, DecorationKind, InlineBoxSpacing, InlineNode, InlineObject,
     InlineScopeKind, LinePattern, LineStyle, ParagraphStyleOverride, ParsedParagraph, RubyKind,
-    RubyLineHeightMode, SegmentId, SourceRange, TextSpan, TextStyle,
+    SegmentId, SourceRange, TextSpan, TextStyle,
 };
 
 pub(crate) struct HuoziTiqianInput {
@@ -97,13 +100,22 @@ impl HuoziTiqianInputAdapter {
             .line_height(Some(
                 (initial_text_style.font_size * layout_style.line_height) as f32,
             ))
-            .first_line_indent(Some(Ic {
-                count: layout_style.indent as f32,
-            }))
+            .first_line_indent(tiqian_first_line_indent(layout_style.indent))
+            .first_line_indent_policy(tiqian_indent_policy(layout_style.first_line_indent_policy))
+            .block_indent(Ic {
+                count: layout_style.block_indent as f32,
+            })
             .last_line_alignment(tiqian_last_line_alignment(layout_style, None))
+            .writing_mode(tiqian_writing_mode(layout_style.writing_mode))
             .white_space(tiqian_white_space(layout_style.white_space))
             .text_wrap(tiqian_text_wrap(layout_style.text_wrap))
             .tab_size(tiqian_tab_size(layout_style.tab_size))
+            .line_length_grid(tiqian_line_length_grid(layout_style.line_length_grid))
+            .ruby_line_height_mode(tiqian_ruby_line_height_mode(
+                layout_style.ruby_line_height_mode,
+            ))
+            .inline_object_minimum_clearance_em(layout_style.inline_object_minimum_clearance as f32)
+            .emphasis_dot_gap_em(layout_style.emphasis_dot_gap as f32)
             .build();
         let mut builder = ParagraphBuilder::new(constraints);
         builder
@@ -407,21 +419,40 @@ fn paragraph_style(
         .line_height(override_style.line_height.or(Some(
             (initial_text_style.font_size * layout_style.line_height) as f32,
         )))
-        .first_line_indent(Some(Ic {
-            count: override_style.indent.unwrap_or(layout_style.indent as f32),
-        }))
+        .first_line_indent(tiqian_first_line_indent(
+            override_style.indent.unwrap_or(layout_style.indent),
+        ))
+        .first_line_indent_policy(tiqian_indent_policy(
+            override_style
+                .first_line_indent_policy
+                .unwrap_or(layout_style.first_line_indent_policy),
+        ))
         .block_indent(Ic {
-            count: override_style.block_indent.unwrap_or(0.0),
+            count: override_style
+                .block_indent
+                .unwrap_or(layout_style.block_indent as f32),
         })
         .last_line_alignment(tiqian_last_line_alignment(
             layout_style,
             override_style.last_line_alignment,
         ))
-        .line_length_grid(LineLengthGrid::with_enabled(
-            override_style.line_length_grid.unwrap_or(true),
+        .writing_mode(tiqian_writing_mode(
+            override_style
+                .writing_mode
+                .unwrap_or(layout_style.writing_mode),
         ))
+        .line_length_grid(tiqian_line_length_grid(LineLengthGrid {
+            enabled: override_style
+                .line_length_grid
+                .unwrap_or(layout_style.line_length_grid.enabled),
+            body_alignment: override_style
+                .line_length_grid_body_alignment
+                .unwrap_or(layout_style.line_length_grid.body_alignment),
+        }))
         .white_space(tiqian_white_space(
-            override_style.white_space.unwrap_or(layout_style.white_space),
+            override_style
+                .white_space
+                .unwrap_or(layout_style.white_space),
         ))
         .text_wrap(tiqian_text_wrap(
             override_style.text_wrap.unwrap_or(layout_style.text_wrap),
@@ -433,19 +464,63 @@ fn paragraph_style(
                     TabSize::SpaceAdvanceMultiple(multiple as f64)
                 }),
         ))
-        .ruby_line_height_mode(match override_style.ruby_line_height_mode {
-            Some(RubyLineHeightMode::UniformParagraph) => {
-                TiqianRubyLineHeightMode::UniformParagraph
-            }
-            Some(RubyLineHeightMode::PerLine) | None => TiqianRubyLineHeightMode::PerLine,
-        })
+        .ruby_line_height_mode(tiqian_ruby_line_height_mode(
+            override_style
+                .ruby_line_height_mode
+                .unwrap_or(layout_style.ruby_line_height_mode),
+        ))
         .inline_object_minimum_clearance_em(
             override_style
                 .inline_object_minimum_clearance
-                .unwrap_or(0.1),
+                .unwrap_or(layout_style.inline_object_minimum_clearance as f32),
         )
-        .emphasis_dot_gap_em(override_style.emphasis_dot_gap.unwrap_or(0.1))
+        .emphasis_dot_gap_em(
+            override_style
+                .emphasis_dot_gap
+                .unwrap_or(layout_style.emphasis_dot_gap as f32),
+        )
         .build()
+}
+
+fn tiqian_first_line_indent(indent: FirstLineIndent) -> Option<Ic> {
+    indent.fixed_count().map(|count| Ic {
+        count: count as f32,
+    })
+}
+
+fn tiqian_indent_policy(
+    policy: MeasureAdaptiveFirstLineIndent,
+) -> TiqianMeasureAdaptiveFirstLineIndent {
+    TiqianMeasureAdaptiveFirstLineIndent::new(
+        policy.short_below_em as f32,
+        policy.short_em as f32,
+        policy.long_em as f32,
+    )
+}
+
+fn tiqian_line_length_grid(grid: LineLengthGrid) -> TiqianLineLengthGrid {
+    TiqianLineLengthGrid::new(
+        grid.enabled,
+        grid.body_alignment.map(|alignment| match alignment {
+            ParagraphAlignment::Start => TiqianLastLineAlignment::Start,
+            ParagraphAlignment::Center => TiqianLastLineAlignment::Center,
+            ParagraphAlignment::End => TiqianLastLineAlignment::End,
+        }),
+    )
+}
+
+fn tiqian_ruby_line_height_mode(mode: RubyLineHeightMode) -> TiqianRubyLineHeightMode {
+    match mode {
+        RubyLineHeightMode::PerLine => TiqianRubyLineHeightMode::PerLine,
+        RubyLineHeightMode::UniformParagraph => TiqianRubyLineHeightMode::UniformParagraph,
+    }
+}
+
+fn tiqian_writing_mode(mode: WritingMode) -> TiqianWritingMode {
+    match mode {
+        WritingMode::HorizontalTb => TiqianWritingMode::HorizontalTb,
+        WritingMode::VerticalRl => TiqianWritingMode::VerticalRl,
+    }
 }
 
 fn tiqian_last_line_alignment(
@@ -896,6 +971,84 @@ mod tests {
         assert_eq!(
             input.source_map.entries[1].source_range.segment_id,
             Some(SegmentId::Lite(2))
+        );
+    }
+
+    #[test]
+    fn layout_style_maps_every_paragraph_style_field() {
+        let layout_style = LayoutStyle {
+            box_width: Some(320.0),
+            indent: FirstLineIndent::Fixed(1.0),
+            first_line_indent_policy: MeasureAdaptiveFirstLineIndent::new(10.0, 1.0, 3.0),
+            block_indent: 0.5,
+            writing_mode: WritingMode::VerticalRl,
+            line_length_grid: LineLengthGrid::new(true, Some(ParagraphAlignment::End)),
+            ruby_line_height_mode: RubyLineHeightMode::UniformParagraph,
+            inline_object_minimum_clearance: 0.3,
+            emphasis_dot_gap: 0.4,
+            ..LayoutStyle::default()
+        };
+        let input = HuoziTiqianInputAdapter::adapt(
+            &[TextSpan::default()],
+            &layout_style,
+            &TextStyle::default(),
+        );
+        let style = input.layout_input.paragraph_style;
+
+        assert_eq!(style.first_line_indent, Some(Ic { count: 1.0 }));
+        assert_eq!(
+            style.first_line_indent_policy,
+            TiqianMeasureAdaptiveFirstLineIndent::new(10.0, 1.0, 3.0)
+        );
+        assert_eq!(style.block_indent, Ic { count: 0.5 });
+        assert_eq!(style.writing_mode, TiqianWritingMode::VerticalRl);
+        assert_eq!(
+            style.line_length_grid,
+            TiqianLineLengthGrid::new(true, Some(TiqianLastLineAlignment::End))
+        );
+        assert_eq!(
+            style.ruby_line_height_mode,
+            TiqianRubyLineHeightMode::UniformParagraph
+        );
+        assert_eq!(style.inline_object_minimum_clearance_em, 0.3);
+        assert_eq!(style.emphasis_dot_gap_em, 0.4);
+    }
+
+    #[test]
+    fn paragraph_override_maps_auto_indent_and_grid_body_alignment() {
+        let paragraph = ParsedParagraph {
+            paragraph_style: ParagraphStyleOverride {
+                indent: Some(FirstLineIndent::Auto),
+                first_line_indent_policy: Some(MeasureAdaptiveFirstLineIndent::new(8.0, 1.0, 2.0)),
+                writing_mode: Some(WritingMode::VerticalRl),
+                line_length_grid_body_alignment: Some(Some(ParagraphAlignment::Center)),
+                ..ParagraphStyleOverride::default()
+            },
+            ..ParsedParagraph::default()
+        };
+        let layout_style = LayoutStyle {
+            box_width: Some(320.0),
+            indent: FirstLineIndent::Fixed(0.0),
+            ..LayoutStyle::default()
+        };
+        let input = HuoziTiqianInputAdapter::adapt_paragraph(
+            &paragraph,
+            &layout_style,
+            &TextStyle::default(),
+            f32::INFINITY,
+            0,
+        );
+        let style = input.layout_input.paragraph_style;
+
+        assert_eq!(style.first_line_indent, None);
+        assert_eq!(
+            style.first_line_indent_policy,
+            TiqianMeasureAdaptiveFirstLineIndent::new(8.0, 1.0, 2.0)
+        );
+        assert_eq!(style.writing_mode, TiqianWritingMode::VerticalRl);
+        assert_eq!(
+            style.line_length_grid.body_alignment,
+            Some(TiqianLastLineAlignment::Center)
         );
     }
 }

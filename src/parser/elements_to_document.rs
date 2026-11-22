@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use crate::layout::{ParagraphAlignment, TextWrapMode, WhiteSpaceMode};
+use crate::layout::{
+    FirstLineIndent, MeasureAdaptiveFirstLineIndent, ParagraphAlignment, TextWrapMode,
+    WhiteSpaceMode, WritingMode,
+};
 use crate::parser::{
     Attribute, BackgroundMetricPolicy, BackgroundStyle, DecorationKind, Element, FontSynthesis,
     InlineAttachment, InlineBoxSpacing, InlineBoxStyle, InlineCodeStyle, InlineNode, InlineObject,
@@ -633,7 +636,23 @@ fn apply_paragraph_attributes(style: &mut ParagraphStyleOverride, attributes: &[
     for attribute in attributes {
         match attribute.name.as_str() {
             "indent" => {
-                update_optional_value(&attribute.value, &mut style.indent, "paragraph indent")
+                if attribute.value == "auto" {
+                    style.indent = Some(FirstLineIndent::Auto);
+                } else {
+                    match attribute.value.parse::<f64>() {
+                        Ok(count) => style.indent = Some(FirstLineIndent::Fixed(count)),
+                        Err(_) => {
+                            log::warn!("invalid paragraph indent `{}`", attribute.value)
+                        }
+                    }
+                }
+            }
+            "firstLineIndentPolicy" => {
+                if let Some(policy) = parse_first_line_indent_policy(&attribute.value) {
+                    style.first_line_indent_policy = Some(policy);
+                } else {
+                    log::warn!("invalid first line indent policy `{}`", attribute.value);
+                }
             }
             "lineHeight" => update_optional_value(
                 &attribute.value,
@@ -661,6 +680,31 @@ fn apply_paragraph_attributes(style: &mut ParagraphStyleOverride, attributes: &[
                 &mut style.line_length_grid,
                 "line length grid",
             ),
+            "lineLengthGridBodyAlignment" => {
+                style.line_length_grid_body_alignment = match attribute.value.as_str() {
+                    "default" => Some(None),
+                    "start" => Some(Some(ParagraphAlignment::Start)),
+                    "center" => Some(Some(ParagraphAlignment::Center)),
+                    "end" => Some(Some(ParagraphAlignment::End)),
+                    _ => {
+                        log::warn!(
+                            "invalid line length grid body alignment `{}`",
+                            attribute.value
+                        );
+                        style.line_length_grid_body_alignment
+                    }
+                }
+            }
+            "writingMode" => {
+                style.writing_mode = match attribute.value.as_str() {
+                    "horizontalTb" => Some(WritingMode::HorizontalTb),
+                    "verticalRl" => Some(WritingMode::VerticalRl),
+                    _ => {
+                        log::warn!("invalid paragraph writing mode `{}`", attribute.value);
+                        style.writing_mode
+                    }
+                }
+            }
             "whiteSpace" => {
                 style.white_space = match attribute.value.as_str() {
                     "collapse" => Some(WhiteSpaceMode::Collapse),
@@ -683,11 +727,9 @@ fn apply_paragraph_attributes(style: &mut ParagraphStyleOverride, attributes: &[
                     }
                 }
             }
-            "tabSize" => update_optional_value(
-                &attribute.value,
-                &mut style.tab_size,
-                "paragraph tab size",
-            ),
+            "tabSize" => {
+                update_optional_value(&attribute.value, &mut style.tab_size, "paragraph tab size")
+            }
             "rubyLineHeightMode" => {
                 style.ruby_line_height_mode = match attribute.value.as_str() {
                     "perLine" => Some(RubyLineHeightMode::PerLine),
@@ -711,6 +753,21 @@ fn apply_paragraph_attributes(style: &mut ParagraphStyleOverride, attributes: &[
             _ => log::warn!("unrecognized paragraph attribute `{}`", attribute.name),
         }
     }
+}
+
+fn parse_first_line_indent_policy(value: &str) -> Option<MeasureAdaptiveFirstLineIndent> {
+    let mut parts = value.split(',');
+    let short_below_em = parts.next()?.trim().parse().ok()?;
+    let short_em = parts.next()?.trim().parse().ok()?;
+    let long_em = parts.next()?.trim().parse().ok()?;
+    if parts.next().is_some() {
+        return None;
+    }
+    Some(MeasureAdaptiveFirstLineIndent::new(
+        short_below_em,
+        short_em,
+        long_em,
+    ))
 }
 
 fn attribute_value<'a>(attributes: &'a [Attribute], name: &str) -> Option<&'a String> {
@@ -837,7 +894,10 @@ mod tests {
             None,
         );
         assert_eq!(document.paragraphs.len(), 2);
-        assert_eq!(document.paragraphs[1].paragraph_style.indent, Some(2.0));
+        assert_eq!(
+            document.paragraphs[1].paragraph_style.indent,
+            Some(FirstLineIndent::Fixed(2.0))
+        );
         assert_eq!(
             document.paragraphs[1].paragraph_style.last_line_alignment,
             Some(ParagraphAlignment::Center)
