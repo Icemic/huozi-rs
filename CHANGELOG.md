@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.27.0 (2026-11-23)
+
+### Chore
+
+ - <csr-id-8a1972448bd3561f70b319760d0dbda32a4111b5/> update locked dependencies
+
+### New Features
+
+ - <csr-id-03b579eae56d7bd4f93bd70faf06c0746bb4a566/> standardize enum values as kebab-case
+ - <csr-id-f42f25a383b8e63e16d5d61ad875dd1c5ea673e0/> expose full paragraph style configuration
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 27 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Update locked dependencies ([`8a19724`](https://github.com/Icemic/huozi-rs/commit/8a1972448bd3561f70b319760d0dbda32a4111b5))
+    - Standardize enum values as kebab-case ([`03b579e`](https://github.com/Icemic/huozi-rs/commit/03b579eae56d7bd4f93bd70faf06c0746bb4a566))
+    - Expose full paragraph style configuration ([`f42f25a`](https://github.com/Icemic/huozi-rs/commit/f42f25a383b8e63e16d5d61ad875dd1c5ea673e0))
+</details>
+
 ## v0.26.1 (2026-10-27)
 
 ### Chore
@@ -15,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -26,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release huozi v0.26.1 ([`ea011dc`](https://github.com/Icemic/huozi-rs/commit/ea011dcd16691999ae88595bfabd961ffcdabc5b))
     - Upgrade tiqian to 0.9 and adapt shaping metadata ([`4cea800`](https://github.com/Icemic/huozi-rs/commit/4cea80027d5f1ea503125a5838e0b9586a62aec3))
 </details>
 
