@@ -198,7 +198,7 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 |  | `strokeColor`、`strokeWidth` | 可选背景描边。 |
 |  | `shadowColor`、`shadowOffsetX`、`shadowOffsetY`、`shadowBlur`、`shadowWidth` | 可选背景阴影。 |
 |  | `paddingX`、`paddingY`、`radius`、`continuationRadius`、`clearance` | `f32` 几何参数；除 `continuationRadius` 外默认 `0`。 |
-|  | `metricPolicy` | `markedFaces`、`uniformTextStyle` 或 `uniformParagraphStyle`；默认 `markedFaces`。 |
+|  | `metricPolicy` | `marked-faces`、`uniform-text-style` 或 `uniform-paragraph-style`；默认 `marked-faces`。 |
 | `underline`、`lineThrough` | `color` | 线条填充色，默认黑色。 |
 |  | `strokeColor`、`strokeWidth`、`shadowColor`、`shadowOffsetX`、`shadowOffsetY`、`shadowBlur`、`shadowWidth` | 可选线条 paint。 |
 |  | `thickness`、`clearance` | `f32`；厚度默认 `1`，净空默认 `0`。 |
@@ -257,11 +257,11 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 | `align` | `start`、`center`、`end`。 |
 | `lineLengthGrid` | `bool`。 |
 | `lineLengthGridBodyAlignment` | `default`、`start`、`center`、`end`；`default` 表示跟随段落末行对齐。 |
-| `writingMode` | `horizontalTb`、`verticalRl`；当前布局仅透传。 |
-| `whiteSpace` | `collapse`、`preserveBreaks`、`preserve`、`breakSpaces`。 |
-| `textWrap` | `wrap`、`noWrap`。 |
+| `writingMode` | `horizontal-tb`、`vertical-rl`；当前布局仅透传。 |
+| `whiteSpace` | `collapse`、`preserve-breaks`、`preserve`、`break-spaces`。 |
+| `textWrap` | `wrap`、`no-wrap`。 |
 | `tabSize` | `f32`，Tab stop 以段落默认字体空格 advance 的倍数表示。 |
-| `rubyLineHeightMode` | `perLine`、`uniformParagraph`。 |
+| `rubyLineHeightMode` | `per-line`、`uniform-paragraph`。 |
 | `inlineObjectMinimumClearance` | `f32`。 |
 | `emphasisDotGap` | `f32`。 |
 
@@ -272,7 +272,7 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 空白与换行也可通过 `LayoutStyle` 为整次布局设置默认值，`br` 属性只覆盖它之后的段落。
 
 ```text
-正文[br whiteSpace=preserve textWrap=noWrap tabSize=4 /]保留空白的单行段落
+正文[br whiteSpace=preserve textWrap=no-wrap tabSize=4 /]保留空白的单行段落
 ```
 
 `parse_text` 与 `parse_text_with` 保留全部 `ParsedParagraph`，四个布局入口都布局全部段落；连续 `[br /]` 形成的空段占一行高度但没有绘制元素。

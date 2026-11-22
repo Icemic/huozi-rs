@@ -1,6 +1,7 @@
 #[cfg(feature = "charsets")]
 pub mod charsets;
 pub mod constant;
+mod de_str;
 pub mod font_backend;
 mod glyph_metrics;
 mod glyph_rasterizer;

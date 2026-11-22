@@ -162,10 +162,7 @@ fn tab_size_multiple_changes_following_glyph_position() {
 #[test]
 fn br_attributes_override_following_paragraph() {
     // 第二段用 Preserve 保留尾空格，第一段按默认折叠。
-    let output = layout_parsed(
-        "甲[br whiteSpace=preserve /]乙  ",
-        &LayoutStyle::default(),
-    );
+    let output = layout_parsed("甲[br whiteSpace=preserve /]乙  ", &LayoutStyle::default());
 
     assert_eq!(2, text_row_count(&output));
     assert_eq!(1, text_count_in_row(&output, 0));
@@ -193,7 +190,7 @@ fn br_tab_size_override_accepts_numeric_value() {
 fn no_wrap_br_attribute_keeps_single_line() {
     // `[br]` 只影响后续段落，所以被测长文本放在标签之后。
     let output = layout_parsed(
-        "甲[br textWrap=noWrap /]乙丙丁戊己庚辛",
+        "甲[br textWrap=no-wrap /]乙丙丁戊己庚辛",
         &LayoutStyle {
             box_width: Some(64.0),
             ..LayoutStyle::default()

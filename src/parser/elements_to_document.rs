@@ -1,16 +1,12 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use crate::layout::{
-    FirstLineIndent, MeasureAdaptiveFirstLineIndent, ParagraphAlignment, TextWrapMode,
-    WhiteSpaceMode, WritingMode,
-};
+use crate::layout::ParagraphAlignment;
 use crate::parser::{
-    Attribute, BackgroundMetricPolicy, BackgroundStyle, DecorationKind, Element, FontSynthesis,
-    InlineAttachment, InlineBoxSpacing, InlineBoxStyle, InlineCodeStyle, InlineNode, InlineObject,
-    InlineObjectBoundary, InlineScopeKind, LinePattern, LineStyle, ParagraphStyleOverride,
-    ParsedParagraph, ParsedText, RubyKind, RubyLineHeightMode, RubyStyle, ShadowStyle, SourceRange,
-    StrokeStyle, TextRun, TextStyle,
+    Attribute, BackgroundStyle, DecorationKind, Element, InlineBoxSpacing, InlineBoxStyle,
+    InlineCodeStyle, InlineNode, InlineObject, InlineObjectBoundary, InlineScopeKind, LinePattern,
+    LineStyle, ParagraphStyleOverride, ParsedParagraph, ParsedText, RubyKind, RubyStyle,
+    ShadowStyle, SourceRange, StrokeStyle, TextRun, TextStyle,
 };
 
 pub(crate) fn lower_elements(
@@ -281,13 +277,11 @@ fn apply_text_attributes(style: &mut TextStyle, tag: &str, attributes: &[Attribu
                 }
             }
             "weight" => update_value(&attribute.value, &mut style.font_weight, "font weight"),
-            "fontSynthesis" => match attribute.value.as_str() {
-                "none" => style.font_synthesis = FontSynthesis::None,
-                "weight" => style.font_synthesis = FontSynthesis::Weight,
-                "style" => style.font_synthesis = FontSynthesis::Style,
-                "all" => style.font_synthesis = FontSynthesis::All,
-                _ => log::warn!("invalid font synthesis `{}`", attribute.value),
-            },
+            "fontSynthesis" => update_value(
+                &attribute.value,
+                &mut style.font_synthesis,
+                "font synthesis",
+            ),
             "italic" | "enabled" if tag == "italic" => {
                 update_value(&attribute.value, &mut style.italic, "italic flag")
             }
@@ -297,11 +291,11 @@ fn apply_text_attributes(style: &mut TextStyle, tag: &str, attributes: &[Attribu
                 &mut style.baseline_shift,
                 "baseline shift",
             ),
-            "attach" => match attribute.value.as_str() {
-                "none" => style.inline_attachment = InlineAttachment::None,
-                "previous" => style.inline_attachment = InlineAttachment::Previous,
-                _ => log::warn!("invalid inline attachment `{}`", attribute.value),
-            },
+            "attach" => update_value(
+                &attribute.value,
+                &mut style.inline_attachment,
+                "inline attachment",
+            ),
             _ => log::warn!(
                 "unrecognized text attribute `{}` on tag `{tag}`",
                 attribute.name
@@ -429,17 +423,11 @@ fn background_style(attributes: &[Attribute]) -> BackgroundStyle {
                 &mut style.clearance,
                 "background clearance",
             ),
-            "metricPolicy" => {
-                style.metric_policy = match attribute.value.as_str() {
-                    "markedFaces" => BackgroundMetricPolicy::MarkedFaces,
-                    "uniformTextStyle" => BackgroundMetricPolicy::UniformTextStyle,
-                    "uniformParagraphStyle" => BackgroundMetricPolicy::UniformParagraphStyle,
-                    _ => {
-                        log::warn!("invalid background metric policy `{}`", attribute.value);
-                        style.metric_policy
-                    }
-                }
-            }
+            "metricPolicy" => update_value(
+                &attribute.value,
+                &mut style.metric_policy,
+                "background metric policy",
+            ),
             _ => log::warn!("unrecognized background attribute `{}`", attribute.name),
         }
     }
@@ -586,16 +574,7 @@ fn inline_box_style(attributes: &[Attribute]) -> Option<InlineBoxStyle> {
         match attribute.name.as_str() {
             "start" => update_value(&attribute.value, &mut style.start, "box start"),
             "end" => update_value(&attribute.value, &mut style.end, "box end"),
-            "spacing" => {
-                style.spacing = match attribute.value.as_str() {
-                    "narrow" => InlineBoxSpacing::Narrow,
-                    "source" => InlineBoxSpacing::Source,
-                    _ => {
-                        log::warn!("invalid box spacing `{}`", attribute.value);
-                        style.spacing
-                    }
-                }
-            }
+            "spacing" => update_value(&attribute.value, &mut style.spacing, "box spacing"),
             _ => log::warn!("unrecognized box attribute `{}`", attribute.name),
         }
     }
@@ -636,24 +615,13 @@ fn apply_paragraph_attributes(style: &mut ParagraphStyleOverride, attributes: &[
     for attribute in attributes {
         match attribute.name.as_str() {
             "indent" => {
-                if attribute.value == "auto" {
-                    style.indent = Some(FirstLineIndent::Auto);
-                } else {
-                    match attribute.value.parse::<f64>() {
-                        Ok(count) => style.indent = Some(FirstLineIndent::Fixed(count)),
-                        Err(_) => {
-                            log::warn!("invalid paragraph indent `{}`", attribute.value)
-                        }
-                    }
-                }
+                update_optional_value(&attribute.value, &mut style.indent, "paragraph indent")
             }
-            "firstLineIndentPolicy" => {
-                if let Some(policy) = parse_first_line_indent_policy(&attribute.value) {
-                    style.first_line_indent_policy = Some(policy);
-                } else {
-                    log::warn!("invalid first line indent policy `{}`", attribute.value);
-                }
-            }
+            "firstLineIndentPolicy" => update_optional_value(
+                &attribute.value,
+                &mut style.first_line_indent_policy,
+                "first line indent policy",
+            ),
             "lineHeight" => update_optional_value(
                 &attribute.value,
                 &mut style.line_height,
@@ -664,82 +632,52 @@ fn apply_paragraph_attributes(style: &mut ParagraphStyleOverride, attributes: &[
                 &mut style.block_indent,
                 "paragraph block indent",
             ),
-            "align" => {
-                style.last_line_alignment = match attribute.value.as_str() {
-                    "start" => Some(ParagraphAlignment::Start),
-                    "center" => Some(ParagraphAlignment::Center),
-                    "end" => Some(ParagraphAlignment::End),
-                    _ => {
-                        log::warn!("invalid paragraph align `{}`", attribute.value);
-                        style.last_line_alignment
-                    }
-                }
-            }
+            "align" => update_optional_value(
+                &attribute.value,
+                &mut style.last_line_alignment,
+                "paragraph align",
+            ),
             "lineLengthGrid" => update_optional_value(
                 &attribute.value,
                 &mut style.line_length_grid,
                 "line length grid",
             ),
             "lineLengthGridBodyAlignment" => {
-                style.line_length_grid_body_alignment = match attribute.value.as_str() {
-                    "default" => Some(None),
-                    "start" => Some(Some(ParagraphAlignment::Start)),
-                    "center" => Some(Some(ParagraphAlignment::Center)),
-                    "end" => Some(Some(ParagraphAlignment::End)),
-                    _ => {
-                        log::warn!(
-                            "invalid line length grid body alignment `{}`",
-                            attribute.value
-                        );
-                        style.line_length_grid_body_alignment
+                // `default` 显式重置为跟随末行对齐，其余取值由枚举自带的解析处理。
+                if attribute.value == "default" {
+                    style.line_length_grid_body_alignment = Some(None);
+                } else {
+                    match attribute.value.parse::<ParagraphAlignment>() {
+                        Ok(alignment) => {
+                            style.line_length_grid_body_alignment = Some(Some(alignment))
+                        }
+                        Err(error) => log::warn!("{error}"),
                     }
                 }
             }
-            "writingMode" => {
-                style.writing_mode = match attribute.value.as_str() {
-                    "horizontalTb" => Some(WritingMode::HorizontalTb),
-                    "verticalRl" => Some(WritingMode::VerticalRl),
-                    _ => {
-                        log::warn!("invalid paragraph writing mode `{}`", attribute.value);
-                        style.writing_mode
-                    }
-                }
-            }
-            "whiteSpace" => {
-                style.white_space = match attribute.value.as_str() {
-                    "collapse" => Some(WhiteSpaceMode::Collapse),
-                    "preserveBreaks" => Some(WhiteSpaceMode::PreserveBreaks),
-                    "preserve" => Some(WhiteSpaceMode::Preserve),
-                    "breakSpaces" => Some(WhiteSpaceMode::BreakSpaces),
-                    _ => {
-                        log::warn!("invalid paragraph white space `{}`", attribute.value);
-                        style.white_space
-                    }
-                }
-            }
-            "textWrap" => {
-                style.text_wrap = match attribute.value.as_str() {
-                    "wrap" => Some(TextWrapMode::Wrap),
-                    "noWrap" => Some(TextWrapMode::NoWrap),
-                    _ => {
-                        log::warn!("invalid paragraph text wrap `{}`", attribute.value);
-                        style.text_wrap
-                    }
-                }
-            }
+            "writingMode" => update_optional_value(
+                &attribute.value,
+                &mut style.writing_mode,
+                "paragraph writing mode",
+            ),
+            "whiteSpace" => update_optional_value(
+                &attribute.value,
+                &mut style.white_space,
+                "paragraph white space",
+            ),
+            "textWrap" => update_optional_value(
+                &attribute.value,
+                &mut style.text_wrap,
+                "paragraph text wrap",
+            ),
             "tabSize" => {
                 update_optional_value(&attribute.value, &mut style.tab_size, "paragraph tab size")
             }
-            "rubyLineHeightMode" => {
-                style.ruby_line_height_mode = match attribute.value.as_str() {
-                    "perLine" => Some(RubyLineHeightMode::PerLine),
-                    "uniformParagraph" => Some(RubyLineHeightMode::UniformParagraph),
-                    _ => {
-                        log::warn!("invalid ruby line height mode `{}`", attribute.value);
-                        style.ruby_line_height_mode
-                    }
-                }
-            }
+            "rubyLineHeightMode" => update_optional_value(
+                &attribute.value,
+                &mut style.ruby_line_height_mode,
+                "ruby line height mode",
+            ),
             "inlineObjectMinimumClearance" => update_optional_value(
                 &attribute.value,
                 &mut style.inline_object_minimum_clearance,
@@ -753,21 +691,6 @@ fn apply_paragraph_attributes(style: &mut ParagraphStyleOverride, attributes: &[
             _ => log::warn!("unrecognized paragraph attribute `{}`", attribute.name),
         }
     }
-}
-
-fn parse_first_line_indent_policy(value: &str) -> Option<MeasureAdaptiveFirstLineIndent> {
-    let mut parts = value.split(',');
-    let short_below_em = parts.next()?.trim().parse().ok()?;
-    let short_em = parts.next()?.trim().parse().ok()?;
-    let long_em = parts.next()?.trim().parse().ok()?;
-    if parts.next().is_some() {
-        return None;
-    }
-    Some(MeasureAdaptiveFirstLineIndent::new(
-        short_below_em,
-        short_em,
-        long_em,
-    ))
 }
 
 fn attribute_value<'a>(attributes: &'a [Attribute], name: &str) -> Option<&'a String> {
@@ -816,8 +739,8 @@ fn parse_optional<T: FromStr + Clone>(value: &str, fallback: Option<&T>, name: &
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::ParagraphAlignment;
-    use crate::parser::{Element, Segment, parse};
+    use crate::layout::{FirstLineIndent, ParagraphAlignment};
+    use crate::parser::{Element, FontSynthesis, Segment, parse};
 
     #[test]
     fn span_applies_text_and_paint_attributes_through_one_path() {

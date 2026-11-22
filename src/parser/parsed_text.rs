@@ -1,5 +1,7 @@
 use csscolorparser::Color;
+use serde::{Deserialize, Serialize};
 
+use crate::de_str::impl_from_str_via_serde;
 use crate::layout::{
     FirstLineIndent, MeasureAdaptiveFirstLineIndent, ParagraphAlignment, TextWrapMode,
     WhiteSpaceMode, WritingMode,
@@ -98,12 +100,15 @@ impl Default for BackgroundStyle {
 }
 
 /// 背景高度的度量来源。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum BackgroundMetricPolicy {
     MarkedFaces,
     UniformTextStyle,
     UniformParagraphStyle,
 }
+
+impl_from_str_via_serde!(BackgroundMetricPolicy);
 
 /// 下划线和删除线的绘制参数。
 #[derive(Debug, Clone)]
@@ -178,11 +183,14 @@ pub struct InlineBoxStyle {
 }
 
 /// 行内盒边缘的自动间距归属。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum InlineBoxSpacing {
     Narrow,
     Source,
 }
+
+impl_from_str_via_serde!(InlineBoxSpacing);
 
 /// 插入当前位置的行内对象。
 #[derive(Debug, Clone)]

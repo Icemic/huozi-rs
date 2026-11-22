@@ -1,10 +1,13 @@
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
+use std::str::FromStr;
+
+use crate::de_str::impl_from_str_via_serde;
 
 /// 段落结束行的行内对齐方式。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "kebab-case")]
 pub enum ParagraphAlignment {
     Start,
     Center,
@@ -21,7 +24,7 @@ impl Default for ParagraphAlignment {
 ///
 /// 语义与 tiqian 的同名类型一致，由 Huozi 再次定义以满足配置序列化需要。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "kebab-case")]
 pub enum WhiteSpaceMode {
     /// 折叠连续普通空白与普通换行为一个空格，并移除行首尾空白。
     Collapse,
@@ -41,7 +44,7 @@ impl Default for WhiteSpaceMode {
 
 /// 软换行策略，保留的硬换行始终生效。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "kebab-case")]
 pub enum TextWrapMode {
     Wrap,
     NoWrap,
@@ -55,7 +58,7 @@ impl Default for TextWrapMode {
 
 /// Tab stop 的重复间距。
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "kebab-case")]
 pub enum TabSize {
     /// 段落默认字体空格 advance 的倍数。
     SpaceAdvanceMultiple(f64),
@@ -71,7 +74,7 @@ impl Default for TabSize {
 
 /// 书写方向。竖排尚未进入布局管线，取值会被原样传给 Tiqian，但当前不改变输出。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "kebab-case")]
 pub enum WritingMode {
     HorizontalTb,
     VerticalRl,
@@ -87,7 +90,7 @@ impl Default for WritingMode {
 ///
 /// `PerLine` 只在含注文的行加高，`UniformParagraph` 把同样的增量应用到整段每一行。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "kebab-case")]
 pub enum RubyLineHeightMode {
     PerLine,
     UniformParagraph,
@@ -98,6 +101,14 @@ impl Default for RubyLineHeightMode {
         Self::PerLine
     }
 }
+
+impl_from_str_via_serde!(
+    ParagraphAlignment,
+    WhiteSpaceMode,
+    TextWrapMode,
+    WritingMode,
+    RubyLineHeightMode,
+);
 
 /// 行长字号整数倍量化（grid-first）。
 ///
@@ -167,6 +178,37 @@ impl MeasureAdaptiveFirstLineIndent {
     }
 }
 
+impl FromStr for MeasureAdaptiveFirstLineIndent {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let invalid = || format!("invalid measure adaptive first line indent `{value}`");
+        let mut parts = value.split(',');
+        let short_below_em = parts
+            .next()
+            .ok_or_else(invalid)?
+            .trim()
+            .parse()
+            .map_err(|_| invalid())?;
+        let short_em = parts
+            .next()
+            .ok_or_else(invalid)?
+            .trim()
+            .parse()
+            .map_err(|_| invalid())?;
+        let long_em = parts
+            .next()
+            .ok_or_else(invalid)?
+            .trim()
+            .parse()
+            .map_err(|_| invalid())?;
+        if parts.next().is_some() {
+            return Err(invalid());
+        }
+        Ok(Self::new(short_below_em, short_em, long_em))
+    }
+}
+
 /// 段首缩进的来源。
 ///
 /// `Fixed` 使用固定字数并忽略 `MeasureAdaptiveFirstLineIndent`；`Auto` 交由策略按行长决定。
@@ -190,6 +232,20 @@ impl FirstLineIndent {
             Self::Auto => None,
             Self::Fixed(count) => Some(count),
         }
+    }
+}
+
+impl FromStr for FirstLineIndent {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value == "auto" {
+            return Ok(Self::Auto);
+        }
+        value
+            .parse::<f64>()
+            .map(Self::Fixed)
+            .map_err(|_| format!("invalid first line indent `{value}`"))
     }
 }
 

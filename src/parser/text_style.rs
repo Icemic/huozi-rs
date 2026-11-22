@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use crate::de_str::impl_from_str_via_serde;
+
 use csscolorparser::Color;
 use serde::{Deserialize, Serialize};
 
@@ -51,12 +53,14 @@ pub enum FontSynthesis {
 
 /// 行内范围与前一个文字边界的归属关系。
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "kebab-case")]
 pub enum InlineAttachment {
     #[default]
     None,
     Previous,
 }
+
+impl_from_str_via_serde!(FontSynthesis, InlineAttachment);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]

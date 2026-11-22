@@ -100,20 +100,18 @@ impl HuoziTiqianInputAdapter {
             .line_height(Some(
                 (initial_text_style.font_size * layout_style.line_height) as f32,
             ))
-            .first_line_indent(tiqian_first_line_indent(layout_style.indent))
-            .first_line_indent_policy(tiqian_indent_policy(layout_style.first_line_indent_policy))
+            .first_line_indent(layout_style.indent.to_ic())
+            .first_line_indent_policy(layout_style.first_line_indent_policy.into())
             .block_indent(Ic {
                 count: layout_style.block_indent as f32,
             })
             .last_line_alignment(tiqian_last_line_alignment(layout_style, None))
-            .writing_mode(tiqian_writing_mode(layout_style.writing_mode))
-            .white_space(tiqian_white_space(layout_style.white_space))
-            .text_wrap(tiqian_text_wrap(layout_style.text_wrap))
-            .tab_size(tiqian_tab_size(layout_style.tab_size))
-            .line_length_grid(tiqian_line_length_grid(layout_style.line_length_grid))
-            .ruby_line_height_mode(tiqian_ruby_line_height_mode(
-                layout_style.ruby_line_height_mode,
-            ))
+            .writing_mode(layout_style.writing_mode.into())
+            .white_space(layout_style.white_space.into())
+            .text_wrap(layout_style.text_wrap.into())
+            .tab_size(layout_style.tab_size.into())
+            .line_length_grid(layout_style.line_length_grid.into())
+            .ruby_line_height_mode(layout_style.ruby_line_height_mode.into())
             .inline_object_minimum_clearance_em(layout_style.inline_object_minimum_clearance as f32)
             .emphasis_dot_gap_em(layout_style.emphasis_dot_gap as f32)
             .build();
@@ -289,7 +287,7 @@ fn append_nodes(
                 }
                 InlineScopeKind::Decoration(kind) => {
                     let id = state.next_continuity();
-                    builder.with_decoration_with_id(id, tiqian_decoration(*kind), |builder| {
+                    builder.with_decoration_with_id(id, (*kind).into(), |builder| {
                         append_nodes(builder, children, state, inside_ruby)
                     });
                 }
@@ -419,14 +417,13 @@ fn paragraph_style(
         .line_height(override_style.line_height.or(Some(
             (initial_text_style.font_size * layout_style.line_height) as f32,
         )))
-        .first_line_indent(tiqian_first_line_indent(
-            override_style.indent.unwrap_or(layout_style.indent),
-        ))
-        .first_line_indent_policy(tiqian_indent_policy(
+        .first_line_indent(override_style.indent.unwrap_or(layout_style.indent).to_ic())
+        .first_line_indent_policy(
             override_style
                 .first_line_indent_policy
-                .unwrap_or(layout_style.first_line_indent_policy),
-        ))
+                .unwrap_or(layout_style.first_line_indent_policy)
+                .into(),
+        )
         .block_indent(Ic {
             count: override_style
                 .block_indent
@@ -436,39 +433,49 @@ fn paragraph_style(
             layout_style,
             override_style.last_line_alignment,
         ))
-        .writing_mode(tiqian_writing_mode(
+        .writing_mode(
             override_style
                 .writing_mode
-                .unwrap_or(layout_style.writing_mode),
-        ))
-        .line_length_grid(tiqian_line_length_grid(LineLengthGrid {
-            enabled: override_style
-                .line_length_grid
-                .unwrap_or(layout_style.line_length_grid.enabled),
-            body_alignment: override_style
-                .line_length_grid_body_alignment
-                .unwrap_or(layout_style.line_length_grid.body_alignment),
-        }))
-        .white_space(tiqian_white_space(
+                .unwrap_or(layout_style.writing_mode)
+                .into(),
+        )
+        .line_length_grid(
+            LineLengthGrid {
+                enabled: override_style
+                    .line_length_grid
+                    .unwrap_or(layout_style.line_length_grid.enabled),
+                body_alignment: override_style
+                    .line_length_grid_body_alignment
+                    .unwrap_or(layout_style.line_length_grid.body_alignment),
+            }
+            .into(),
+        )
+        .white_space(
             override_style
                 .white_space
-                .unwrap_or(layout_style.white_space),
-        ))
-        .text_wrap(tiqian_text_wrap(
-            override_style.text_wrap.unwrap_or(layout_style.text_wrap),
-        ))
-        .tab_size(tiqian_tab_size(
+                .unwrap_or(layout_style.white_space)
+                .into(),
+        )
+        .text_wrap(
+            override_style
+                .text_wrap
+                .unwrap_or(layout_style.text_wrap)
+                .into(),
+        )
+        .tab_size(
             override_style
                 .tab_size
                 .map_or(layout_style.tab_size, |multiple| {
                     TabSize::SpaceAdvanceMultiple(multiple as f64)
-                }),
-        ))
-        .ruby_line_height_mode(tiqian_ruby_line_height_mode(
+                })
+                .into(),
+        )
+        .ruby_line_height_mode(
             override_style
                 .ruby_line_height_mode
-                .unwrap_or(layout_style.ruby_line_height_mode),
-        ))
+                .unwrap_or(layout_style.ruby_line_height_mode)
+                .into(),
+        )
         .inline_object_minimum_clearance_em(
             override_style
                 .inline_object_minimum_clearance
@@ -482,44 +489,85 @@ fn paragraph_style(
         .build()
 }
 
-fn tiqian_first_line_indent(indent: FirstLineIndent) -> Option<Ic> {
-    indent.fixed_count().map(|count| Ic {
-        count: count as f32,
-    })
-}
-
-fn tiqian_indent_policy(
-    policy: MeasureAdaptiveFirstLineIndent,
-) -> TiqianMeasureAdaptiveFirstLineIndent {
-    TiqianMeasureAdaptiveFirstLineIndent::new(
-        policy.short_below_em as f32,
-        policy.short_em as f32,
-        policy.long_em as f32,
-    )
-}
-
-fn tiqian_line_length_grid(grid: LineLengthGrid) -> TiqianLineLengthGrid {
-    TiqianLineLengthGrid::new(
-        grid.enabled,
-        grid.body_alignment.map(|alignment| match alignment {
-            ParagraphAlignment::Start => TiqianLastLineAlignment::Start,
-            ParagraphAlignment::Center => TiqianLastLineAlignment::Center,
-            ParagraphAlignment::End => TiqianLastLineAlignment::End,
-        }),
-    )
-}
-
-fn tiqian_ruby_line_height_mode(mode: RubyLineHeightMode) -> TiqianRubyLineHeightMode {
-    match mode {
-        RubyLineHeightMode::PerLine => TiqianRubyLineHeightMode::PerLine,
-        RubyLineHeightMode::UniformParagraph => TiqianRubyLineHeightMode::UniformParagraph,
+impl FirstLineIndent {
+    /// 固定缩进转为 Tiqian 的 `Ic`；`Auto` 不提供显式值，交由策略决定。
+    fn to_ic(self) -> Option<Ic> {
+        self.fixed_count().map(|count| Ic {
+            count: count as f32,
+        })
     }
 }
 
-fn tiqian_writing_mode(mode: WritingMode) -> TiqianWritingMode {
-    match mode {
-        WritingMode::HorizontalTb => TiqianWritingMode::HorizontalTb,
-        WritingMode::VerticalRl => TiqianWritingMode::VerticalRl,
+impl From<ParagraphAlignment> for TiqianLastLineAlignment {
+    fn from(alignment: ParagraphAlignment) -> Self {
+        match alignment {
+            ParagraphAlignment::Start => Self::Start,
+            ParagraphAlignment::Center => Self::Center,
+            ParagraphAlignment::End => Self::End,
+        }
+    }
+}
+
+impl From<MeasureAdaptiveFirstLineIndent> for TiqianMeasureAdaptiveFirstLineIndent {
+    fn from(policy: MeasureAdaptiveFirstLineIndent) -> Self {
+        Self::new(
+            policy.short_below_em as f32,
+            policy.short_em as f32,
+            policy.long_em as f32,
+        )
+    }
+}
+
+impl From<LineLengthGrid> for TiqianLineLengthGrid {
+    fn from(grid: LineLengthGrid) -> Self {
+        Self::new(grid.enabled, grid.body_alignment.map(Into::into))
+    }
+}
+
+impl From<RubyLineHeightMode> for TiqianRubyLineHeightMode {
+    fn from(mode: RubyLineHeightMode) -> Self {
+        match mode {
+            RubyLineHeightMode::PerLine => Self::PerLine,
+            RubyLineHeightMode::UniformParagraph => Self::UniformParagraph,
+        }
+    }
+}
+
+impl From<WritingMode> for TiqianWritingMode {
+    fn from(mode: WritingMode) -> Self {
+        match mode {
+            WritingMode::HorizontalTb => Self::HorizontalTb,
+            WritingMode::VerticalRl => Self::VerticalRl,
+        }
+    }
+}
+
+impl From<WhiteSpaceMode> for TiqianWhiteSpaceMode {
+    fn from(mode: WhiteSpaceMode) -> Self {
+        match mode {
+            WhiteSpaceMode::Collapse => Self::Collapse,
+            WhiteSpaceMode::PreserveBreaks => Self::PreserveBreaks,
+            WhiteSpaceMode::Preserve => Self::Preserve,
+            WhiteSpaceMode::BreakSpaces => Self::BreakSpaces,
+        }
+    }
+}
+
+impl From<TextWrapMode> for TiqianTextWrapMode {
+    fn from(mode: TextWrapMode) -> Self {
+        match mode {
+            TextWrapMode::Wrap => Self::Wrap,
+            TextWrapMode::NoWrap => Self::NoWrap,
+        }
+    }
+}
+
+impl From<TabSize> for TiqianTabSize {
+    fn from(size: TabSize) -> Self {
+        match size {
+            TabSize::SpaceAdvanceMultiple(multiple) => Self::SpaceAdvanceMultiple(multiple as f32),
+            TabSize::LayoutUnits(units) => Self::LayoutUnits(units as f32),
+        }
     }
 }
 
@@ -535,36 +583,7 @@ fn tiqian_last_line_alignment(
     } else {
         ParagraphAlignment::Start
     };
-    match alignment {
-        ParagraphAlignment::Start => TiqianLastLineAlignment::Start,
-        ParagraphAlignment::Center => TiqianLastLineAlignment::Center,
-        ParagraphAlignment::End => TiqianLastLineAlignment::End,
-    }
-}
-
-fn tiqian_white_space(mode: WhiteSpaceMode) -> TiqianWhiteSpaceMode {
-    match mode {
-        WhiteSpaceMode::Collapse => TiqianWhiteSpaceMode::Collapse,
-        WhiteSpaceMode::PreserveBreaks => TiqianWhiteSpaceMode::PreserveBreaks,
-        WhiteSpaceMode::Preserve => TiqianWhiteSpaceMode::Preserve,
-        WhiteSpaceMode::BreakSpaces => TiqianWhiteSpaceMode::BreakSpaces,
-    }
-}
-
-fn tiqian_text_wrap(mode: TextWrapMode) -> TiqianTextWrapMode {
-    match mode {
-        TextWrapMode::Wrap => TiqianTextWrapMode::Wrap,
-        TextWrapMode::NoWrap => TiqianTextWrapMode::NoWrap,
-    }
-}
-
-fn tiqian_tab_size(size: TabSize) -> TiqianTabSize {
-    match size {
-        TabSize::SpaceAdvanceMultiple(multiple) => {
-            TiqianTabSize::SpaceAdvanceMultiple(multiple as f32)
-        }
-        TabSize::LayoutUnits(units) => TiqianTabSize::LayoutUnits(units as f32),
-    }
+    alignment.into()
 }
 
 fn tiqian_background(style: &crate::parser::BackgroundStyle) -> RichTextBackgroundPaint {
@@ -608,12 +627,14 @@ fn tiqian_line(style: &LineStyle) -> RichTextLinePaint {
     }
 }
 
-fn tiqian_decoration(kind: DecorationKind) -> TiqianDecorationKind {
-    match kind {
-        DecorationKind::Emphasis => TiqianDecorationKind::Emphasis,
-        DecorationKind::Mourning => TiqianDecorationKind::Mourning,
-        DecorationKind::ProperNoun => TiqianDecorationKind::ProperNoun,
-        DecorationKind::BookTitle => TiqianDecorationKind::BookTitle,
+impl From<DecorationKind> for TiqianDecorationKind {
+    fn from(kind: DecorationKind) -> Self {
+        match kind {
+            DecorationKind::Emphasis => Self::Emphasis,
+            DecorationKind::Mourning => Self::Mourning,
+            DecorationKind::ProperNoun => Self::ProperNoun,
+            DecorationKind::BookTitle => Self::BookTitle,
+        }
     }
 }
 

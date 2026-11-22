@@ -16,7 +16,7 @@
 
 `LayoutStyle` 新增 `first_line_indent_policy`、`block_indent`、`writing_mode`、`line_length_grid`、`ruby_line_height_mode`、`inline_object_minimum_clearance`、`emphasis_dot_gap`，`indent` 由 `f64` 改为 `FirstLineIndent`。`ParagraphStyleOverride` 同步新增对应覆盖字段，`line_length_grid_body_alignment` 支持 `Some(None)` 重置。四条布局入口共用 `adapt` / `paragraph_style` 两条映射路径，已写入 Tiqian `ParagraphStyle` 的全部 13 个字段（`writing_mode` 仅透传）。
 
-`[br /]` 新增 `firstLineIndentPolicy`、`lineLengthGridBodyAlignment`、`writingMode`，`indent` 接受数值或 `auto`。`RubyLineHeightMode` 从 `parser` 迁移到 `layout`，`parser` 继续 `pub use`。
+`[br /]` 新增 `firstLineIndentPolicy`、`lineLengthGridBodyAlignment`、`writingMode`，`indent` 接受数值或 `auto`。`RubyLineHeightMode` 从 `parser` 迁移到 `layout`，`parser` 继续 `pub use`。枚举取值统一为 kebab-case（如 `preserve-breaks`、`vertical-rl`、`marked-faces`），纯 unit 枚举的 `FromStr` 复用 serde 表示（新增 `src/de_str.rs` 桥接），标签解析改用统一的 `FromStr` 与赋值助手；`tiqian_input.rs` 的简单映射改为 `From` 实现。`FirstLineIndent` 与 `MeasureAdaptiveFirstLineIndent` 的标签写法不是 serde 结构，保持手写解析。
 
 新增 `tests/paragraph_style_config.rs` 共 5 项，覆盖 `block_indent` 逐行位移、固定/自适应缩进、`lineLengthGridBodyAlignment` 对量化余量的影响、`[br]` 覆盖与重置；`tiqian_input.rs` 增加两条字段映射单测。`cargo test` 全部通过，`cargo check --all-targets` 无报错。
 
@@ -26,6 +26,7 @@
 2. `indent` 使用 `FirstLineIndent::{Auto, Fixed}`，但序列化保持向后兼容：`Fixed` 写成数值，`Auto` 写成 `"auto"`，数值配置可直接反序列化。
 3. 标签属性使用 `lineLengthGridBodyAlignment`。
 4. `CHANGELOG.md` 由发布流程根据提交生成，本迭代不手工编辑。
+5. 字段名保持 camelCase，枚举取值统一为 kebab-case；标签属性不再手写 `match`，改为各枚举的 `FromStr` 实现加统一赋值助手。
 
 ## 背景
 
@@ -126,7 +127,7 @@ Huozi 定义自己的 `WritingMode::{HorizontalTb, VerticalRl}`（带 serde）�
 | --- | --- | --- |
 | `firstLineIndentPolicy` | `shortBelow,short,long` 三个数值，逗号分隔 | 覆盖后续段落的策略 |
 | `lineLengthGridBodyAlignment` | `default`、`start`、`center`、`end` | `default` 表示跟随 `align`（`body_alignment = None`）；其余覆盖 |
-| `writingMode` | `horizontalTb`、`verticalRl` | 覆盖书写方向 |
+| `writingMode` | `horizontal-tb`、`vertical-rl` | 覆盖书写方向 |
 | `indent` | 数值或 `auto` | `auto` 表示改用策略决定缩进 |
 
 `lineLengthGridBodyAlignment=default` 与 `indent=auto` 需要能显式重置继承值，因此这两个字段的覆盖状态必须是三态。`lineLengthGridBodyAlignment` 用 `Option<Option<ParagraphAlignment>>` 表达“未设置 / 重置为 None / 指定值”；`indent` 用 `Option<FirstLineIndent>` 表达（`Auto` 本身即三态之一），无需嵌套。
