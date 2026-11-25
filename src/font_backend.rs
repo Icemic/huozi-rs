@@ -10,6 +10,7 @@ use skrifa::string::StringId;
 use skrifa::{FontRef as SkrifaFontRef, GlyphId, MetadataProvider};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
+use std::ops::Range;
 use std::sync::{Arc, Mutex};
 use tiqian::common::HashSet;
 use tiqian::core::font_face::{
@@ -149,7 +150,7 @@ struct FontCandidate<'a> {
 }
 
 #[derive(Clone)]
-pub(crate) struct HuoziFontManager {
+pub struct HuoziFontManager {
     faces: Arc<[FontFaceRecord]>,
     face_indices: Arc<HashMap<String, HashMap<u32, usize>>>,
     family_indices: Arc<HashMap<String, Vec<usize>>>,
@@ -161,7 +162,117 @@ pub(crate) struct HuoziFontManager {
 }
 
 impl HuoziFontManager {
-    pub(crate) fn from_sources(sources: Vec<FontSource>) -> Result<Self, String> {
+    pub fn face_count(&self) -> usize {
+        self.faces.len()
+    }
+
+    pub fn supports_character(&self, id: &FontFaceId, character: char) -> bool {
+        self.glyph_id(id, character).is_some_and(|glyph| glyph != 0)
+    }
+
+    pub fn supported_characters(&self, id: &FontFaceId) -> String {
+        let face = self.face_for_id(id);
+        let font = SkrifaFontRef::from_index(&face.bytes, face.collection_index)
+            .expect("registered face must remain readable by SkRifa");
+        font.charmap()
+            .mappings()
+            .filter(|(_, glyph)| glyph.to_u32() != 0)
+            .filter_map(|(codepoint, _)| char::from_u32(codepoint))
+            .collect()
+    }
+
+    pub fn glyph_count(&self, id: &FontFaceId) -> u32 {
+        let face = self.face_for_id(id);
+        SkrifaFontRef::from_index(&face.bytes, face.collection_index)
+            .expect("registered face must remain readable by SkRifa")
+            .maxp()
+            .map(|table| u32::from(table.num_glyphs()))
+            .unwrap_or(0)
+    }
+
+    pub fn shape_exact_face(&self, id: &FontFaceId, request: &FontBackendRequest) -> ShapingResult {
+        self.shape_exact_face_with_sources(id, request).0
+    }
+
+    pub(crate) fn shape_exact_face_with_sources(
+        &self,
+        id: &FontFaceId,
+        request: &FontBackendRequest,
+    ) -> (ShapingResult, Vec<Range<i32>>) {
+        let face = self.face_for_id(id);
+        let candidate = FontCandidate {
+            face,
+            id: id.clone(),
+            weight: face.weight,
+            style: face.style,
+        };
+        let (mut shaping, _, sources) = self.shape_one_face_with_sources(request, &candidate);
+        self.add_ink_bounds(&mut shaping, id, request.style.font_size);
+        (shaping, sources)
+    }
+
+    /// 按字体回退顺序 shaping，并保留被选中结果的逐字形来源区间。
+    pub(crate) fn shape_with_sources(
+        &self,
+        request: &FontBackendRequest,
+    ) -> (FontBackendShapingResult, Vec<Range<i32>>) {
+        let mut attempts = Vec::new();
+        let mut preferred = None;
+        for candidate in self.candidates(request) {
+            let (mut shaping, missing_glyphs, sources) =
+                self.shape_one_face_with_sources(request, &candidate);
+            attempts.push(FontCandidateAttempt::new(
+                format!(
+                    "source-{}#{}@{}",
+                    candidate.face.source_index,
+                    candidate.face.collection_index,
+                    candidate.id.variation_instance()
+                ),
+                candidate.id.clone(),
+                missing_glyphs,
+            ));
+            if missing_glyphs == 0 {
+                self.add_ink_bounds(&mut shaping, &candidate.id, request.style.font_size);
+                return (
+                    FontBackendShapingResult::new(candidate.id, shaping, attempts),
+                    sources,
+                );
+            }
+            if preferred.is_none() {
+                preferred = Some((candidate.id, candidate.face, shaping, sources));
+                continue;
+            }
+        }
+        let (face_id, _, mut shaping, sources) =
+            preferred.expect("HuoziFontManager must contain at least one face");
+        self.add_ink_bounds(&mut shaping, &face_id, request.style.font_size);
+        (
+            FontBackendShapingResult::new(face_id, shaping, attempts),
+            sources,
+        )
+    }
+
+    pub fn glyph_id(&self, id: &FontFaceId, character: char) -> Option<u32> {
+        let face = self.face_for_id(id);
+        let font = SkrifaFontRef::from_index(&face.bytes, face.collection_index).ok()?;
+        font.charmap().map(character).map(|glyph| glyph.to_u32())
+    }
+
+    pub fn font_metrics(&self, id: &FontFaceId, size: f32) -> RawFontMetrics {
+        self.raw_metrics(id, size)
+    }
+
+    pub fn glyph_advance(&self, id: &FontFaceId, glyph_id: u32, size: f32) -> f32 {
+        let face = self.face_for_id(id);
+        let font = SkrifaFontRef::from_index(&face.bytes, face.collection_index)
+            .expect("registered face must remain readable by SkRifa");
+        let location = variation_location(&font, id.variation_instance());
+        font.glyph_metrics(Size::new(size), &location)
+            .advance_width(GlyphId::new(glyph_id))
+            .unwrap_or(0.0)
+    }
+
+    pub fn from_sources(sources: Vec<FontSource>) -> Result<Self, String> {
         let mut faces = Vec::new();
         let mut descriptors = Vec::new();
 
@@ -486,11 +597,16 @@ impl HuoziFontManager {
         font.color_glyphs().get(GlyphId::new(glyph_id)).is_some()
     }
 
-    fn shape_one_face(
+    /// 单 face shaping。
+    ///
+    /// Tiqian 把「一次 shaping 请求」当作一个排版原子：断行、度量、注音锚定都以该簇为单位，
+    /// 所以这里恒返回一个覆盖整个 `request.range` 的簇，字形坐标是请求内的绝对累计值。
+    /// 逐字形的来源区间另外返回，不进入 Tiqian 的簇。
+    fn shape_one_face_with_sources(
         &self,
         request: &FontBackendRequest,
         candidate: &FontCandidate<'_>,
-    ) -> (ShapingResult, u32) {
+    ) -> (ShapingResult, u32, Vec<Range<i32>>) {
         let face = candidate.face;
         let font = &face.shaper_font;
         let variation_settings: Vec<_> = candidate
@@ -532,6 +648,7 @@ impl HuoziFontManager {
             warn!("harfrust shaping failed for face {}: {error:?}", face.id);
         }
         let scale = request.style.font_size / face.units_per_em as f32;
+        let sources = glyph_source_ranges(request, &buffer);
         let mut pen_x = 0_i64;
         let glyphs: Vec<_> = buffer
             .glyph_infos()
@@ -575,6 +692,7 @@ impl HuoziFontManager {
         (
             ShapingResult::with_decisions(vec![cluster], vec![run], vec![decision]),
             missing_glyphs,
+            sources,
         )
     }
 
@@ -644,38 +762,54 @@ impl ReplayableFontCatalog for HuoziFontManager {
 
 impl FontBackend for HuoziFontManager {
     fn shape(&self, request: &FontBackendRequest) -> FontBackendShapingResult {
-        let mut attempts = Vec::new();
-        let mut preferred = None;
-        for candidate in self.candidates(request) {
-            let (mut shaping, missing_glyphs) = self.shape_one_face(request, &candidate);
-            attempts.push(FontCandidateAttempt::new(
-                format!(
-                    "source-{}#{}@{}",
-                    candidate.face.source_index,
-                    candidate.face.collection_index,
-                    candidate.id.variation_instance()
-                ),
-                candidate.id.clone(),
-                missing_glyphs,
-            ));
-            if missing_glyphs == 0 {
-                self.add_ink_bounds(&mut shaping, &candidate.id, request.style.font_size);
-                return FontBackendShapingResult::new(candidate.id, shaping, attempts);
-            }
-            if preferred.is_none() {
-                preferred = Some((candidate.id, candidate.face, shaping));
-                continue;
-            }
-        }
-        let (face_id, _, mut shaping) =
-            preferred.expect("HuoziFontManager must contain at least one face");
-        self.add_ink_bounds(&mut shaping, &face_id, request.style.font_size);
-        FontBackendShapingResult::new(face_id, shaping, attempts)
+        self.shape_with_sources(request).0
     }
 
     fn metrics(&self, request: &FontMetricsRequest) -> RawFontMetrics {
         self.raw_metrics(&request.face, request.font_size)
     }
+}
+
+/// 每个字形覆盖的来源 scalar 区间（绝对坐标），顺序与 HarfRust 输出一致。
+///
+/// HarfRust 以字节偏移给出簇起点，这里换成 `request.range` 内的 scalar 区间。显示文本与来源
+/// 文本不一致（显示替换）时无法逐字形对应，所有字形退回整个请求范围。
+fn glyph_source_ranges(request: &FontBackendRequest, buffer: &Buffer) -> Vec<Range<i32>> {
+    let start = request.range.start().value();
+    let end = request.range.end().value();
+    if request.text.slice(request.range) != request.display_text.as_str() {
+        return vec![start..end; buffer.glyph_infos().len()];
+    }
+    let display_len = request.display_text.as_str().len();
+    let mut cluster_bytes: Vec<usize> = buffer
+        .glyph_infos()
+        .iter()
+        .map(|info| info.cluster as usize)
+        .collect();
+    cluster_bytes.push(display_len);
+    cluster_bytes.sort_unstable();
+    cluster_bytes.dedup();
+    let mut scalar_offsets: HashMap<usize, i32> = request
+        .display_text
+        .as_str()
+        .char_indices()
+        .enumerate()
+        .map(|(scalar, (byte, _))| (byte, scalar as i32))
+        .collect();
+    scalar_offsets.insert(display_len, request.display_text.scalar_len().value());
+    buffer
+        .glyph_infos()
+        .iter()
+        .map(|info| {
+            let byte = info.cluster as usize;
+            // 末尾边界总在表里，所以最后一个簇也有后继可用。
+            let next = cluster_bytes[cluster_bytes
+                .binary_search(&byte)
+                .expect("HarfRust cluster must be registered")
+                + 1];
+            start + scalar_offsets[&byte]..start + scalar_offsets[&next]
+        })
+        .collect()
 }
 
 fn font_family_names(font: &SkrifaFontRef<'_>) -> Vec<String> {
