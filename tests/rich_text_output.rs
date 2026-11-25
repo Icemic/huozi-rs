@@ -422,6 +422,47 @@ fn ruby_and_bopomofo_follow_their_base_cluster() {
 }
 
 #[test]
+fn annotations_move_with_their_base_in_later_paragraphs() {
+    for (tag, annotation, role) in [
+        ("ruby", "tí qiàn", TextRole::Ruby),
+        ("bopomofo", "ㄑㄧㄢˋ", TextRole::Bopomofo),
+    ] {
+        let markup = format!("[{tag} text=\"{annotation}\"]提椠[/{tag}]");
+        let first = layout(&markup, &LayoutStyle::default());
+        let later = layout(&format!("前[br /]{markup}"), &LayoutStyle::default());
+        let first_body = texts_with_role(&first, TextRole::Body);
+        let later_body = texts_with_role(&later, TextRole::Body);
+        let offset = later_body[1].fill[0].position[1] - first_body[0].fill[0].position[1];
+        assert!(offset > 0.0);
+        let first_annotation = texts_with_role(&first, role);
+        let later_annotation = texts_with_role(&later, role);
+        assert!(!first_annotation.is_empty());
+        assert_eq!(first_annotation.len(), later_annotation.len());
+        for (before, after) in first_annotation.iter().zip(later_annotation) {
+            let actual = after.fill[0].position[1] - before.fill[0].position[1];
+            assert!(
+                (actual - offset).abs() < 0.01,
+                "{tag}: 注音偏移 {actual}，基文偏移 {offset}"
+            );
+        }
+    }
+}
+
+fn texts_with_role(
+    output: &huozi::layout::RichTextLayoutOutput,
+    role: TextRole,
+) -> Vec<&huozi::glyph_vertices::TextVertices> {
+    output
+        .glyphs
+        .iter()
+        .filter_map(|element| match element {
+            UnitVertices::Text(text) if text.role == role => Some(text),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
 fn multiple_paragraphs_accumulate_rows_and_offsets() {
     let output = layout("甲[br /]乙[br /]丙", &LayoutStyle::default());
     let text_positions: Vec<_> = output

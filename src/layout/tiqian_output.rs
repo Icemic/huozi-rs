@@ -282,6 +282,7 @@ impl HuoziTiqianOutputAdapter {
             source_map,
             &visible,
             color_space,
+            y_offset,
         );
 
         output.interactions = interactions_from_tiqian_input(&interaction_clusters, result);
@@ -650,6 +651,7 @@ fn append_annotations(
     source_map: &HuoziSourceMap,
     visible: &HashMap<TextRange, VisibleCluster>,
     color_space: &ColorSpace,
+    y_offset: f32,
 ) {
     for decision in &result.layout.annotations.ruby {
         let Some(position) = base_position(result, visible, decision.base_range) else {
@@ -674,7 +676,7 @@ fn append_annotations(
                     glyph,
                     &atlas_glyph,
                     origin_x + glyph.x,
-                    decision.baseline_y + glyph.y,
+                    decision.baseline_y + glyph.y + y_offset,
                     position.row,
                     position.col,
                     position.rect.top,
@@ -711,7 +713,7 @@ fn append_annotations(
                         glyph,
                         &atlas_glyph,
                         placement.draw_x + glyph.x,
-                        placement.baseline_y + glyph.y,
+                        placement.baseline_y + glyph.y + y_offset,
                         position.row,
                         position.col,
                         position.rect.top,
