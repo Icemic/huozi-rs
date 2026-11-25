@@ -203,7 +203,9 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 [stroke color=white width=2][glitch]描边随文字移动[/glitch][/stroke]
 ```
 
-标签边界不会强制拆分连字或组合字符；一个 shaping cluster 跨越标签时，整簇采用首个显示字符的效果。`RichTextLayoutOutput.clusters` 提供该簇的显示文本 scalar 范围及完整绘制元素范围，范围不包含标签，不能与原始 `SourceRange` 互换。示例只在完整簇落入逐字进度后显示，并让文字的填充、描边、阴影一起移动，背景与装饰位置保持不变。
+标签边界不会强制拆分连字或组合字符；一个 shaping cluster 跨越标签时，整簇采用首个显示字符的效果。由于一次 shaping 请求对应一个排版簇，落在同一个拉丁词内部的多个效果标签共享首个字符的状态。
+
+`RichTextLayoutOutput.clusters` 提供该簇的显示文本 scalar 范围、完整绘制元素范围，以及逐元素的 scalar 子范围（`element_sources`），范围不包含标签，不能与原始 `SourceRange` 互换。逐字进度与动效相位都按元素级范围计算，`[cluster]` 标记的簇按整簇显示。示例让文字的填充、描边、阴影一起移动，背景与装饰位置保持不变。
 
 ## 范围标签
 

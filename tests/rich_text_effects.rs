@@ -29,24 +29,27 @@ fn layout(engine: &mut Huozi, text: &str) -> RichTextLayoutOutput {
 }
 
 #[test]
-fn real_clusters_keep_ligatures_combining_sequences_and_empty_spaces() {
+fn clusters_follow_shaping_units_and_keep_elements_separated() {
     let output = layout(&mut engine(), "[wave]éffi e\u{301}x[/wave]");
     assert_eq!(output.text_length, 8);
+    // 一次 shaping 请求一个簇：拉丁词整体成簇，空格与组合序列各有自己的簇。
     assert_eq!(
         output
             .clusters
             .iter()
             .map(|cluster| cluster.source.clone())
             .collect::<Vec<_>>(),
-        vec![0..1, 1..4, 4..5, 5..7, 7..8]
+        vec![0..4, 4..5, 5..7, 7..8]
     );
-    assert!(output.clusters[2].glyph_range.is_empty());
     assert!(
         output
             .clusters
             .iter()
-            .all(|cluster| &*cluster.effects == [Effect::Wave])
+            .all(|cluster| *cluster.effects == [Effect::Wave]),
+        "整段都处在 [wave] 作用域内"
     );
+    // 空格有进宽但没有绘制元素。
+    assert!(output.clusters[1].glyph_range.is_empty());
     assert_eq!(output.clusters.first().unwrap().glyph_range.start, 0);
     assert_eq!(
         output.clusters.last().unwrap().glyph_range.end,
@@ -55,6 +58,13 @@ fn real_clusters_keep_ligatures_combining_sequences_and_empty_spaces() {
     for adjacent in output.clusters.windows(2) {
         assert_eq!(adjacent[0].glyph_range.end, adjacent[1].glyph_range.start);
     }
+    // 首个簇内是「é」与「ffi」两个字形，来源按比例分配；连字簇不可再分。
+    assert_eq!(
+        output.clusters[0].element_sources.as_deref(),
+        Some(&[0..2, 2..4][..])
+    );
+    assert_eq!(output.clusters[2].element_sources, None);
+    assert_eq!(output.clusters[2].element_source(0), 5..7);
 }
 
 #[test]
@@ -91,11 +101,16 @@ fn cluster_ranges_count_decoded_text_across_paragraphs_and_objects() {
             .iter()
             .map(|cluster| cluster.source.clone())
             .collect::<Vec<_>>(),
-        vec![0..1, 1..2, 2..3, 3..4, 4..6, 6..7]
+        vec![0..3, 3..4, 4..6, 6..7]
     );
-    assert_eq!(&*output.clusters[3].effects, &[Effect::Glitch]);
+    assert_eq!(&*output.clusters[1].effects, &[Effect::Glitch]);
+    assert_eq!(
+        output.clusters[0].element_sources.as_deref(),
+        Some(&[0..1, 1..2, 2..3][..])
+    );
+    // 行内对象按 `alt` 的 scalar 数占位，并作为所在簇的元素之一输出。
     assert!(
-        output.glyphs[output.clusters[4].glyph_range.clone()]
+        output.glyphs[output.clusters[2].glyph_range.clone()]
             .iter()
             .any(|element| matches!(element, UnitVertices::InlineObject(_)))
     );

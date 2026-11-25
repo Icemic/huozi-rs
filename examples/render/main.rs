@@ -60,9 +60,10 @@ enum DrawLayer {
     Decoration,
 }
 
-/// 按绘制层顺序组装完整可见的 cluster，并从缓存顶点计算当前帧外观。
+/// 按绘制层顺序组装当前可见的元素，并从缓存顶点计算当前帧外观。
 ///
-/// 外层遍历层、内层遍历 cluster，因此同一层内保持逐字顺序。
+/// 外层遍历层、内层遍历簇内元素，因此同一层内保持逐字顺序。逐字进度与动效相位都按元素级
+/// scalar 范围计算：`[cluster]` 标记的簇按整簇显示，其余簇逐元素推进。
 fn assemble(
     output: &RichTextLayoutOutput,
     visible_characters: Progress,
@@ -82,16 +83,25 @@ fn assemble(
     let mut indices = Vec::new();
     for layer in DRAW_LAYERS {
         for cluster in &output.clusters {
-            if visible_characters.is_some_and(|visible| cluster.source.end > visible) {
-                continue;
-            }
-            let context = EffectContext {
-                source: cluster.source.clone(),
-                elapsed_seconds,
-                visible_characters,
-                reduce_motion,
-            };
-            for element in &output.glyphs[cluster.glyph_range.clone()] {
+            let whole_cluster = cluster.effects.contains(&Effect::Cluster);
+            for (index, element) in output.glyphs[cluster.glyph_range.clone()]
+                .iter()
+                .enumerate()
+            {
+                let source = if whole_cluster {
+                    cluster.source.clone()
+                } else {
+                    cluster.element_source(index)
+                };
+                if visible_characters.is_some_and(|visible| source.end > visible) {
+                    continue;
+                }
+                let context = EffectContext {
+                    source,
+                    elapsed_seconds,
+                    visible_characters,
+                    reduce_motion,
+                };
                 push_layer(
                     &mut vertices,
                     &mut indices,
@@ -112,18 +122,33 @@ fn has_animated_effects(
     visible_characters: Progress,
     reduce_motion: bool,
 ) -> bool {
-    !reduce_motion
-        && output.clusters.iter().any(|cluster| {
-            visible_characters.is_none_or(|visible| cluster.source.end <= visible)
-                && cluster.effects.iter().any(|effect| match effect {
-                    Effect::Cluster => false,
-                    Effect::Glow { color } => color[3] > 0.0,
-                    _ => true,
-                })
-                && output.glyphs[cluster.glyph_range.clone()]
-                    .iter()
-                    .any(|glyph| matches!(glyph, UnitVertices::Text(_)))
+    if reduce_motion {
+        return false;
+    }
+    output.clusters.iter().any(|cluster| {
+        let animates = cluster.effects.iter().any(|effect| match effect {
+            Effect::Cluster => false,
+            Effect::Glow { color } => color[3] > 0.0,
+            _ => true,
+        });
+        if !animates {
+            return false;
+        }
+        // 整簇显示的效果要等整簇都可见，其余按元素推进。
+        let whole_cluster = cluster.effects.contains(&Effect::Cluster);
+        (0..cluster.glyph_range.len()).any(|index| {
+            let element = &output.glyphs[cluster.glyph_range.start + index];
+            if !matches!(element, UnitVertices::Text(_)) {
+                return false;
+            }
+            let source = if whole_cluster {
+                cluster.source.clone()
+            } else {
+                cluster.element_source(index)
+            };
+            visible_characters.is_none_or(|visible| source.end <= visible)
         })
+    })
 }
 
 /// 追加一个元素在某一层的顶点；该元素没有这一层时什么都不做。
@@ -1309,7 +1334,7 @@ mod tests {
     #[test]
     fn animation_moves_every_text_layer_and_preserves_cached_layout_and_alpha() {
         let output = layout(
-            "[color=\"rgba(51,77,102,0.25)\"][wave][glow color=\"rgba(255,213,128,0.5)\"]a\u{301}\u{301}[/glow][/wave][/color]",
+            "[color=\"rgba(51,77,102,0.25)\"][wave][glow color=\"rgba(255,213,128,0.5)\"]ab[/glow][/wave][/color]",
         );
         let original = format!("{output:?}");
         assert_eq!(output.clusters.len(), 1);
@@ -1318,21 +1343,47 @@ mod tests {
             .iter()
             .filter(|glyph| matches!(glyph, UnitVertices::Text(_)))
             .count();
-        assert!(text_count >= 2, "组合字符应产生同簇的多个 glyph");
+        assert_eq!(text_count, 2, "同簇的两个字形各自参与逐字动效");
         let (start, indices) = assemble(&output, None, 0.0, false);
-        let (moved, moved_indices) = assemble(&output, None, std::f64::consts::PI / 6.0, false);
+        let (moved, moved_indices) = assemble(&output, None, 0.25, false);
         assert_eq!(indices, moved_indices);
+        // 顶点按「层优先」排列：每层各 text_count 个四边形，每四边形 4 个顶点。
         assert_eq!(start.len(), text_count * 12);
-        for (index, (before, after)) in start.iter().zip(&moved).enumerate() {
-            assert_eq!(after.position[0], before.position[0]);
-            assert_eq!(after.position[1], before.position[1] + 2.0);
-            assert_eq!(after.color[3], before.color[3]);
-            if index < text_count * 8 {
-                assert_eq!(after.color, before.color);
-            } else {
-                assert_ne!(after.color[..3], before.color[..3]);
+        let quad = |layer: usize, element: usize| layer * text_count * 4 + element * 4;
+        let mut deltas = [[0.0_f32; 2]; 2];
+        for element in 0..text_count {
+            for layer in 0..3 {
+                let offset = quad(layer, element);
+                let delta = [
+                    moved[offset].position[0] - start[offset].position[0],
+                    moved[offset].position[1] - start[offset].position[1],
+                ];
+                if layer == 0 {
+                    deltas[element] = delta;
+                } else {
+                    // 同一字形的三个层（阴影、描边、填充）一起移动。
+                    assert_eq!(delta, deltas[element], "同一字形的三层位移必须一致");
+                }
+                assert_eq!(delta[0], 0.0, "wave 只改变纵向偏移");
+                assert!(delta[1].abs() <= 2.0, "wave 幅度固定为 2px");
+                for index in offset..offset + 4 {
+                    let (before, after) = (&start[index], &moved[index]);
+                    assert_eq!(after.position[0] - before.position[0], delta[0]);
+                    assert_eq!(after.position[1] - before.position[1], delta[1]);
+                    // 效果不改变不透明度。
+                    assert_eq!(after.color[3], before.color[3]);
+                    if layer < 2 {
+                        // 阴影与描边只跟着位移，不变色。
+                        assert_eq!(after.color, before.color);
+                    } else {
+                        // 只有填充被 glow 混色。
+                        assert_ne!(after.color[..3], before.color[..3]);
+                    }
+                }
             }
         }
+        // 逐字相位不同，两个字形的位移不应被强制同步。
+        assert_ne!(deltas[0], deltas[1]);
         let (reduced, _) = assemble(&output, None, 0.0, true);
         let (reduced_later, _) = assemble(&output, None, 10.0, true);
         assert_eq!(
@@ -1340,6 +1391,24 @@ mod tests {
             bytemuck::cast_slice::<Vertex, u8>(&reduced_later),
         );
         assert_eq!(format!("{output:?}"), original);
+    }
+
+    #[test]
+    fn progress_reveals_elements_one_by_one_inside_a_word() {
+        let output = layout("word");
+        assert_eq!(output.clusters.len(), 1);
+        let sources = output.clusters[0]
+            .element_sources
+            .as_ref()
+            .expect("同一簇内四个字形应当各有来源");
+        assert_eq!(&sources[..], &[0..1, 1..2, 2..3, 3..4]);
+        assert!(assemble(&output, Some(0), 0.0, false).0.is_empty());
+        let mut previous = 0;
+        for visible in 1..=4 {
+            let count = assemble(&output, Some(visible), 0.0, false).0.len();
+            assert!(count > previous, "进度推进应当多显示一个字形");
+            previous = count;
+        }
     }
 
     #[test]
@@ -1377,12 +1446,13 @@ mod tests {
 
     #[test]
     fn only_visible_moving_effects_request_animation_frames() {
-        let output = layout("[cluster]ffi[/cluster][wave]A[/wave]");
-        assert!(!has_animated_effects(&output, Some(3), false));
+        // CJK 逐字成簇，标签边界与排版单位对齐。
+        let output = layout("[cluster]中[/cluster][wave]文[/wave]");
+        assert!(!has_animated_effects(&output, Some(1), false));
         assert!(has_animated_effects(&output, None, false));
         assert!(!has_animated_effects(&output, None, true));
         assert!(!has_animated_effects(
-            &layout("[cluster]ffi[/cluster]"),
+            &layout("[cluster]中文[/cluster]"),
             None,
             false
         ));

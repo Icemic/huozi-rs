@@ -147,6 +147,7 @@ impl HuoziTiqianOutputAdapter {
                 source: positioned.range.start().value() as usize
                     ..positioned.range.end().value() as usize,
                 glyph_range: 0..0,
+                element_sources: None,
                 effects: effects_by_span
                     .get(effect_cursor)
                     .cloned()
@@ -281,14 +282,15 @@ impl HuoziTiqianOutputAdapter {
             source_map,
             &visible,
             color_space,
-            y_offset,
         );
 
         output.interactions = interactions_from_tiqian_input(&interaction_clusters, result);
         // 各类元素是分组追加的，这里统一排成逐字显示顺序，使输出满足"前缀即可见状态"的保证。
         output.sort_into_display_order();
+        // 簇与元素都是分组追加的，排序后按 `(row, col)` 一次线性回填元素范围与逐元素来源。
+        let mut clusters = std::mem::take(&mut output.clusters);
         let mut glyph_cursor = 0;
-        for (cluster, position) in output.clusters.iter_mut().zip(cluster_positions) {
+        for (cluster, position) in clusters.iter_mut().zip(cluster_positions) {
             let start = glyph_cursor;
             while output.glyphs.get(glyph_cursor).is_some_and(|element| {
                 let (row, col, _) = display_order_key(element);
@@ -297,10 +299,61 @@ impl HuoziTiqianOutputAdapter {
                 glyph_cursor += 1;
             }
             cluster.glyph_range = start..glyph_cursor;
+            cluster.element_sources =
+                element_sources_for(&cluster.source, &output.glyphs[start..glyph_cursor]);
         }
         debug_assert_eq!(glyph_cursor, output.glyphs.len());
+        output.clusters = clusters;
         output
     }
+}
+
+/// 元素是否承载正文文字：只有正文字形参与逐字显示与动效外观。
+fn is_body_text(element: &UnitVertices) -> bool {
+    matches!(element, UnitVertices::Text(text) if text.role == TextRole::Body)
+}
+
+/// 给簇内的每个绘制元素算出它覆盖的 scalar 子范围。
+///
+/// 返回 `None` 表示簇不可再分（元素不超过一个、或没有正文字形），此时所有元素共享整个簇范围：
+/// 连字与组合序列就属于这一类，它们本来就不能拆开显示。
+///
+/// 正文字形数与簇的 scalar 数相等时按一一对应分配（Tiqian `source_stops` 成立的情形）；
+/// 否则按比例切分，与 Tiqian 在缺少 `source_stops` 时对簇内偏移做线性插值的选择一致。
+/// 背景、线条、装饰、注音与行内对象不承载逐字进度，统一使用整个簇范围。
+fn element_sources_for(
+    source: &std::ops::Range<usize>,
+    elements: &[UnitVertices],
+) -> Option<Arc<[std::ops::Range<usize>]>> {
+    if elements.len() <= 1 {
+        return None;
+    }
+    let body = elements
+        .iter()
+        .filter(|element| is_body_text(element))
+        .count();
+    if body == 0 {
+        return None;
+    }
+    let length = source.end.saturating_sub(source.start);
+    let exact = body == length;
+    let mut sources = Vec::with_capacity(elements.len());
+    let mut index = 0;
+    for element in elements {
+        if is_body_text(element) {
+            let start = if exact { index } else { index * length / body };
+            let end = if exact {
+                index + 1
+            } else {
+                (index + 1) * length / body
+            };
+            sources.push(source.start + start..source.start + end);
+            index += 1;
+        } else {
+            sources.push(source.clone());
+        }
+    }
+    Some(Arc::from(sources))
 }
 
 impl ParagraphOutput {
@@ -597,7 +650,6 @@ fn append_annotations(
     source_map: &HuoziSourceMap,
     visible: &HashMap<TextRange, VisibleCluster>,
     color_space: &ColorSpace,
-    y_offset: f32,
 ) {
     for decision in &result.layout.annotations.ruby {
         let Some(position) = base_position(result, visible, decision.base_range) else {
@@ -612,16 +664,7 @@ fn append_annotations(
             decision.font_weight,
         );
         let origin_x = decision.center_x - decision.width / 2.0;
-        let mut pen_x = 0.0;
-        let mut cluster_x = 0.0;
-        let mut previous_cluster = None;
         for glyph in &decision.glyphs {
-            // Tiqian 保留簇内 x；仅在簇边界累计起点，空格也参与进宽。
-            if previous_cluster != Some(glyph.cluster_range) {
-                cluster_x = pen_x;
-                previous_cluster = Some(glyph.cluster_range);
-            }
-            pen_x += glyph.advance;
             let Some(atlas_glyph) = annotation_atlas_glyph(huozi, glyph) else {
                 continue;
             };
@@ -630,8 +673,8 @@ fn append_annotations(
                 .push(UnitVertices::Text(glyph_vertices_for_glyph(
                     glyph,
                     &atlas_glyph,
-                    origin_x + cluster_x + glyph.x,
-                    decision.baseline_y + glyph.y + y_offset,
+                    origin_x + glyph.x,
+                    decision.baseline_y + glyph.y,
                     position.row,
                     position.col,
                     position.rect.top,
@@ -668,7 +711,7 @@ fn append_annotations(
                         glyph,
                         &atlas_glyph,
                         placement.draw_x + glyph.x,
-                        placement.baseline_y + glyph.y + y_offset,
+                        placement.baseline_y + glyph.y,
                         position.row,
                         position.col,
                         position.rect.top,
