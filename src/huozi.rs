@@ -645,7 +645,7 @@ mod tests {
     }
 
     #[test]
-    fn tiqian_output_keeps_all_glyphs_in_a_shaping_cluster() {
+    fn tiqian_output_keeps_all_real_shaping_clusters() {
         let font = include_bytes!("../resources/fonts/SourceHanSansSC-VF.otf");
         let mut huozi = Huozi::new(vec![FontSource::new(font.to_vec())]).unwrap();
         let style = HuoziTextStyle::default();
@@ -679,6 +679,9 @@ mod tests {
         );
         let shaped = huozi.font_manager.shape(&request);
         let glyph_count = shaped.shaping.glyph_runs[0].glyphs.len();
+        assert_eq!(shaped.shaping.clusters.len(), 2);
+        assert_eq!(shaped.shaping.clusters[0].range, text_range(0, 1));
+        assert_eq!(shaped.shaping.clusters[1].range, text_range(1, 2));
         let layout_result = LayoutResult::new(
             layout_input,
             Size {
@@ -690,7 +693,7 @@ mod tests {
             vec![
                 LineBox::builder(
                     text_range(0, 2),
-                    IntRange::new(0, 0),
+                    IntRange::new(0, 1),
                     32.0,
                     0.0,
                     48.0,
@@ -718,7 +721,7 @@ mod tests {
         assert_eq!(text_vertices(&glyphs[0]).row, 0);
         assert_eq!(text_vertices(&glyphs[0]).col, 0);
         assert_eq!(text_vertices(&glyphs[1]).row, 0);
-        assert_eq!(text_vertices(&glyphs[1]).col, 0);
+        assert_eq!(text_vertices(&glyphs[1]).col, 1);
         assert_ne!(
             text_vertices(&glyphs[0]).fill[0].position[0],
             text_vertices(&glyphs[1]).fill[0].position[0]

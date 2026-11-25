@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use csscolorparser::Color;
 use tiqian::api::{
     InlineBoxStyle, InlineObjectMetrics, ParagraphBuilder, RubyAnnotation, TextStyleOverride,
@@ -10,14 +12,13 @@ use tiqian::core::text_model::{
     LineLengthGrid, ParagraphStyle, RichTextBackgroundMetricPolicy, RichTextBackgroundPaint,
     RichTextLayer, RichTextLayerKind, RichTextLinePaint, RichTextLinePattern, RichTextPaint,
     RubyLineHeightMode as TiqianRubyLineHeightMode, TabSize as TiqianTabSize,
-    TextWrapMode as TiqianTextWrapMode, TextStyle as TiqianTextStyle,
+    TextStyle as TiqianTextStyle, TextWrapMode as TiqianTextWrapMode,
     WhiteSpaceMode as TiqianWhiteSpaceMode,
 };
 use tiqian::core::units::Ic;
 
-use crate::layout::{
-    LayoutStyle, ParagraphAlignment, TabSize, TextWrapMode, WhiteSpaceMode,
-};
+use crate::effects::Effect;
+use crate::layout::{LayoutStyle, ParagraphAlignment, TabSize, TextWrapMode, WhiteSpaceMode};
 use crate::parser::{
     BackgroundMetricPolicy, DecorationKind, InlineBoxSpacing, InlineNode, InlineObject,
     InlineScopeKind, LinePattern, LineStyle, ParagraphStyleOverride, ParsedParagraph, RubyKind,
@@ -60,7 +61,12 @@ impl LoweringState {
     }
 
     /// 记录一段显示文本，并在输入 segment 切换时声明一个 cluster 边界。
-    fn push_text(&mut self, source_range: &SourceRange, length: i32) -> TextRange {
+    fn push_text(
+        &mut self,
+        source_range: &SourceRange,
+        length: i32,
+        effects: &[Effect],
+    ) -> TextRange {
         let range = TextRange::new(
             ScalarOffset::new(self.display_offset),
             ScalarOffset::new(self.display_offset + length),
@@ -72,6 +78,7 @@ impl LoweringState {
         self.source_map_entries.push(HuoziSourceMapEntry {
             display_range: range,
             source_range: source_range.clone(),
+            effects: Arc::from(effects),
         });
         self.display_offset += length;
         range
@@ -114,7 +121,7 @@ impl HuoziTiqianInputAdapter {
         for text_span in text_spans {
             for text_run in &text_span.runs {
                 let run_length = text_run.text.chars().count() as i32;
-                state.push_text(&text_run.source_range, run_length);
+                state.push_text(&text_run.source_range, run_length, &text_run.style.effects);
                 let style = tiqian_text_style_override(&text_run.style);
                 let paints = tiqian_paints(&text_run.style);
 
@@ -190,7 +197,7 @@ fn append_nodes(
         match node {
             InlineNode::Text(run) => {
                 let length = run.text.chars().count() as i32;
-                state.push_text(&run.source_range, length);
+                state.push_text(&run.source_range, length, &run.style.effects);
                 let style = tiqian_text_style_override(&run.style);
                 let paints = tiqian_paints(&run.style);
                 builder.with_text_style(style, |builder| {
@@ -340,7 +347,7 @@ fn append_object(builder: &mut ParagraphBuilder, object: &InlineObject, state: &
         .inline_object(object.id.clone(), &object.alt, metrics)
         .is_ok()
     {
-        state.push_text(&object.source_range, length);
+        state.push_text(&object.source_range, length, &[]);
     } else {
         log::warn!("inline object ignored by tiqian builder");
     }
@@ -350,9 +357,22 @@ pub(crate) struct HuoziSourceMap {
     pub(crate) entries: Vec<HuoziSourceMapEntry>,
 }
 
+impl HuoziSourceMap {
+    /// 查询包含显示文本 scalar 的来源区间，不把标签边界变成 shaping 边界。
+    pub(crate) fn entry_at(&self, offset: ScalarOffset) -> Option<&HuoziSourceMapEntry> {
+        let index = self
+            .entries
+            .partition_point(|entry| entry.display_range.end() <= offset);
+        self.entries
+            .get(index)
+            .filter(|entry| entry.display_range.start() <= offset)
+    }
+}
+
 pub(crate) struct HuoziSourceMapEntry {
     pub(crate) display_range: TextRange,
     pub(crate) source_range: SourceRange,
+    pub(crate) effects: Arc<[Effect]>,
 }
 
 fn tiqian_text_style(style: &TextStyle) -> TiqianTextStyle {
@@ -421,7 +441,9 @@ fn paragraph_style(
             override_style.line_length_grid.unwrap_or(true),
         ))
         .white_space(tiqian_white_space(
-            override_style.white_space.unwrap_or(layout_style.white_space),
+            override_style
+                .white_space
+                .unwrap_or(layout_style.white_space),
         ))
         .text_wrap(tiqian_text_wrap(
             override_style.text_wrap.unwrap_or(layout_style.text_wrap),
@@ -590,8 +612,139 @@ mod tests {
     use crate::layout::ParagraphAlignment;
     use crate::parser::{
         BackgroundStyle, InlineNode, InlineObject, InlineObjectBoundary, InlineScopeKind,
-        ParsedParagraph, ScalarOffset as HuoziScalarOffset, SegmentId, TextRun,
+        ParsedParagraph, ScalarOffset as HuoziScalarOffset, Segment, SegmentId, TextRun,
+        lower_elements, parse,
     };
+
+    #[test]
+    fn effect_tags_keep_display_ranges_without_adding_tiqian_boundaries() {
+        let document = lower_elements(
+            parse(&Segment::dummy(
+                "f[wave]fi[/wave][glow=false] e\u{301}[/glow]",
+            ))
+            .unwrap(),
+            &TextStyle::default(),
+            None,
+        );
+        let input = HuoziTiqianInputAdapter::adapt_paragraph(
+            &document.paragraphs[0],
+            &LayoutStyle::default(),
+            &TextStyle::default(),
+            f32::INFINITY,
+            0,
+        );
+
+        assert_eq!(input.layout_input.content.text.as_str(), "ffi e\u{301}");
+        assert!(input.layout_input.content.spans.is_empty());
+        assert_eq!(input.layout_input.rich_text.len(), 1);
+        assert!(
+            input
+                .layout_input
+                .content
+                .source_boundaries
+                .iter()
+                .all(|offset| {
+                    *offset == ScalarOffset::new(0) || *offset == ScalarOffset::new(6)
+                })
+        );
+        assert!(
+            input
+                .source_map
+                .entry_at(ScalarOffset::new(0))
+                .unwrap()
+                .effects
+                .is_empty()
+        );
+        for offset in [1, 2] {
+            assert_eq!(
+                input
+                    .source_map
+                    .entry_at(ScalarOffset::new(offset))
+                    .unwrap()
+                    .effects
+                    .as_ref(),
+                &[Effect::Wave]
+            );
+        }
+        let last = input.source_map.entry_at(ScalarOffset::new(5)).unwrap();
+        assert!(last.effects.is_empty());
+        assert_eq!(last.display_range.end(), ScalarOffset::new(6));
+        assert_eq!(
+            input.source_map.entries[1].source_range.start,
+            HuoziScalarOffset(7)
+        );
+        assert_eq!(
+            input.source_map.entries[1].source_range.end,
+            HuoziScalarOffset(9)
+        );
+        assert!(input.source_map.entry_at(ScalarOffset::new(6)).is_none());
+    }
+
+    #[test]
+    fn effect_metadata_survives_direct_runs_and_skips_empty_source_entries() {
+        let input = HuoziTiqianInputAdapter::adapt(
+            &[TextSpan {
+                runs: vec![
+                    TextRun {
+                        style: TextStyle {
+                            effects: vec![Effect::Shake],
+                            ..TextStyle::default()
+                        },
+                        ..TextRun::default()
+                    },
+                    TextRun {
+                        text: "f".to_owned(),
+                        style: TextStyle {
+                            effects: vec![Effect::Wave],
+                            ..TextStyle::default()
+                        },
+                        ..TextRun::default()
+                    },
+                    TextRun {
+                        text: "fi".to_owned(),
+                        style: TextStyle {
+                            effects: vec![Effect::Glitch],
+                            ..TextStyle::default()
+                        },
+                        ..TextRun::default()
+                    },
+                ],
+                span_id: None,
+            }],
+            &LayoutStyle::default(),
+            &TextStyle::default(),
+        );
+
+        assert_eq!(input.layout_input.content.text.as_str(), "ffi");
+        assert!(input.layout_input.content.spans.is_empty());
+        assert_eq!(input.layout_input.rich_text.len(), 1);
+        assert!(
+            !input
+                .layout_input
+                .content
+                .source_boundaries
+                .contains(&ScalarOffset::new(1))
+        );
+        assert_eq!(
+            input
+                .source_map
+                .entry_at(ScalarOffset::new(0))
+                .unwrap()
+                .effects
+                .as_ref(),
+            &[Effect::Wave]
+        );
+        assert_eq!(
+            input
+                .source_map
+                .entry_at(ScalarOffset::new(1))
+                .unwrap()
+                .effects
+                .as_ref(),
+            &[Effect::Glitch]
+        );
+        assert!(input.source_map.entry_at(ScalarOffset::new(3)).is_none());
+    }
 
     #[test]
     fn preserves_run_geometry_paint_and_source_identity() {
@@ -828,7 +981,10 @@ mod tests {
     fn adapts_structured_scope_object_and_source_ranges() {
         let text_run = TextRun {
             text: "甲".to_string(),
-            style: TextStyle::default(),
+            style: TextStyle {
+                effects: vec![Effect::Wave],
+                ..TextStyle::default()
+            },
             source_range: SourceRange {
                 segment_id: Some(SegmentId::Lite(1)),
                 start: HuoziScalarOffset(5),
@@ -889,6 +1045,11 @@ mod tests {
             })
         }));
         assert_eq!(input.source_map.entries.len(), 2);
+        assert_eq!(
+            input.source_map.entries[0].effects.as_ref(),
+            &[Effect::Wave]
+        );
+        assert!(input.source_map.entries[1].effects.is_empty());
         assert_eq!(
             input.source_map.entries[0].display_range,
             TextRange::new(ScalarOffset::new(0), ScalarOffset::new(1))

@@ -3,6 +3,8 @@ use std::str::FromStr;
 use csscolorparser::Color;
 use serde::{Deserialize, Serialize};
 
+use crate::effects::Effect;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct TextStyle {
@@ -18,6 +20,8 @@ pub struct TextStyle {
     pub fill_color: Color,
     pub stroke: Option<StrokeStyle>,
     pub shadow: Option<ShadowStyle>,
+    /// 按启用顺序组合的绘制效果，不参与排版。
+    pub effects: Vec<Effect>,
 }
 
 impl Default for TextStyle {
@@ -34,6 +38,7 @@ impl Default for TextStyle {
             fill_color: Color::new(0., 0., 0., 1.),
             stroke: None,
             shadow: None,
+            effects: Vec::new(),
         }
     }
 }

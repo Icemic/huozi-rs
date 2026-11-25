@@ -73,7 +73,7 @@ pub fn render_control_panel_ui(state: &mut State, window: &Window) -> FullOutput
                 ui.add_space(6.);
 
                 ui.vertical(|ui| {
-                    // 逐字进度：配置面板最上方一条占满宽度的滑条，按 `glyphs` 结束下标推进。
+                    // 逐字进度：按输入 scalar 数量推进，完整字形簇一起显示。
                     render_progress_ui(state, ui);
                     ui.horizontal(|ui| {
                         render_text_input(state, ui);

@@ -1,13 +1,13 @@
 [package]
 description = "A fully functional typography engine for CJK languages, especially designed for game rich-text."
 edition = "2024"
-exclude = ["examples"]
 license = "Apache-2.0"
 name = "huozi"
+readme = "README.md"
 repository = "https://github.com/Icemic/huozi-rs"
 version = "0.26.1"
 
-include = ["src/**/*", "Cargo.toml", "./README.md", "./README_EN.md", "LICENSE"]
+include = ["src/**/*", "Cargo.toml", "README.md", "README_EN.md", "LICENSE"]
 
 [features]
 charsets = []

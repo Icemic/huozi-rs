@@ -170,6 +170,8 @@ impl Huozi {
 /// 每段独立走 Tiqian；段落自身的坐标加上前面段落的累积高度与视觉行数后进入文档坐标。
 struct DocumentBuilder {
     glyphs: Vec<UnitVertices>,
+    clusters: Vec<GlyphCluster>,
+    text_length: usize,
     glyph_segments: Vec<Option<SegmentId>>,
     interactions: Vec<Interaction>,
     width: f32,
@@ -184,6 +186,8 @@ impl DocumentBuilder {
     fn new() -> Self {
         Self {
             glyphs: Vec::new(),
+            clusters: Vec::new(),
+            text_length: 0,
             glyph_segments: Vec::new(),
             interactions: Vec::new(),
             width: 0.0,
@@ -241,6 +245,8 @@ impl DocumentBuilder {
             return;
         };
         let continuity = input.continuity;
+        let source_offset = self.text_length;
+        self.text_length += input.layout_input.content.text.scalar_len().value() as usize;
         let result = huozi.layout_engine.layout(input.layout_input);
         let output = HuoziTiqianOutputAdapter::adapt(
             huozi,
@@ -258,6 +264,15 @@ impl DocumentBuilder {
         self.width = self.width.max(output.width);
         self.height += output.height;
         self.rows += output.visual_lines;
+        let glyph_offset = self.glyphs.len();
+        self.clusters
+            .extend(output.clusters.into_iter().map(|mut cluster| {
+                cluster.source =
+                    cluster.source.start + source_offset..cluster.source.end + source_offset;
+                cluster.glyph_range = cluster.glyph_range.start + glyph_offset
+                    ..cluster.glyph_range.end + glyph_offset;
+                cluster
+            }));
         self.glyphs.extend(output.glyphs);
         self.glyph_segments.extend(output.glyph_segments);
         self.interactions.extend(output.interactions);
@@ -268,6 +283,8 @@ impl DocumentBuilder {
         self.glyph_segments.clear();
         RichTextLayoutOutput {
             glyphs: self.glyphs,
+            clusters: self.clusters,
+            text_length: self.text_length,
             segment_glyph_spans,
             interactions: self.interactions,
             width: self.width.max(0.0).round() as u32,

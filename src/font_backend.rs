@@ -1,4 +1,4 @@
-use harfrust::{Buffer, Direction, Feature, Font as HarfRustFont, Script, ShaperFont, Tag};
+use harfrust::{Buffer, Feature, Font as HarfRustFont, Script, ShaperFont, Tag};
 use log::warn;
 use lru::LruCache;
 use skrifa::attribute::{Attributes, Style};
@@ -149,7 +149,7 @@ struct FontCandidate<'a> {
 }
 
 #[derive(Clone)]
-pub(crate) struct HuoziFontManager {
+pub struct HuoziFontManager {
     faces: Arc<[FontFaceRecord]>,
     face_indices: Arc<HashMap<String, HashMap<u32, usize>>>,
     family_indices: Arc<HashMap<String, Vec<usize>>>,
@@ -161,7 +161,68 @@ pub(crate) struct HuoziFontManager {
 }
 
 impl HuoziFontManager {
-    pub(crate) fn from_sources(sources: Vec<FontSource>) -> Result<Self, String> {
+    pub fn face_count(&self) -> usize {
+        self.faces.len()
+    }
+
+    pub fn supports_character(&self, id: &FontFaceId, character: char) -> bool {
+        self.glyph_id(id, character).is_some_and(|glyph| glyph != 0)
+    }
+
+    pub fn supported_characters(&self, id: &FontFaceId) -> String {
+        let face = self.face_for_id(id);
+        let font = SkrifaFontRef::from_index(&face.bytes, face.collection_index)
+            .expect("registered face must remain readable by SkRifa");
+        font.charmap()
+            .mappings()
+            .filter(|(_, glyph)| glyph.to_u32() != 0)
+            .filter_map(|(codepoint, _)| char::from_u32(codepoint))
+            .collect()
+    }
+
+    pub fn glyph_count(&self, id: &FontFaceId) -> u32 {
+        let face = self.face_for_id(id);
+        SkrifaFontRef::from_index(&face.bytes, face.collection_index)
+            .expect("registered face must remain readable by SkRifa")
+            .maxp()
+            .map(|table| u32::from(table.num_glyphs()))
+            .unwrap_or(0)
+    }
+
+    pub fn shape_exact_face(&self, id: &FontFaceId, request: &FontBackendRequest) -> ShapingResult {
+        let face = self.face_for_id(id);
+        let candidate = FontCandidate {
+            face,
+            id: id.clone(),
+            weight: face.weight,
+            style: face.style,
+        };
+        let (mut shaping, _) = self.shape_one_face(request, &candidate);
+        self.add_ink_bounds(&mut shaping, id, request.style.font_size);
+        shaping
+    }
+
+    pub fn glyph_id(&self, id: &FontFaceId, character: char) -> Option<u32> {
+        let face = self.face_for_id(id);
+        let font = SkrifaFontRef::from_index(&face.bytes, face.collection_index).ok()?;
+        font.charmap().map(character).map(|glyph| glyph.to_u32())
+    }
+
+    pub fn font_metrics(&self, id: &FontFaceId, size: f32) -> RawFontMetrics {
+        self.raw_metrics(id, size)
+    }
+
+    pub fn glyph_advance(&self, id: &FontFaceId, glyph_id: u32, size: f32) -> f32 {
+        let face = self.face_for_id(id);
+        let font = SkrifaFontRef::from_index(&face.bytes, face.collection_index)
+            .expect("registered face must remain readable by SkRifa");
+        let location = variation_location(&font, id.variation_instance());
+        font.glyph_metrics(Size::new(size), &location)
+            .advance_width(GlyphId::new(glyph_id))
+            .unwrap_or(0.0)
+    }
+
+    pub fn from_sources(sources: Vec<FontSource>) -> Result<Self, String> {
         let mut faces = Vec::new();
         let mut descriptors = Vec::new();
 
@@ -501,12 +562,15 @@ impl HuoziFontManager {
             .map(|setting| (Tag::new(&feature_tag(setting.tag())), setting.value()))
             .collect();
         // 每次 shaping 按候选的变量实例构造字体实例；表解析结果由 `Font` 内部缓存共享。
-        let instance = font.instance_builder().variations(variation_settings).build();
+        let instance = font
+            .instance_builder()
+            .variations(variation_settings)
+            .build();
         let shaper = ShaperFont::new(&instance);
         let mut buffer = Buffer::new();
         buffer.push_str(request.display_text.as_str());
         buffer.guess_segment_properties();
-        buffer.set_direction(Direction::LeftToRight);
+        buffer.set_direction(harfrust::Direction::LeftToRight);
         if request.role == FontRole::CjkPunctuation {
             buffer.set_script(Some(Script::HAN));
         }
@@ -532,18 +596,60 @@ impl HuoziFontManager {
             warn!("harfrust shaping failed for face {}: {error:?}", face.id);
         }
         let scale = request.style.font_size / face.units_per_em as f32;
+        let mut cluster_bytes: Vec<_> = buffer
+            .glyph_infos()
+            .iter()
+            .map(|info| info.cluster as usize)
+            .collect();
+        cluster_bytes.push(request.display_text.as_str().len());
+        cluster_bytes.sort_unstable();
+        cluster_bytes.dedup();
+        let mut scalar_offsets: HashMap<_, _> = request
+            .display_text
+            .as_str()
+            .char_indices()
+            .enumerate()
+            .map(|(scalar, (byte, _))| (byte, scalar as i32))
+            .collect();
+        scalar_offsets.insert(
+            request.display_text.as_str().len(),
+            request.display_text.scalar_len().value(),
+        );
+        let source_matches_display =
+            request.text.slice(request.range) == request.display_text.as_str();
+        let source_range = |byte: usize| {
+            if !source_matches_display {
+                return request.range;
+            }
+            let next = cluster_bytes[cluster_bytes
+                .binary_search(&byte)
+                .expect("HarfRust cluster must be registered")
+                + 1];
+            tiqian::core::geometry::text_range(
+                request.range.start().value() + scalar_offsets[&byte],
+                request.range.start().value() + scalar_offsets[&next],
+            )
+        };
         let mut pen_x = 0_i64;
+        let mut cluster_start_x = 0_i64;
+        let mut previous_cluster = None;
         let glyphs: Vec<_> = buffer
             .glyph_infos()
             .iter()
             .zip(buffer.glyph_positions())
             .map(|(info, position)| {
+                let cluster_range = source_range(info.cluster as usize);
+                // 显示替换可能把多个 HarfRust 簇映射到同一来源簇，簇内坐标必须连续。
+                if previous_cluster != Some(cluster_range) {
+                    cluster_start_x = pen_x;
+                    previous_cluster = Some(cluster_range);
+                }
                 let glyph = Glyph::builder(
                     info.glyph_id,
-                    request.range,
+                    cluster_range,
                     position.x_advance as f32 * scale,
                 )
-                .x((pen_x + i64::from(position.x_offset)) as f32 * scale)
+                .x((pen_x - cluster_start_x + i64::from(position.x_offset)) as f32 * scale)
                 .y(-position.y_offset as f32 * scale)
                 .render_font_face(Some(candidate.id.clone()))
                 .build();
@@ -553,18 +659,31 @@ impl HuoziFontManager {
             .collect();
         let advance = pen_x as f32 * scale;
         let missing_glyphs = glyphs.iter().filter(|glyph| glyph.id == 0).count() as u32;
-        let source_text = Text::from(request.text.slice(request.range));
         let decision = ShapingDecisionInfo::builder(request.range)
             .glyphs_without_ink_bounds(glyphs.len() as i32)
             .missing_glyphs(missing_glyphs as i32)
             .build();
-        let cluster = Cluster::with_display_text(
-            request.range,
-            source_text,
-            request.display_text.clone(),
-            candidate.id.clone(),
-            advance,
-        );
+        let mut clusters: Vec<Cluster> = Vec::new();
+        for glyph in &glyphs {
+            if let Some(cluster) = clusters
+                .last_mut()
+                .filter(|cluster| cluster.range == glyph.cluster_range)
+            {
+                cluster.advance += glyph.advance;
+                continue;
+            }
+            clusters.push(Cluster::with_display_text(
+                glyph.cluster_range,
+                Text::from(request.text.slice(glyph.cluster_range)),
+                if source_matches_display {
+                    Text::from(request.text.slice(glyph.cluster_range))
+                } else {
+                    request.display_text.clone()
+                },
+                candidate.id.clone(),
+                glyph.advance,
+            ));
+        }
         let run = GlyphRun::with_open_type_features(
             request.range,
             candidate.id.clone(),
@@ -573,7 +692,7 @@ impl HuoziFontManager {
             request.open_type_features.clone(),
         );
         (
-            ShapingResult::with_decisions(vec![cluster], vec![run], vec![decision]),
+            ShapingResult::with_decisions(clusters, vec![run], vec![decision]),
             missing_glyphs,
         )
     }
