@@ -2,6 +2,7 @@ use egui::epaint::text::{FontInsert, InsertFontFamily};
 use huozi::{
     FontSourceKind, Huozi,
     constant::TEXTURE_SIZE,
+    effects::{Effect, EffectContext, GlyphAppearance},
     glyph_vertices::UnitVertices,
     layout::{ColorSpace, FirstLineIndent, Interaction, LayoutStyle, RichTextLayoutOutput, Vertex},
     parser::{Segment, TextStyle},
@@ -38,7 +39,7 @@ mod mvp;
 mod texture;
 mod ui;
 
-/// 逐字显示进度：`glyphs` 的结束下标，`None` 表示显示全部。
+/// 逐字显示进度：已显示的输入 scalar 数量，`None` 表示显示全部。
 type Progress = Option<usize>;
 
 /// 滚轮一格的滚动距离（逻辑像素）。
@@ -59,11 +60,16 @@ enum DrawLayer {
     Decoration,
 }
 
-/// 按绘制层顺序把可见元素拼成一份顶点与索引缓冲。
+/// 按绘制层顺序组装当前可见的元素，并从缓存顶点计算当前帧外观。
 ///
-/// 外层遍历层、内层遍历元素，因此同一层内保持逐字顺序，层与层之间保持固定的先后。文字与图形走
-/// 同一条路径，区别只是 [`push_layer`] 里各自有哪些层。
-fn assemble(visible: &[UnitVertices]) -> (Vec<Vertex>, Vec<u32>) {
+/// 外层遍历层、内层遍历簇内元素，因此同一层内保持逐字顺序。逐字进度与动效相位都按元素级
+/// scalar 范围计算：`[cluster]` 标记的簇按整簇显示，其余簇逐元素推进。
+fn assemble(
+    output: &RichTextLayoutOutput,
+    visible_characters: Progress,
+    elapsed_seconds: f64,
+    reduce_motion: bool,
+) -> (Vec<Vertex>, Vec<u32>) {
     const DRAW_LAYERS: [DrawLayer; 7] = [
         DrawLayer::BackgroundShadow,
         DrawLayer::BackgroundStroke,
@@ -76,11 +82,73 @@ fn assemble(visible: &[UnitVertices]) -> (Vec<Vertex>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
     for layer in DRAW_LAYERS {
-        for element in visible {
-            push_layer(&mut vertices, &mut indices, element, layer);
+        for cluster in &output.clusters {
+            let whole_cluster = cluster.effects.contains(&Effect::Cluster);
+            for (index, element) in output.glyphs[cluster.glyph_range.clone()]
+                .iter()
+                .enumerate()
+            {
+                let source = if whole_cluster {
+                    cluster.source.clone()
+                } else {
+                    cluster.element_source(index)
+                };
+                if visible_characters.is_some_and(|visible| source.end > visible) {
+                    continue;
+                }
+                let context = EffectContext {
+                    source,
+                    elapsed_seconds,
+                    visible_characters,
+                    reduce_motion,
+                };
+                push_layer(
+                    &mut vertices,
+                    &mut indices,
+                    element,
+                    layer,
+                    &cluster.effects,
+                    &context,
+                );
+            }
         }
     }
     (vertices, indices)
+}
+
+/// 只为已显示且有文字顶点的动态效果安排后续帧。
+fn has_animated_effects(
+    output: &RichTextLayoutOutput,
+    visible_characters: Progress,
+    reduce_motion: bool,
+) -> bool {
+    if reduce_motion {
+        return false;
+    }
+    output.clusters.iter().any(|cluster| {
+        let animates = cluster.effects.iter().any(|effect| match effect {
+            Effect::Cluster => false,
+            Effect::Glow { color } => color[3] > 0.0,
+            _ => true,
+        });
+        if !animates {
+            return false;
+        }
+        // 整簇显示的效果要等整簇都可见，其余按元素推进。
+        let whole_cluster = cluster.effects.contains(&Effect::Cluster);
+        (0..cluster.glyph_range.len()).any(|index| {
+            let element = &output.glyphs[cluster.glyph_range.start + index];
+            if !matches!(element, UnitVertices::Text(_)) {
+                return false;
+            }
+            let source = if whole_cluster {
+                cluster.source.clone()
+            } else {
+                cluster.element_source(index)
+            };
+            visible_characters.is_none_or(|visible| source.end <= visible)
+        })
+    })
 }
 
 /// 追加一个元素在某一层的顶点；该元素没有这一层时什么都不做。
@@ -89,7 +157,10 @@ fn push_layer(
     indices: &mut Vec<u32>,
     element: &UnitVertices,
     layer: DrawLayer,
+    effects: &[Effect],
+    context: &EffectContext,
 ) {
+    let start = vertices.len();
     match (element, layer) {
         (UnitVertices::Background(background), DrawLayer::BackgroundShadow) => {
             push_quads(vertices, indices, &background.vertices.shadow);
@@ -128,8 +199,29 @@ fn push_layer(
             push_quads(vertices, indices, &decoration.vertices.stroke);
             push_quads(vertices, indices, &decoration.vertices.fill);
         }
-        // 行内对象由调用方按自己的资源绘制，Huozi 只给出位置。
         _ => {}
+    }
+    let UnitVertices::Text(text) = element else {
+        return;
+    };
+    if start == vertices.len() || effects.is_empty() {
+        return;
+    }
+    let mut appearance = GlyphAppearance {
+        offset: [0.0, 0.0],
+        color: text.fill[0].color,
+        visible: true,
+    };
+    for effect in effects {
+        effect.apply(context, &mut appearance);
+    }
+    // 修改本帧追加的顶点
+    for vertex in &mut vertices[start..] {
+        vertex.position[0] += appearance.offset[0];
+        vertex.position[1] += appearance.offset[1];
+        if layer == DrawLayer::TextFill {
+            vertex.color = appearance.color;
+        }
     }
 }
 
@@ -151,6 +243,8 @@ fn push_quads(vertices: &mut Vec<Vertex>, indices: &mut Vec<u32>, quads: &[Verte
 }
 
 const DEFAULT_TEXT: &str = r##"一个功能完善的中日韩文字排印引擎，为[shadow offsetX=1.5 offsetY=1.5 blur=0 width=0.4 color="rgba(255, 64, 153, 1.0)"]游戏富文本[/shadow]特别设计。[link id="demo-interaction" target="https://example.com/interaction"]点击这里显示交互提示[/link]
+这是[wave]一段 [wave=false]让 [wave=true]平面[/wave] 设计师[/wave] 灵魂[/wave] / [shake]震颤[/shake] / [glow color="#FFD580"]的[/glow] / [glitch]文字[/glitch]
+[font="思源黑体 VF"][cluster]ffi é[/cluster] [wave][glow]á́ ffi[/glow][/wave][/font]：连字和组合字符整簇显现，嵌套效果一起生效。
 A fully functional typography engine for CJK languages, especially designed for game rich-text.
 huózì 活字 gM 123.!""?;:-_/+=<>==
 CJK 标点——⸺，。：；“”？、《》「」【】
@@ -161,11 +255,11 @@ CJK 标点——⸺，。：；“”？、《》「」【】
 [background color="#FFF3BF" paddingX=6 paddingY=2 radius=8]跨多个字格与行内空隙的圆角背景[/background]与[background color="rgba(56, 189, 248, 0.6)" paddingX=4 paddingY=2 radius=8 strokeColor="#0EA5E9" strokeWidth=1]相邻的另一个背景[/background]。
 [background color="#1E293B" paddingX=6 paddingY=2 radius=8 shadowColor="#000000" shadowOffsetX=2 shadowOffsetY=2 shadowBlur=2 shadowWidth=1]带描边与阴影的背景[/background]与[code paddingX=4 paddingY=2 radius=8]cargo test[/code]共用同一套图形。
 [underline color="#1677FF" thickness=1]实线下划线[/underline] ⁄ [underline color="#1677FF" thickness=1 pattern=dashed dashLength=3 gapLength=2]虚线下划线[/underline] ⁄ [underline color="#1677FF" thickness=1 pattern=dotted gapLength=2]点线下划线[/underline] ⁄ [lineThrough color="#94A3B8" thickness=1]删除线[/lineThrough]
-[ruby text="tí qiàn"]提椠[/ruby]与[bopomofo text="ㄊㄧˊ"]提[/bopomofo][bopomofo text="ㄑㄧㄢˋ"]椠[/bopomofo]把注音也画出来。
-[emphasis]着重号[/emphasis]、[mourning]示亡号[/mourning]、[properNoun]专名号[/properNoun]与[bookTitle]书名号[/bookTitle]各自使用 Tiqian 的最终几何。
-[link id="demo-rich-link" target="https://example.com/rich"]带背景的跨行链接会在这里换行显示，背景、线条与链接区域都按排版单元推进[/link]，[object id="demo-rich-object" alt="图标" width=24 ascent=18 descent=6 /]对象在这里占位。
+[ruby text="tí qiàn"][bopomofo text="ㄊㄧˊ"]提[/bopomofo][bopomofo text="ㄑㄧㄢˋ"]椠[/bopomofo][/ruby]
+[emphasis]着重号[/emphasis]、[mourning]示亡号[/mourning]、[properNoun]专名号[/properNoun]与[bookTitle]书名号[/bookTitle]
+[link id="demo-rich-link" target="https://example.com/rich"]带背景的跨行链接=[/link]，[object id="demo-rich-object" alt="图标" width=24 ascent=18 descent=6 /]滚木滚木滚木
 第一段结束。
-[br /][br /]空段之后是新的一段，逐字进度会跨过空段。
+[br /][br /]空段之后是新的一段。
 "##;
 
 const DEFAULT_FONT_FALLBACKS: [(&str, FontSourceKind); 5] = [
@@ -181,6 +275,8 @@ const REDRAW_DELAY: Duration = Duration::from_millis(1);
 
 #[cfg(not(target_os = "windows"))]
 const REDRAW_DELAY: Duration = Duration::ZERO;
+
+const ANIMATION_FRAME_INTERVAL: Duration = Duration::from_millis(16);
 
 struct FontFallback {
     name: String,
@@ -226,15 +322,17 @@ pub struct State {
     stroke_enabled: bool,
     shadow_enabled: bool,
     config_changed: bool,
-    /// 逐字进度发生变化；只需要重建顶点缓冲，不需要重新排版。
-    progress_changed: bool,
+    /// 逐字进度或减少动态效果开关变化，只需要重建顶点缓冲。
+    appearance_changed: bool,
     interactions: Vec<Interaction>,
     cursor_position: Option<(f32, f32)>,
     interaction_notice: Option<String>,
-    /// 逐字显示进度：`glyphs` 的结束下标；`None` 表示显示全部。
+    /// 逐字显示进度：输入 scalar 数量；`None` 表示显示全部。
     progress: Progress,
-    /// 上一次布局输出的绘制元素总数，供逐字滑条使用。
-    element_count: usize,
+    /// 上一次实际送入布局的输入 scalar 总数，供逐字滑条使用。
+    text_length: usize,
+    animation_started_at: Instant,
+    reduce_motion: bool,
     /// 上次完整布局的结果；逐字进度变化时复用它重建缓冲，避免重复排版。
     layout_output: Option<RichTextLayoutOutput>,
     /// 渲染区域的垂直滚动量（逻辑像素）：顶点按 `y - scroll` 绘制。
@@ -560,12 +658,14 @@ impl State {
             stroke_enabled: true,
             shadow_enabled: false,
             config_changed: false,
-            progress_changed: false,
+            appearance_changed: false,
             interactions: Vec::new(),
             cursor_position: None,
             interaction_notice: None,
             progress: None,
-            element_count: 0,
+            text_length: 0,
+            animation_started_at: Instant::now(),
+            reduce_motion: false,
             layout_output: None,
             scroll: 0.0,
             viewport_height: 0.0,
@@ -584,12 +684,16 @@ impl State {
         }
     }
 
-    fn update(&mut self, window: &Window) {
+    fn update(&mut self, window: &Window) -> Duration {
         // Reset config changed flag
         self.config_changed = false;
 
         // Build egui UI
         let mut full_output = render_control_panel_ui(self, window);
+        let repaint_delay = full_output
+            .viewport_output
+            .get(&egui::ViewportId::ROOT)
+            .map_or(Duration::MAX, |viewport| viewport.repaint_delay);
 
         // Mark config as changed if there was any UI interaction in config panels
         if full_output.platform_output.events.iter().any(|_| true) {
@@ -618,14 +722,23 @@ impl State {
             self.scroll_changed = true;
         }
 
-        // 逐字进度与滚动量都不改变布局，只改变可见范围，因此走重建缓冲的路径；其余改动重新排版。
-        let progress_changed = std::mem::take(&mut self.progress_changed);
+        // 动效与逐字进度只从原始顶点重建当前帧；动画帧不能遮住真正的配置变化。
+        let appearance_changed = std::mem::take(&mut self.appearance_changed);
         let scroll_changed = std::mem::take(&mut self.scroll_changed);
-        if progress_changed || scroll_changed {
+        if appearance_changed || scroll_changed {
             self.rebuild_buffers();
         } else if self.config_changed {
             self.render_huozi_text();
+        } else if self.has_animated_effects() {
+            self.rebuild_buffers();
         }
+        repaint_delay
+    }
+
+    fn has_animated_effects(&self) -> bool {
+        self.layout_output
+            .as_ref()
+            .is_some_and(|output| has_animated_effects(output, self.progress, self.reduce_motion))
     }
 
     /// 内容可以向上滚动的最大距离；内容不足一屏时为 0。
@@ -656,6 +769,7 @@ impl State {
                 .collect::<Vec<_>>();
             if enabled_fonts.is_empty() {
                 self.layout_output = None;
+                self.text_length = 0;
                 self.vertex_buffer = None;
                 self.index_buffer = None;
                 self.num_indices = None;
@@ -730,6 +844,7 @@ impl State {
             }
             Err(err_msg) => {
                 self.layout_output = None;
+                self.text_length = 0;
                 self.vertex_buffer = None;
                 self.index_buffer = None;
                 self.num_indices = None;
@@ -760,14 +875,17 @@ impl State {
         };
 
         // 逐字进度超出文档时回到完整显示，避免文本变短后卡在空进度。
-        let total = output.glyphs.len();
-        self.element_count = total;
+        let total = output.text_length;
+        self.text_length = total;
         if self.progress.is_some_and(|count| count >= total) {
             self.progress = None;
         }
-        let end = self.progress.unwrap_or(total);
-
-        let (mut vertices, indices) = assemble(&output.glyphs[..end]);
+        let (mut vertices, indices) = assemble(
+            output,
+            self.progress,
+            self.animation_started_at.elapsed().as_secs_f64(),
+            self.reduce_motion,
+        );
         // 顶点在布局坐标里生成；滚动就是把这些坐标整体上移，图集与样式都不受影响。
         if self.scroll != 0.0 {
             for vertex in &mut vertices {
@@ -984,10 +1102,13 @@ impl ApplicationHandler for App {
         if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref()) {
             let response = state.egui_state.on_window_event(window, &event);
 
-            if response.repaint {
-                window.request_redraw();
-            } else if state.egui_context.has_requested_repaint() {
-                self.queue_redraw();
+            // egui 对当前 RedrawRequested 也返回 repaint，不能据此无限请求下一帧。
+            if !matches!(event, WindowEvent::RedrawRequested) {
+                if response.repaint {
+                    window.request_redraw();
+                } else if state.egui_context.has_requested_repaint() {
+                    self.queue_redraw();
+                }
             }
 
             if response.consumed {
@@ -1001,15 +1122,32 @@ impl ApplicationHandler for App {
                     self.pending_redraw = false;
                     self.next_redraw_at = None;
 
-                    state.update(window);
-                    match state.render() {
-                        RenderOutcome::Success => {}
+                    let repaint_delay = state.update(window);
+                    let surface_reconfigured = match state.render() {
+                        RenderOutcome::Success => false,
                         RenderOutcome::Suboptimal
                         | RenderOutcome::Outdated
-                        | RenderOutcome::Lost => state.resize(state.size),
-                        RenderOutcome::Timeout | RenderOutcome::Occluded => {}
-                        RenderOutcome::Validation => log::warn!("Surface validation error"),
-                    }
+                        | RenderOutcome::Lost => {
+                            state.resize(state.size);
+                            true
+                        }
+                        RenderOutcome::Timeout | RenderOutcome::Occluded => false,
+                        RenderOutcome::Validation => {
+                            log::warn!("Surface validation error");
+                            false
+                        }
+                    };
+                    let repaint_delay = if surface_reconfigured {
+                        repaint_delay.min(REDRAW_DELAY)
+                    } else if state.has_animated_effects() {
+                        repaint_delay.min(ANIMATION_FRAME_INTERVAL)
+                    } else {
+                        repaint_delay
+                    };
+                    self.next_redraw_at = (repaint_delay != Duration::MAX)
+                        .then(|| Instant::now().checked_add(repaint_delay.max(REDRAW_DELAY)))
+                        .flatten();
+                    self.pending_redraw = self.next_redraw_at.is_some();
                 }
             }
             WindowEvent::CloseRequested
@@ -1082,20 +1220,22 @@ impl ApplicationHandler for App {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        if let Some(window) = self.window.as_ref() {
-            if self.pending_redraw {
-                let now = Instant::now();
-                let next_redraw_at = self.next_redraw_at.get_or_insert(now + REDRAW_DELAY);
-
-                // On Windows IME composition, issuing the redraw one idle turn later is enough
-                // to avoid the candidate window getting disrupted by immediate redraw requests.
-                if now >= *next_redraw_at {
-                    window.request_redraw();
-                }
-            }
-
+        let Some(window) = self.window.as_ref() else {
+            return;
+        };
+        if !self.pending_redraw {
             event_loop.set_control_flow(ControlFlow::Wait);
+            return;
         }
+        let now = Instant::now();
+        let next_redraw_at = *self.next_redraw_at.get_or_insert(now + REDRAW_DELAY);
+        if now >= next_redraw_at {
+            window.request_redraw();
+            event_loop.set_control_flow(ControlFlow::Wait);
+            return;
+        }
+        // Wait 不会自行唤醒；明确设置下一帧时刻，同时保留 Windows 输入法需要的延迟重绘。
+        event_loop.set_control_flow(ControlFlow::WaitUntil(next_redraw_at));
     }
 }
 
@@ -1137,4 +1277,198 @@ fn android_main(app: AndroidApp) {
         .build()
         .unwrap();
     run(event_loop);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn layout(text: &str) -> RichTextLayoutOutput {
+        Huozi::new(vec![huozi::FontSource::new(
+            include_bytes!("../../resources/fonts/SourceHanSansSC-VF.otf").to_vec(),
+        )])
+        .unwrap()
+        .layout_parse(
+            &vec![Segment::dummy(text)],
+            &LayoutStyle::default(),
+            &TextStyle {
+                stroke: Some(defaults::stroke_default()),
+                shadow: Some(defaults::shadow_default()),
+                ..TextStyle::default()
+            },
+            ColorSpace::SRGB,
+            None,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn scalar_progress_reveals_whole_ligatures_and_combining_clusters_without_effects() {
+        let output = layout("ffi e\u{301}");
+        assert_eq!(output.text_length, 6);
+        assert!(
+            output
+                .clusters
+                .iter()
+                .any(|cluster| cluster.source == (0..3))
+        );
+        assert!(
+            output
+                .clusters
+                .iter()
+                .any(|cluster| cluster.source == (4..6))
+        );
+        for visible in 0..3 {
+            assert!(assemble(&output, Some(visible), 0.0, false).0.is_empty());
+        }
+        let (ligature, _) = assemble(&output, Some(3), 0.0, false);
+        assert!(!ligature.is_empty());
+        let (partial_combining, _) = assemble(&output, Some(5), 0.0, false);
+        assert_eq!(
+            bytemuck::cast_slice::<Vertex, u8>(&ligature),
+            bytemuck::cast_slice::<Vertex, u8>(&partial_combining),
+        );
+        assert!(assemble(&output, Some(6), 0.0, false).0.len() > ligature.len());
+    }
+
+    #[test]
+    fn animation_moves_every_text_layer_and_preserves_cached_layout_and_alpha() {
+        let output = layout(
+            "[color=\"rgba(51,77,102,0.25)\"][wave][glow color=\"rgba(255,213,128,0.5)\"]ab[/glow][/wave][/color]",
+        );
+        let original = format!("{output:?}");
+        assert_eq!(output.clusters.len(), 1);
+        let text_count = output
+            .glyphs
+            .iter()
+            .filter(|glyph| matches!(glyph, UnitVertices::Text(_)))
+            .count();
+        assert_eq!(text_count, 2, "同簇的两个字形各自参与逐字动效");
+        let (start, indices) = assemble(&output, None, 0.0, false);
+        let (moved, moved_indices) = assemble(&output, None, 0.25, false);
+        assert_eq!(indices, moved_indices);
+        // 顶点按「层优先」排列：每层各 text_count 个四边形，每四边形 4 个顶点。
+        assert_eq!(start.len(), text_count * 12);
+        let quad = |layer: usize, element: usize| layer * text_count * 4 + element * 4;
+        let mut deltas = [[0.0_f32; 2]; 2];
+        for element in 0..text_count {
+            for layer in 0..3 {
+                let offset = quad(layer, element);
+                let delta = [
+                    moved[offset].position[0] - start[offset].position[0],
+                    moved[offset].position[1] - start[offset].position[1],
+                ];
+                if layer == 0 {
+                    deltas[element] = delta;
+                } else {
+                    // 同一字形的三个层（阴影、描边、填充）一起移动。
+                    assert_eq!(delta, deltas[element], "同一字形的三层位移必须一致");
+                }
+                assert_eq!(delta[0], 0.0, "wave 只改变纵向偏移");
+                assert!(delta[1].abs() <= 2.0, "wave 幅度固定为 2px");
+                for index in offset..offset + 4 {
+                    let (before, after) = (&start[index], &moved[index]);
+                    assert_eq!(after.position[0] - before.position[0], delta[0]);
+                    assert_eq!(after.position[1] - before.position[1], delta[1]);
+                    // 效果不改变不透明度。
+                    assert_eq!(after.color[3], before.color[3]);
+                    if layer < 2 {
+                        // 阴影与描边只跟着位移，不变色。
+                        assert_eq!(after.color, before.color);
+                    } else {
+                        // 只有填充被 glow 混色。
+                        assert_ne!(after.color[..3], before.color[..3]);
+                    }
+                }
+            }
+        }
+        // 逐字相位不同，两个字形的位移不应被强制同步。
+        assert_ne!(deltas[0], deltas[1]);
+        let (reduced, _) = assemble(&output, None, 0.0, true);
+        let (reduced_later, _) = assemble(&output, None, 10.0, true);
+        assert_eq!(
+            bytemuck::cast_slice::<Vertex, u8>(&reduced),
+            bytemuck::cast_slice::<Vertex, u8>(&reduced_later),
+        );
+        assert_eq!(format!("{output:?}"), original);
+    }
+
+    #[test]
+    fn progress_reveals_elements_one_by_one_inside_a_word() {
+        let output = layout("word");
+        assert_eq!(output.clusters.len(), 1);
+        let sources = output.clusters[0]
+            .element_sources
+            .as_ref()
+            .expect("同一簇内四个字形应当各有来源");
+        assert_eq!(&sources[..], &[0..1, 1..2, 2..3, 3..4]);
+        assert!(assemble(&output, Some(0), 0.0, false).0.is_empty());
+        let mut previous = 0;
+        for visible in 1..=4 {
+            let count = assemble(&output, Some(visible), 0.0, false).0.len();
+            assert!(count > previous, "进度推进应当多显示一个字形");
+            previous = count;
+        }
+    }
+
+    #[test]
+    fn backgrounds_and_decorations_stay_fixed_while_text_moves() {
+        let output =
+            layout("[wave][background color=red][underline]A[/underline][/background][/wave]");
+        let (start, _) = assemble(&output, None, 0.0, false);
+        let (moved, _) = assemble(&output, None, std::f64::consts::PI / 6.0, false);
+        let mut checked_quads = 0;
+        for element in &output.glyphs {
+            let shape = match element {
+                UnitVertices::Background(background) => &background.vertices,
+                UnitVertices::Line(line) => &line.vertices,
+                _ => continue,
+            };
+            for layer in [&shape.shadow, &shape.stroke, &shape.fill] {
+                for quad in layer.chunks_exact(4) {
+                    let bytes = bytemuck::cast_slice::<Vertex, u8>(quad);
+                    assert!(
+                        start
+                            .chunks_exact(4)
+                            .any(|actual| { bytemuck::cast_slice::<Vertex, u8>(actual) == bytes })
+                    );
+                    assert!(
+                        moved
+                            .chunks_exact(4)
+                            .any(|actual| { bytemuck::cast_slice::<Vertex, u8>(actual) == bytes })
+                    );
+                    checked_quads += 1;
+                }
+            }
+        }
+        assert!(checked_quads >= 2);
+    }
+
+    #[test]
+    fn only_visible_moving_effects_request_animation_frames() {
+        // CJK 逐字成簇，标签边界与排版单位对齐。
+        let output = layout("[cluster]中[/cluster][wave]文[/wave]");
+        assert!(!has_animated_effects(&output, Some(1), false));
+        assert!(has_animated_effects(&output, None, false));
+        assert!(!has_animated_effects(&output, None, true));
+        assert!(!has_animated_effects(
+            &layout("[cluster]中文[/cluster]"),
+            None,
+            false
+        ));
+    }
+
+    #[test]
+    fn transparent_glow_does_not_schedule_animation_frames() {
+        assert!(!has_animated_effects(
+            &layout("[glow=transparent]A[/glow]"),
+            None,
+            false
+        ));
+        assert!(has_animated_effects(
+            &layout("[glow=transparent][wave]A[/wave][/glow]"),
+            None,
+            false
+        ));
+    }
 }

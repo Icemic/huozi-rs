@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use crate::effects::Effect;
 use crate::layout::ParagraphAlignment;
 use crate::parser::{
     Attribute, BackgroundStyle, DecorationKind, Element, InlineBoxSpacing, InlineBoxStyle,
@@ -172,33 +173,39 @@ fn append_paragraphs(target: &mut Vec<ParsedParagraph>, source: &mut Vec<ParsedP
 }
 
 fn is_text_style_tag(tag: &str) -> bool {
-    matches!(
-        tag,
-        "span"
-            | "size"
-            | "color"
-            | "fillColor"
-            | "stroke"
-            | "strokeColor"
-            | "strokeWidth"
-            | "shadow"
-            | "shadowColor"
-            | "shadowOffsetX"
-            | "shadowOffsetY"
-            | "shadowBlur"
-            | "shadowWidth"
-            | "font"
-            | "weight"
-            | "bold"
-            | "italic"
-            | "fontSynthesis"
-            | "locale"
-            | "baseline"
-            | "attach"
-    )
+    Effect::from_name(tag).is_some()
+        || matches!(
+            tag,
+            "span"
+                | "size"
+                | "color"
+                | "fillColor"
+                | "stroke"
+                | "strokeColor"
+                | "strokeWidth"
+                | "shadow"
+                | "shadowColor"
+                | "shadowOffsetX"
+                | "shadowOffsetY"
+                | "shadowBlur"
+                | "shadowWidth"
+                | "font"
+                | "weight"
+                | "bold"
+                | "italic"
+                | "fontSynthesis"
+                | "locale"
+                | "baseline"
+                | "attach"
+        )
 }
 
 fn apply_text_attributes(style: &mut TextStyle, tag: &str, attributes: &[Attribute]) {
+    if attributes.is_empty()
+        && let Some(effect) = Effect::from_name(tag)
+    {
+        set_effect(&mut style.effects, effect, true);
+    }
     if tag == "bold" && attributes.is_empty() {
         style.font_weight = 700;
     }
@@ -207,6 +214,20 @@ fn apply_text_attributes(style: &mut TextStyle, tag: &str, attributes: &[Attribu
     }
 
     for attribute in attributes {
+        if let Some(effect) = Effect::from_name(&attribute.name) {
+            match attribute.value.parse::<bool>() {
+                Ok(enabled) => set_effect(&mut style.effects, effect, enabled),
+                Err(_) if matches!(effect, Effect::Glow { .. }) => {
+                    set_glow_color(&mut style.effects, &attribute.value);
+                }
+                Err(_) => log::warn!("warn"),
+            }
+            continue;
+        }
+        if tag == "glow" && attribute.name == "color" {
+            set_glow_color(&mut style.effects, &attribute.value);
+            continue;
+        }
         match attribute.name.as_str() {
             "size" => update_value(&attribute.value, &mut style.font_size, "font size"),
             "color" | "fillColor" if matches!(tag, "span" | "color" | "fillColor") => {
@@ -302,6 +323,38 @@ fn apply_text_attributes(style: &mut TextStyle, tag: &str, attributes: &[Attribu
             ),
         }
     }
+}
+
+fn set_effect(effects: &mut Vec<Effect>, effect: Effect, enabled: bool) {
+    let kind = std::mem::discriminant(&effect);
+    if !enabled {
+        effects.retain(|current| std::mem::discriminant(current) != kind);
+        return;
+    }
+    if !effects
+        .iter()
+        .any(|current| std::mem::discriminant(current) == kind)
+    {
+        effects.push(effect);
+    }
+}
+
+fn set_glow_color(effects: &mut Vec<Effect>, value: &str) {
+    let Ok(color) = value.parse::<csscolorparser::Color>() else {
+        log::warn!("warn");
+        return;
+    };
+    let configured = Effect::Glow {
+        color: color.to_array(),
+    };
+    if let Some(effect) = effects
+        .iter_mut()
+        .find(|effect| matches!(effect, Effect::Glow { .. }))
+    {
+        *effect = configured;
+        return;
+    }
+    effects.push(configured);
 }
 
 fn scope_kind(
@@ -741,6 +794,222 @@ mod tests {
     use super::*;
     use crate::layout::{FirstLineIndent, ParagraphAlignment};
     use crate::parser::{Element, FontSynthesis, Segment, parse};
+
+    const DEFAULT_GLOW: Effect = Effect::Glow {
+        color: [1.0, 0.86, 0.53, 1.0],
+    };
+
+    #[test]
+    fn effect_glow_colors_override_and_restore_without_changing_text_color() {
+        let document = lower_elements(
+            parse(&Segment::dummy(
+                "[wave][glow color=\"#336699\"]A[glow=true]B[/glow][glow=\"rgba(255, 0, 0, 0.5)\"]C[/glow][glow=false]D[/glow]E[/glow][/wave]F",
+            ))
+            .unwrap(),
+            &TextStyle::default(),
+            None,
+        );
+        let configured = Effect::Glow {
+            color: [0.2, 0.4, 0.6, 1.0],
+        };
+        let states = document.paragraphs[0]
+            .nodes
+            .iter()
+            .map(|node| {
+                let InlineNode::Text(run) = node else {
+                    panic!("expected text node");
+                };
+                assert_eq!(run.style.fill_color.to_rgba8(), [0, 0, 0, 255]);
+                run.style.effects.clone()
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            states,
+            vec![
+                vec![Effect::Wave, configured],
+                vec![Effect::Wave, configured],
+                vec![
+                    Effect::Wave,
+                    Effect::Glow {
+                        color: [1.0, 0.0, 0.0, 0.5]
+                    }
+                ],
+                vec![Effect::Wave],
+                vec![Effect::Wave, configured],
+                vec![],
+            ]
+        );
+    }
+
+    #[test]
+    fn effect_glow_span_color_and_invalid_value_preserve_active_order() {
+        let document = lower_elements(
+            parse(&Segment::dummy(
+                "[span wave=true glow=red]A[glow=invalid]B[/glow][span glow=false]C[/span]D[/span]",
+            ))
+            .unwrap(),
+            &TextStyle::default(),
+            None,
+        );
+        let configured = Effect::Glow {
+            color: [1.0, 0.0, 0.0, 1.0],
+        };
+        let states = document.paragraphs[0]
+            .nodes
+            .iter()
+            .map(|node| {
+                let InlineNode::Text(run) = node else {
+                    panic!("expected text node");
+                };
+                run.style.effects.clone()
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            states,
+            vec![
+                vec![Effect::Wave, configured],
+                vec![Effect::Wave, configured],
+                vec![Effect::Wave],
+                vec![Effect::Wave, configured],
+            ]
+        );
+    }
+
+    #[test]
+    fn effect_color_parameters_leave_existing_stroke_aliases_available() {
+        let document = lower_elements(
+            parse(&Segment::dummy(
+                "[span color=white][stroke color=red width=2]A[/stroke][strokeColor=blue][strokeWidth=3]B[/strokeWidth][/strokeColor][stroke=\"green 4\"]C[/stroke][/span]",
+            ))
+            .unwrap(),
+            &TextStyle::default(),
+            None,
+        );
+        let strokes = document.paragraphs[0]
+            .nodes
+            .iter()
+            .map(|node| {
+                let InlineNode::Text(run) = node else {
+                    panic!("expected text node");
+                };
+                assert_eq!(run.style.fill_color.to_rgba8(), [255, 255, 255, 255]);
+                let stroke = run.style.stroke.as_ref().unwrap();
+                (stroke.stroke_color.to_rgba8(), stroke.stroke_width)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            strokes,
+            vec![
+                ([255, 0, 0, 255], 2.0),
+                ([0, 0, 255, 255], 3.0),
+                ([0, 128, 0, 255], 4.0),
+            ]
+        );
+    }
+
+    #[test]
+    fn effect_tags_enable_disable_and_restore_inherited_state() {
+        for (name, effect) in [
+            ("cluster", Effect::Cluster),
+            ("wave", Effect::Wave),
+            ("shake", Effect::Shake),
+            ("glow", DEFAULT_GLOW),
+            ("glitch", Effect::Glitch),
+        ] {
+            let text =
+                format!("[{name}]A[{name}=false]B[/{name}]C[/{name}]D[{name}=true]E[/{name}]");
+            let document = lower_elements(
+                parse(&Segment::dummy(&text)).unwrap(),
+                &TextStyle::default(),
+                None,
+            );
+            let states = document.paragraphs[0]
+                .nodes
+                .iter()
+                .map(|node| {
+                    let InlineNode::Text(run) = node else {
+                        panic!("expected text node");
+                    };
+                    (run.text.as_str(), run.style.effects.clone())
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(
+                states,
+                vec![
+                    ("A", vec![effect]),
+                    ("B", vec![]),
+                    ("C", vec![effect]),
+                    ("D", vec![]),
+                    ("E", vec![effect]),
+                ],
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn effect_span_attributes_preserve_order_without_duplicate_activation() {
+        let document = lower_elements(
+            parse(&Segment::dummy(
+                "[wave][glow]A[wave]B[/wave][span shake=true wave=false]C[/span]D[/glow][/wave]E",
+            ))
+            .unwrap(),
+            &TextStyle::default(),
+            None,
+        );
+        let effects = document.paragraphs[0]
+            .nodes
+            .iter()
+            .map(|node| {
+                let InlineNode::Text(run) = node else {
+                    panic!("expected text node");
+                };
+                run.style.effects.clone()
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            effects,
+            vec![
+                vec![Effect::Wave, DEFAULT_GLOW],
+                vec![Effect::Wave, DEFAULT_GLOW],
+                vec![DEFAULT_GLOW, Effect::Shake],
+                vec![Effect::Wave, DEFAULT_GLOW],
+                vec![],
+            ]
+        );
+    }
+
+    #[test]
+    fn effect_invalid_booleans_keep_inherited_state() {
+        let document = lower_elements(
+            parse(&Segment::dummy(
+                "[wave]A[wave=invalid]B[/wave][span wave=no glitch=true]C[/span]D[/wave][shake=invalid]E[/shake]",
+            ))
+            .unwrap(),
+            &TextStyle::default(),
+            None,
+        );
+        let effects = document.paragraphs[0]
+            .nodes
+            .iter()
+            .map(|node| {
+                let InlineNode::Text(run) = node else {
+                    panic!("expected text node");
+                };
+                run.style.effects.clone()
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            effects,
+            vec![
+                vec![Effect::Wave],
+                vec![Effect::Wave],
+                vec![Effect::Wave, Effect::Glitch],
+                vec![Effect::Wave],
+                vec![],
+            ]
+        );
+    }
 
     #[test]
     fn span_applies_text_and_paint_attributes_through_one_path() {

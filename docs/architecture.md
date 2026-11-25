@@ -185,11 +185,19 @@ shadow → stroke → fill
 
 ### 输出顺序与逐字显示
 
-`glyphs` 按**逐字显示顺序**排列，库保证该顺序：`(row, col)` 为主序，同一排版单元内按绘制层排列（背景、正文文字、线条与装饰、注音、行内对象）。因此调用方取 `glyphs[..end]` 就是“打印到第 `end` 个元素”的完整可见状态，不需要自己重排。
+`glyphs` 按逐字显示顺序排列：`(row, col)` 为主序，同一排版单元内按背景、正文、线条与装饰、注音、行内对象排列。
+
+`clusters` 记录 Tiqian 的**排版簇**：一次 shaping 请求产出一个簇，`source` 是该簇覆盖的 scalar 范围，`glyph_range` 是它在 `glyphs` 中的元素范围，`element_sources` 是与元素一一对应的 scalar 子范围（`None` 表示簇不可再分，元素共享 `source`）。没有顶点的空格也保留 cluster。
+
+排版簇的粒度就是断行单位，因此 shaper 不得把拉丁词拆成字形级簇：Tiqian 会把每个簇边界当成合法断行机会，拆簇会让词中出现无连字符的断行。逐字显示与动效都按**元素级** `element_source` 推进，不再受簇粒度限制。
 
 每个元素自带顶点，但数组顺序是逐字顺序，与绘制层顺序不同，因此提交前需要按固定绘制层拼一遍：背景的阴影、描边、填充，文字的阴影、描边、填充，然后是装饰与对象。这一步是纯顶点搬运，不涉及图集与模板。
 
-文字角色 `TextRole` 区分正文、ruby 与注音符号；三者共用同一个 SDF 图集与 shader。注音直接重放 tiqian 已 shaping 的 glyph 与最终位置，不从注音文本再次 shaping。
+文字角色 `TextRole` 区分正文、ruby 与注音符号；三者共用同一个 SDF 图集与 shader。注音直接重放 tiqian 已 shaping 的 glyph。
+
+`TextStyle.effects` 与 Huozi 来源区间携带内置动效。跨标签的 cluster 采用首 scalar 的效果，因此标签边界落在词内部时整词共享首 scalar 的状态。`Effect::apply` 接受元素级来源范围、时间、可见字符数和减少动态效果状态，仅修改绘制外观；`glow` 的目标颜色随输出颜色空间转换，配置 alpha 作为混色权重。示例从原始顶点计算每帧结果，文字三层一起移动，只有填充变色，布局、交互区域和图集保持不变。
+
+`GlyphCluster.source`、`GlyphCluster.element_sources` 与 `text_length` 使用送入排版的连续正文 scalar 坐标。
 
 ### 多段文档
 
@@ -208,7 +216,7 @@ Vec<Segment>
   → LayoutInput + HuoziSourceMap
   → tiqian LayoutResult
   → glyph-id SDF atlas
-  → RichTextLayoutOutput { glyphs, segment_glyph_spans, interactions, width, height }
+  → RichTextLayoutOutput { glyphs, clusters, text_length, segment_glyph_spans, interactions, width, height }
 ```
 
 来源映射链：

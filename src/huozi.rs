@@ -679,6 +679,9 @@ mod tests {
         );
         let shaped = huozi.font_manager.shape(&request);
         let glyph_count = shaped.shaping.glyph_runs[0].glyphs.len();
+        // 一次 shaping 请求只产出一个排版簇，两个字共享它。
+        assert_eq!(shaped.shaping.clusters.len(), 1);
+        assert_eq!(shaped.shaping.clusters[0].range, text_range(0, 2));
         let layout_result = LayoutResult::new(
             layout_input,
             Size {

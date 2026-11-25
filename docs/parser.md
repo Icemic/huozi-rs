@@ -10,6 +10,7 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 - [标签头语法](#标签头语法)
 - [属性值、重复项与继承](#属性值重复项与继承)
 - [文字样式标签](#文字样式标签)
+- [内置动效](#内置动效)
 - [范围标签](#范围标签)
 - [位置标签和段落](#位置标签和段落)
 - [来源范围与 Segment](#来源范围与-segment)
@@ -26,8 +27,8 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 | `parse_with::<OPEN, CLOSE>` | 一个 `Segment` 和自定义单字符符号 | `Vec<Element>` 语法树。 |
 | `Huozi::parse_text` | `Vec<Segment>` | `ParsedText`，保留全部逻辑段落。 |
 | `Huozi::parse_text_with` | `Vec<Segment>` 和自定义符号 | `ParsedText`，保留全部逻辑段落。 |
-| `Huozi::layout_parse` | `Vec<Segment>` | 解析后仅布局第一段。 |
-| `Huozi::layout_parse_with` | `Vec<Segment>` 和自定义符号 | 解析后仅布局第一段。 |
+| `Huozi::layout_parse` | `Vec<Segment>` | 依次布局全部段落，受高度约束裁剪。 |
+| `Huozi::layout_parse_with` | `Vec<Segment>` 和自定义符号 | 按自定义符号解析并布局全部段落。 |
 | `Huozi::layout_plain` | `Vec<Segment>` | 不解释标签，原样布局。 |
 
 `parse_with` 的 `OPEN` 和 `CLOSE` 是编译期常量字符，例如 `parse_with::<'<', '>'>(...)`。同一程序应固定使用一组标签符号。正文中的双开符号和双闭符号分别表示字面量开闭符号；例如使用 `<`、`>` 时，`<<` 输出 `<`，`>>` 输出 `>`。
@@ -185,6 +186,26 @@ Huozi 使用标签将输入文本转换为 `ParsedText`。标签可以表达局�
 ```
 
 `stroke` 的宽度、`shadow` 的 blur 半径和扩张半径要求有限且非负；单独的 `shadow` 横纵偏移允许负值。颜色、数字和布尔值无效时保留当前字段值。
+
+## 内置动效
+
+`cluster`、`wave`、`shake`、`glow`、`glitch` 导入 `TextStyle.effects`，由渲染方按时间应用，不改变排版或命中区域。`examples/render` 已消费这些效果。
+
+- 无参数或 `=true` 开启，`=false` 关闭；离开内层标签恢复外层状态。
+- `wave`、`shake`、`glitch` 使用固定运动参数，不接受幅度、频率或速度。
+- `glow` 是填充颜色的脉动混色，接受与字体颜色相同的 CSS 颜色语法：`[glow color="#FFD580"]`、`[glow=red]`。默认暖色；alpha 控制混色强度。
+- `cluster` 只提供整簇显示控制，不移动或变色。
+- `span` 同样接受效果开关，例如 `[span wave=true glow="#FFD580"]`。
+
+```text
+[wave]波动[wave=false]静止[/wave]恢复波动[/wave]
+[shake][glow color="rgba(255, 128, 32, 0.5)"]抖动与颜色脉动[/glow][/shake]
+[stroke color=white width=2][glitch]描边随文字移动[/glitch][/stroke]
+```
+
+标签边界不会强制拆分连字或组合字符；一个 shaping cluster 跨越标签时，整簇采用首个显示字符的效果。由于一次 shaping 请求对应一个排版簇，落在同一个拉丁词内部的多个效果标签共享首个字符的状态。
+
+`RichTextLayoutOutput.clusters` 提供该簇的显示文本 scalar 范围、完整绘制元素范围，以及逐元素的 scalar 子范围（`element_sources`），范围不包含标签，不能与原始 `SourceRange` 互换。逐字进度与动效相位都按元素级范围计算，`[cluster]` 标记的簇按整簇显示。示例让文字的填充、描边、阴影一起移动，背景与装饰位置保持不变。
 
 ## 范围标签
 
@@ -363,3 +384,4 @@ parser 采用一次从左至右的 Unicode scalar 扫描和显式 frame 栈。�
 | 链接 | 参与 rich-text layout，保留语义 | 非空 `id` 输出 `Interaction` 命中区域；不处理导航。 |
 | 行内代码 | 文字样式和技术断行生效 | 背景走 `Background`，文字按普通 glyph 输出。 |
 | 行内对象 | 参与布局 | 输出 `InlineObject` 矩形；非空 `id` 另有 `Interaction`；不生成对象图形。 |
+| 内置动效 | 不改变排版 | `GlyphCluster.effects` 保存效果，渲染方通过 `Effect::apply` 更新绘制副本。 |
